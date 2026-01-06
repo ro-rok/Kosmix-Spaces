@@ -31,8 +31,24 @@ export default function Contact() {
                 Contact Information
               </h2>
               <p className="mt-2 text-muted-foreground">
-                Reach out through any of these channels. We respond within 24 hours.
+                Reach out through any of these channels. We respond within 3 hours.
               </p>
+              <div className="mt-4 rounded-xl bg-muted/40 p-4 text-sm text-left">
+                <p className="font-semibold text-foreground">Primary Contact</p>
+                <p className="mt-1 text-foreground">Swati Kapoor, Founder – Kosmix Spaces</p>
+                <p className="mt-1 text-muted-foreground">
+                  Phone: <span className="font-medium">{contactConfig.phoneNumber}</span>
+                </p>
+                <p className="mt-0.5 text-muted-foreground">
+                  Email:{" "}
+                  <a
+                    href={buildEmailLink()}
+                    className="font-medium text-primary underline-offset-4 hover:underline"
+                  >
+                    {contactConfig.email}
+                  </a>
+                </p>
+              </div>
 
               <div className="mt-8 space-y-6">
                 {/* WhatsApp */}
@@ -91,7 +107,7 @@ export default function Contact() {
                 </div>
                 <div className="flex items-center gap-3">
                   <Clock className="h-5 w-5 text-muted-foreground" />
-                  <span className="text-foreground">Response within 24 hours</span>
+                  <span className="text-foreground">Response within 3 hours</span>
                 </div>
               </div>
 

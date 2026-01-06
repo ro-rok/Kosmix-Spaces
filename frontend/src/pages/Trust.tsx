@@ -24,7 +24,7 @@ const trustPillars = [
   {
     icon: Clock,
     title: "Responsive Support",
-    description: "We respond to every enquiry within 24 hours. WhatsApp us for even faster assistance – it's our most responsive channel.",
+    description: "We respond to every enquiry within 3 hours. WhatsApp us for even faster assistance – it's our most responsive channel.",
   },
 ];
 
@@ -43,6 +43,30 @@ const commitments = [
     icon: Lock,
     title: "Data Security",
     description: "Your enquiry information is handled securely and only shared with relevant workspace partners when you request contact.",
+  },
+];
+
+const testimonials = [
+  {
+    quote:
+      "Highly recommended Kosmix Spaces. The services are next level with prompt service delivery and above expectations. The way Ms. Swati managed quick solutions to our needs is really fantastic.",
+    name: "Ms. Suchi Verma",
+    title: "Associate Director, National Sales",
+    company: "The Park New Delhi",
+  },
+  {
+    quote:
+      "I cannot speak highly enough of my experience with Kosmix Spaces in my search for office space in Noida. From the outset, their assistance was exceptional. Swati Kapoor guided me through every step, from the initial search to the final signing of the contract. Their commitment to a seamless experience and zero brokerage is truly commendable.",
+    name: "Naief Khatri",
+    title: "Head of Solutions",
+    company: "TMotions Global Pvt Ltd",
+  },
+  {
+    quote:
+      "The team of Kosmix Spaces led by Swati Kapoor has always shown a relentless pursuit of the highest standards of professionalism and client satisfaction, apart from closing good deals at Innov8 Coworking. Their impeccable negotiation skills with corporates and landlords, product knowledge, objection handling, and resilience make them a valuable partner.",
+    name: "Faisal Khan",
+    title: "Regional Head & Director of Sales",
+    company: "OYO Workspaces India Pvt Ltd",
   },
 ];
 
@@ -128,6 +152,37 @@ export default function Trust() {
                   {item.description}
                 </p>
               </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Testimonials */}
+      <section className="bg-muted/30 py-16">
+        <div className="container">
+          <div className="mx-auto max-w-3xl text-center">
+            <h2 className="font-display text-2xl font-bold text-foreground md:text-3xl">
+              What Our Partners Say
+            </h2>
+            <p className="mt-3 text-muted-foreground">
+              A few words from leaders we&apos;ve worked with across hospitality, technology, and coworking.
+            </p>
+          </div>
+          <div className="mt-10 grid gap-8 md:grid-cols-3">
+            {testimonials.map((t) => (
+              <figure
+                key={t.name}
+                className="flex h-full flex-col justify-between rounded-xl border border-border bg-card p-6 text-left"
+              >
+                <blockquote className="text-sm text-muted-foreground leading-relaxed">
+                  “{t.quote}”
+                </blockquote>
+                <figcaption className="mt-4 pt-4 border-t border-border/60 text-sm">
+                  <p className="font-semibold text-foreground">{t.name}</p>
+                  <p className="text-muted-foreground">{t.title}</p>
+                  <p className="text-muted-foreground">{t.company}</p>
+                </figcaption>
+              </figure>
             ))}
           </div>
         </div>

@@ -33,7 +33,7 @@ const faqs = [
   {
     question: "How quickly will you respond?",
     answer:
-      "We aim to respond within 24 hours. For faster assistance, reach out on WhatsApp – it's our fastest channel.",
+      "We aim to respond within 3 hours. For faster assistance, reach out on WhatsApp – it's our fastest channel.",
   },
   {
     question: "How do I know a space is verified?",

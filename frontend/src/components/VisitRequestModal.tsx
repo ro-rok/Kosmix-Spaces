@@ -113,7 +113,7 @@ export function VisitRequestModal({
               Visit Request Received!
             </h3>
             <p className="mt-2 text-muted-foreground">
-              We'll respond within 24 hours. For faster confirmation, WhatsApp us now.
+              We'll respond within 3 hours. For faster confirmation, WhatsApp us now.
             </p>
             <div className="mt-6 flex flex-col gap-3">
               <Button variant="whatsapp" asChild>
@@ -267,7 +267,7 @@ export function VisitRequestModal({
           </Button>
 
           <p className="text-xs text-muted-foreground text-center">
-            We'll confirm your visit within 24 hours.
+            We'll confirm your visit within 3 hours.
           </p>
         </div>
       </DialogContent>

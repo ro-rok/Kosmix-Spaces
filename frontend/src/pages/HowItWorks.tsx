@@ -41,7 +41,7 @@ const benefits = [
   {
     icon: Clock,
     title: "Quick Response",
-    description: "We respond to every enquiry within 24 hours. WhatsApp for even faster turnaround.",
+    description: "We respond to every enquiry within 3 hours. WhatsApp for even faster turnaround.",
   },
   {
     icon: MessageCircle,

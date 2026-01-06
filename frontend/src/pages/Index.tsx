@@ -14,6 +14,30 @@ import { transparencyLines } from "@/config/contact";
 
 const featuredListings = listings.filter((l) => l.verificationStatus === "verified").slice(0, 6);
 
+const testimonials = [
+  {
+    quote:
+      "Highly recommended Kosmix Spaces. The services are next level with prompt service delivery and above expectations. The way Ms. Swati managed quick solutions to our needs is really fantastic.",
+    name: "Ms. Suchi Verma",
+    title: "Associate Director, National Sales",
+    company: "The Park New Delhi",
+  },
+  {
+    quote:
+      "I cannot speak highly enough of my experience with Kosmix Spaces in my search for office space in Noida. From the outset, their assistance was exceptional. Swati Kapoor guided me through every step, from the initial search to the final signing of the contract. Their commitment to a seamless experience and zero brokerage is truly commendable.",
+    name: "Naief Khatri",
+    title: "Head of Solutions",
+    company: "TMotions Global Pvt Ltd",
+  },
+  {
+    quote:
+      "The team of Kosmix Spaces led by Swati Kapoor has always shown a relentless pursuit of the highest standards of professionalism and client satisfaction, apart from closing good deals at Innov8 Coworking. Their impeccable negotiation skills with corporates and landlords, product knowledge, objection handling, and resilience make them a valuable partner.",
+    name: "Faisal Khan",
+    title: "Regional Head & Director of Sales",
+    company: "OYO Workspaces India Pvt Ltd",
+  },
+];
+
 const budgetBands: { value: BudgetBand; label: string }[] = [
   { value: "5k-10k", label: "₹5K-10K" },
   { value: "10k-20k", label: "₹10K-20K" },
@@ -148,7 +172,7 @@ export default function Index() {
                 </p>
                 <p className="flex items-center gap-1">
                   <Clock className="h-4 w-4" />
-                  Response within 24 hours
+                  Response within 3 hours
                 </p>
               </div>
             </div>
@@ -275,6 +299,42 @@ export default function Index() {
         </div>
       </section>
 
+      {/* Testimonials */}
+      <section className="py-12 md:py-16 bg-muted/30">
+        <div className="container">
+          <div className="text-center mb-12">
+            <h2 className="font-display text-2xl font-bold text-foreground md:text-3xl">
+              What Our Partners Say
+            </h2>
+            <p className="mt-3 text-muted-foreground max-w-2xl mx-auto">
+              A few words from leaders we've worked with across hospitality, technology, and coworking.
+            </p>
+          </div>
+          
+          <div className="grid gap-6 md:grid-cols-3">
+            {testimonials.map((testimonial, index) => (
+              <div
+                key={index}
+                className="rounded-xl border border-border bg-card p-6 shadow-sm hover:shadow-md transition-shadow"
+              >
+                <div className="flex flex-col h-full">
+                  <div className="flex-1">
+                    <p className="text-foreground leading-relaxed mb-4">
+                      &ldquo;{testimonial.quote}&rdquo;
+                    </p>
+                  </div>
+                  <div className="border-t border-border pt-4 mt-auto">
+                    <p className="font-semibold text-foreground">{testimonial.name}</p>
+                    <p className="text-sm text-muted-foreground mt-1">{testimonial.title}</p>
+                    <p className="text-sm text-muted-foreground">{testimonial.company}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* FAQ */}
       <section className="py-12 md:py-16">
         <div className="container">
@@ -295,7 +355,7 @@ export default function Index() {
               Ready to Find Your Workspace?
             </h2>
             <p className="mx-auto mt-4 max-w-xl opacity-90">
-              WhatsApp us with your requirements and we'll shortlist the best options for you within 24 hours.
+              WhatsApp us with your requirements and we'll shortlist the best options for you within 3 hours.
             </p>
             <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
               <Button variant="hero-outline" size="lg" asChild>
