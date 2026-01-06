@@ -1,0 +1,163 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Space+Grotesk:wght@300..700&display=swap');
+
+@layer base {
+  :root {
+    /* Startup Modern Theme */
+    --background: 150 20% 99%;
+    --foreground: 200 25% 10%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 200 25% 10%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 200 25% 10%;
+
+    /* Primary: Fresh teal for trust & action */
+    --primary: 168 76% 36%;
+    --primary-foreground: 0 0% 100%;
+    --primary-glow: 168 76% 46%;
+
+    /* Secondary: Warm neutral */
+    --secondary: 45 30% 96%;
+    --secondary-foreground: 200 25% 15%;
+
+    --muted: 150 15% 95%;
+    --muted-foreground: 200 10% 45%;
+
+    /* Accent: Warm amber for highlights */
+    --accent: 38 92% 50%;
+    --accent-foreground: 38 92% 15%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 150 15% 90%;
+    --input: 150 15% 90%;
+    --ring: 168 76% 36%;
+
+    --radius: 0.75rem;
+
+    /* Custom tokens */
+    --success: 152 69% 40%;
+    --success-foreground: 0 0% 100%;
+    --whatsapp: 142 70% 45%;
+    --whatsapp-foreground: 0 0% 100%;
+    --call: 217 91% 60%;
+    --call-foreground: 0 0% 100%;
+    
+    /* Gradients */
+    --gradient-hero: linear-gradient(135deg, hsl(168 76% 36%) 0%, hsl(175 65% 45%) 100%);
+    --gradient-card: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(150 20% 98%) 100%);
+    --gradient-cta: linear-gradient(135deg, hsl(142 70% 45%) 0%, hsl(142 70% 38%) 100%);
+    
+    /* Shadows */
+    --shadow-sm: 0 1px 2px 0 hsl(200 25% 10% / 0.05);
+    --shadow-md: 0 4px 6px -1px hsl(200 25% 10% / 0.08), 0 2px 4px -2px hsl(200 25% 10% / 0.04);
+    --shadow-lg: 0 10px 15px -3px hsl(200 25% 10% / 0.08), 0 4px 6px -4px hsl(200 25% 10% / 0.04);
+    --shadow-xl: 0 20px 25px -5px hsl(200 25% 10% / 0.1), 0 8px 10px -6px hsl(200 25% 10% / 0.05);
+    --shadow-glow: 0 0 20px hsl(168 76% 36% / 0.3);
+
+    /* Sidebar */
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    --background: 200 25% 8%;
+    --foreground: 150 20% 96%;
+
+    --card: 200 20% 12%;
+    --card-foreground: 150 20% 96%;
+
+    --popover: 200 20% 12%;
+    --popover-foreground: 150 20% 96%;
+
+    --primary: 168 70% 45%;
+    --primary-foreground: 200 25% 8%;
+    --primary-glow: 168 70% 55%;
+
+    --secondary: 200 20% 15%;
+    --secondary-foreground: 150 20% 96%;
+
+    --muted: 200 20% 18%;
+    --muted-foreground: 150 15% 60%;
+
+    --accent: 38 92% 55%;
+    --accent-foreground: 38 92% 10%;
+
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 200 20% 18%;
+    --input: 200 20% 18%;
+    --ring: 168 70% 45%;
+
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'DM Sans', system-ui, sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+    @apply tracking-tight;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  
+  .animate-fade-in {
+    animation: fadeIn 0.5s ease-out forwards;
+  }
+  
+  .animate-slide-up {
+    animation: slideUp 0.5s ease-out forwards;
+  }
+  
+  .animate-scale-in {
+    animation: scaleIn 0.3s ease-out forwards;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
