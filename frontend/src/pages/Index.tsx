@@ -43,7 +43,16 @@ export default function Index() {
   return (
     <div className="pb-20 md:pb-0">
       {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-primary/10 via-background to-accent/10 py-12 md:py-20">
+      <section className="relative min-h-[95vh] flex items-center pt-20 lg:pt-0">
+        {/* Background Image with Overlay */}
+        <div className="absolute inset-0 z-0">
+          <img
+            src="/hero-workspace.jpg"
+            alt="Modern workspace"
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-background via-background/95 to-background/60" />
+        </div>
         <div className="container relative z-10">
           <div className="mx-auto max-w-4xl text-center">
             {/* Headline */}
