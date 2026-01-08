@@ -18,13 +18,15 @@ import {
   Wifi,
   Coffee,
   Shield,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { StickyCTA } from "@/components/StickyCTA";
 import { EnquiryForm } from "@/components/EnquiryForm";
 import { ListingCard } from "@/components/ListingCard";
-import { listings, budgetBandLabels, workspaceTypeLabels } from "@/data/listings";
+import { useListingDetail, useListings } from "@/hooks/useApi";
+import { budgetBandLabels, workspaceTypeLabels } from "@/types/models";
 import { buildWhatsAppLink, buildCallLink } from "@/lib/whatsapp";
 import { transparencyLines } from "@/config/contact";
 import { cn } from "@/lib/utils";
@@ -34,20 +36,34 @@ export default function SpaceDetail() {
   const [currentImage, setCurrentImage] = useState(0);
   const [visitDialogOpen, setVisitDialogOpen] = useState(false);
 
-  const listing = listings.find((l) => l.slug === slug);
+  const { data: listing, isLoading, error } = useListingDetail(slug!);
+  const { data: similarListingsData } = useListings({
+    locality: listing?.localityId,
+    pageSize: 4,
+  });
 
-  if (!listing) {
+  if (isLoading) {
+    return (
+      <div className="container py-8">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !listing) {
     return <Navigate to="/explore" replace />;
   }
+
+  const similarSpaces = (similarListingsData?.items || [])
+    .filter((l) => l.slug !== slug)
+    .slice(0, 3);
 
   const whatsappLink = buildWhatsAppLink({
     listingName: listing.displayName,
     locality: listing.locality,
   });
-
-  const similarSpaces = listings
-    .filter((l) => l.slug !== slug && l.localityId === listing.localityId)
-    .slice(0, 3);
 
   const specs = [
     { icon: Users, label: "Capacity", value: `${listing.seatCapacityMin}-${listing.seatCapacityMax} seats` },
@@ -128,7 +144,7 @@ export default function SpaceDetail() {
 
               {/* Badges */}
               <div className="absolute left-3 top-3 flex flex-wrap gap-2">
-                {listing.verificationStatus === "verified" && (
+                {(listing.verificationStatus === "verified" || listing.verificationStatus === "approved-verified") && (
                   <span className="flex items-center gap-1 rounded-full bg-success px-3 py-1.5 text-sm font-medium text-success-foreground shadow-sm">
                     <BadgeCheck className="h-4 w-4" />
                     Verified

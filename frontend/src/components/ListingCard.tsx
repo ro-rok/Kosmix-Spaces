@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { BadgeCheck, Train, Zap, Phone, MessageCircle, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ShortlistButton } from "@/components/ShortlistButton";
-import { Listing, budgetBandLabels, workspaceTypeLabels } from "@/data/listings";
+import { Listing, budgetBandLabels, workspaceTypeLabels } from "@/types/models";
 import { buildWhatsAppLink, buildCallLink } from "@/lib/whatsapp";
 import { cn } from "@/lib/utils";
 

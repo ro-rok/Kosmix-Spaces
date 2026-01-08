@@ -7,12 +7,47 @@ import { ListingCard } from "@/components/ListingCard";
 import { TrustStrip } from "@/components/TrustStrip";
 import { FAQAccordion } from "@/components/FAQAccordion";
 import { ShortlistDrawer } from "@/components/ShortlistDrawer";
-import { listings, teamSizeBands, BudgetBand, budgetBandLabels } from "@/data/listings";
-import { popularLocalities, localities } from "@/data/localities";
+import { useListings, useLocalities } from "@/hooks/useApi";
+import { teamSizeBands, BudgetBand, budgetBandLabels } from "@/types/models";
 import { buildWhatsAppLink } from "@/lib/whatsapp";
 import { transparencyLines } from "@/config/contact";
 
-const featuredListings = listings.filter((l) => l.verificationStatus === "verified").slice(0, 6);
+const budgetBands: { value: BudgetBand; label: string }[] = [
+  { value: "5k-10k", label: "₹5K-10K" },
+  { value: "10k-20k", label: "₹10K-20K" },
+  { value: "20k-40k", label: "₹20K-40K" },
+  { value: "40k-80k", label: "₹40K-80K" },
+  { value: "80k+", label: "₹80K+" },
+];
+
+export default function Index() {
+  const navigate = useNavigate();
+  const [selectedLocality, setSelectedLocality] = useState("");
+  const [selectedTeamSize, setSelectedTeamSize] = useState("");
+  const [selectedBudget, setSelectedBudget] = useState("");
+
+  // Fetch data from API
+  const { data: localitiesData } = useLocalities();
+  const { data: featuredListingsData } = useListings({
+    sort: "recent_verified",
+    pageSize: 6,
+  });
+
+  const localities = localitiesData || [];
+  const popularLocalities = localities.filter(l => l.popular);
+  const featuredListings = featuredListingsData?.items || [];
+
+  const whatsappLink = buildWhatsAppLink({
+    locality: selectedLocality,
+    teamSize: selectedTeamSize,
+    budgetBand: selectedBudget,
+  });
+
+  const handleBrowse = () => {
+    const params = new URLSearchParams();
+    if (selectedLocality) params.set("locality", selectedLocality);
+    navigate(`/explore?${params.toString()}`);
+  };
 
 const testimonials = [
   {
@@ -37,32 +72,6 @@ const testimonials = [
     company: "OYO Workspaces India Pvt Ltd",
   },
 ];
-
-const budgetBands: { value: BudgetBand; label: string }[] = [
-  { value: "5k-10k", label: "₹5K-10K" },
-  { value: "10k-20k", label: "₹10K-20K" },
-  { value: "20k-40k", label: "₹20K-40K" },
-  { value: "40k-80k", label: "₹40K-80K" },
-  { value: "80k+", label: "₹80K+" },
-];
-
-export default function Index() {
-  const navigate = useNavigate();
-  const [selectedLocality, setSelectedLocality] = useState("");
-  const [selectedTeamSize, setSelectedTeamSize] = useState("");
-  const [selectedBudget, setSelectedBudget] = useState("");
-
-  const whatsappLink = buildWhatsAppLink({
-    locality: selectedLocality,
-    teamSize: selectedTeamSize,
-    budgetBand: selectedBudget,
-  });
-
-  const handleBrowse = () => {
-    const params = new URLSearchParams();
-    if (selectedLocality) params.set("locality", selectedLocality);
-    navigate(`/explore?${params.toString()}`);
-  };
 
   return (
     <div className="pb-20 md:pb-0">

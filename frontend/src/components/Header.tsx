@@ -51,6 +51,14 @@ export function Header() {
         {/* CTA Buttons */}
         <div className="flex items-center gap-2">
           <Button
+            variant="outline"
+            size="sm"
+            className="hidden md:inline-flex"
+            asChild
+          >
+            <Link to="/partner/login">Partner Login</Link>
+          </Button>
+          <Button
             variant="whatsapp"
             size="sm"
             className="hidden sm:inline-flex"
@@ -99,19 +107,26 @@ export function Header() {
                 {link.label}
               </Link>
             ))}
-            <div className="mt-4 flex gap-2 px-4">
-              <Button variant="whatsapp" size="sm" className="flex-1" asChild>
-                <a href={buildWhatsAppLink()} target="_blank" rel="noopener noreferrer">
-                  <MessageCircle className="h-4 w-4" />
-                  WhatsApp
-                </a>
+            <div className="mt-4 flex flex-col gap-2 px-4">
+              <Button variant="outline" size="sm" asChild>
+                <Link to="/partner/login" onClick={() => setMobileMenuOpen(false)}>
+                  Partner Login
+                </Link>
               </Button>
-              <Button variant="call" size="sm" className="flex-1" asChild>
-                <a href={buildCallLink()}>
-                  <Phone className="h-4 w-4" />
-                  Call
-                </a>
-              </Button>
+              <div className="flex gap-2">
+                <Button variant="whatsapp" size="sm" className="flex-1" asChild>
+                  <a href={buildWhatsAppLink()} target="_blank" rel="noopener noreferrer">
+                    <MessageCircle className="h-4 w-4" />
+                    WhatsApp
+                  </a>
+                </Button>
+                <Button variant="call" size="sm" className="flex-1" asChild>
+                  <a href={buildCallLink()}>
+                    <Phone className="h-4 w-4" />
+                    Call
+                  </a>
+                </Button>
+              </div>
             </div>
           </nav>
         </div>

@@ -8,79 +8,25 @@ import {
   Menu, 
   X, 
   Shield,
-  LogOut
+  LogOut,
+  UserCheck
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ADMIN_ENABLED, ADMIN_PASSWORD } from "@/config/admin";
+import { useAdminMe, useLogout, getStoredToken, getStoredUserType } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 
 const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/admin" },
   { icon: Building2, label: "Listings", href: "/admin/listings" },
+  { icon: UserCheck, label: "Partners", href: "/admin/partners" },
   { icon: Users, label: "Leads", href: "/admin/leads" },
   { icon: Calendar, label: "Visits", href: "/admin/visits" },
 ];
 
 export function AdminLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    return sessionStorage.getItem("admin_auth") === "true";
-  });
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
   const location = useLocation();
-
-  if (!ADMIN_ENABLED) {
-    return <Navigate to="/404" replace />;
-  }
-
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (password === ADMIN_PASSWORD) {
-      sessionStorage.setItem("admin_auth", "true");
-      setIsAuthenticated(true);
-      setError("");
-    } else {
-      setError("Invalid password");
-    }
-  };
-
-  const handleLogout = () => {
-    sessionStorage.removeItem("admin_auth");
-    setIsAuthenticated(false);
-  };
-
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4">
-        <div className="w-full max-w-md rounded-xl border border-border bg-card p-8 shadow-lg">
-          <div className="flex items-center justify-center gap-2 mb-6">
-            <Shield className="h-8 w-8 text-primary" />
-            <h1 className="font-display text-2xl font-bold">Admin Access</h1>
-          </div>
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div>
-              <label className="text-sm font-medium text-foreground">Password</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                placeholder="Enter admin password"
-              />
-              {error && <p className="mt-1 text-sm text-destructive">{error}</p>}
-            </div>
-            <Button type="submit" className="w-full">
-              Access Admin
-            </Button>
-          </form>
-          <p className="mt-4 text-xs text-muted-foreground text-center">
-            Demo password: kosmix2024
-          </p>
-        </div>
-      </div>
-    );
-  }
+  const logout = useLogout();
 
   return (
     <div className="min-h-screen bg-muted/30">
@@ -93,7 +39,7 @@ export function AdminLayout() {
           <Shield className="h-5 w-5 text-primary" />
           <span className="font-display font-semibold">Admin</span>
         </div>
-        <Button variant="ghost" size="icon" onClick={handleLogout}>
+        <Button variant="ghost" size="icon" onClick={logout}>
           <LogOut className="h-5 w-5" />
         </Button>
       </header>
@@ -123,7 +69,7 @@ export function AdminLayout() {
             ))}
           </nav>
           <div className="border-t border-border p-4">
-            <Button variant="outline" size="sm" className="w-full" onClick={handleLogout}>
+            <Button variant="outline" size="sm" className="w-full" onClick={logout}>
               <LogOut className="h-4 w-4" />
               Logout
             </Button>

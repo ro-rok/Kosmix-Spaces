@@ -1,5 +1,3 @@
-"use client";
-
 import { useState } from "react";
 import { Filter, X, Train, Car, Zap, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -7,8 +5,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { localities } from "@/data/localities";
-import { budgetBandLabels, workspaceTypeLabels, teamSizeBands, BudgetBand, WorkspaceType } from "@/data/listings";
+import { useLocalities } from "@/hooks/useApi";
+import { budgetBandLabels, workspaceTypeLabels, teamSizeBands, BudgetBand, WorkspaceType } from "@/types/models";
 import { FilterState, hasActiveFilters } from "@/lib/filters";
 
 interface FilterDrawerProps {
@@ -20,6 +18,9 @@ interface FilterDrawerProps {
 export function FilterDrawer({ filters, onChange, onClear }: FilterDrawerProps) {
   const [open, setOpen] = useState(false);
   const activeCount = Object.values(filters).filter(Boolean).length;
+  
+  const { data: localitiesData } = useLocalities();
+  const localities = localitiesData || [];
 
   const updateFilter = <K extends keyof FilterState>(key: K, value: FilterState[K]) => {
     onChange({ ...filters, [key]: value });

@@ -1,4 +1,4 @@
-import { Listing, VerificationStatus } from "@/data/listings";
+import { Listing, VerificationStatus } from "@/types/models";
 
 // Admin-specific types
 export type AdminVerificationStatus = "pending" | "approved" | "rejected" | "suspended";

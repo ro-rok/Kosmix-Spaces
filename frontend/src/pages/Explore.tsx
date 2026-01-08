@@ -1,15 +1,15 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
-import { SlidersHorizontal, MessageCircle, X } from "lucide-react";
+import { SlidersHorizontal, MessageCircle, X, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SearchBar } from "@/components/SearchBar";
 import { FilterDrawer } from "@/components/FilterDrawer";
 import { ListingCard } from "@/components/ListingCard";
 import { StickyCTA } from "@/components/StickyCTA";
-import { listings, WorkspaceType, BudgetBand } from "@/data/listings";
-import { localities } from "@/data/localities";
-import { FilterState, SortOption, initialFilterState, applyFilters, sortListings, hasActiveFilters } from "@/lib/filters";
+import { WorkspaceType, BudgetBand } from "@/types/models";
+import { useListings, useLocalities } from "@/hooks/useApi";
+import { FilterState, SortOption, initialFilterState, hasActiveFilters } from "@/lib/filters";
 import { buildWhatsAppLink } from "@/lib/whatsapp";
 
 export default function Explore() {
@@ -21,6 +21,24 @@ export default function Explore() {
   });
   const [sort, setSort] = useState<SortOption>("best-match");
 
+  // Fetch data from API
+  const { data: localitiesData, isLoading: localitiesLoading } = useLocalities();
+  const { data: listingsData, isLoading: listingsLoading, error: listingsError } = useListings({
+    locality: filters.locality || undefined,
+    budgetBandId: filters.budgetBand || undefined,
+    teamSizeBand: filters.teamSize || undefined,
+    spaceType: filters.spaceType || undefined,
+    nearMetro: filters.nearMetro || undefined,
+    parking: filters.parking ? "required" : undefined,
+    powerBackup: filters.powerBackup || undefined,
+    gstInvoice: filters.gstInvoice || undefined,
+    sort: sort === "best-match" ? "best_match" : sort === "budget-low" ? "budget_low" : "recent_verified",
+  });
+
+  const localities = localitiesData || [];
+  const listings = listingsData?.items || [];
+  const isLoading = localitiesLoading || listingsLoading;
+
   // Sync URL params with filters
   useEffect(() => {
     const locality = searchParams.get("locality") || "";
@@ -29,11 +47,6 @@ export default function Explore() {
       setFilters((prev) => ({ ...prev, locality, spaceType }));
     }
   }, [searchParams]);
-
-  const filteredListings = useMemo(() => {
-    const filtered = applyFilters(listings, filters);
-    return sortListings(filtered, sort);
-  }, [filters, sort]);
 
   const handleFilterChange = (newFilters: FilterState) => {
     setFilters(newFilters);
@@ -54,7 +67,25 @@ export default function Explore() {
   };
 
   const selectedLocality = localities.find((l) => l.id === filters.locality);
-  const activeFilterCount = Object.values(filters).filter(Boolean).length;
+
+  if (listingsError) {
+    return (
+      <div className="container py-8">
+        <div className="text-center">
+          <h2 className="text-xl font-semibold text-destructive">Unable to load listings</h2>
+          <p className="text-muted-foreground mt-2">
+            {listingsError instanceof Error && listingsError.message.includes('Network error') 
+              ? 'Please check if the backend server is running'
+              : 'Please try again later'
+            }
+          </p>
+          <p className="text-sm text-muted-foreground mt-1">
+            Backend should be running at: {import.meta.env.VITE_API_BASE_URL || "http://localhost:8000"}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="pb-20 md:pb-0">
@@ -159,18 +190,42 @@ export default function Explore() {
               : "All Workspaces in Delhi"}
           </h1>
           <p className="mt-1 text-muted-foreground">
-            {filteredListings.length} {filteredListings.length === 1 ? "space" : "spaces"} found
+            {isLoading ? (
+              <span className="flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading...
+              </span>
+            ) : (
+              `${listings.length} ${listings.length === 1 ? "space" : "spaces"} found`
+            )}
           </p>
         </div>
 
-        {filteredListings.length > 0 ? (
+        {isLoading ? (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {filteredListings.map((listing) => (
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="animate-pulse">
+                <div className="bg-muted rounded-lg h-48 mb-4"></div>
+                <div className="bg-muted rounded h-4 mb-2"></div>
+                <div className="bg-muted rounded h-4 w-3/4"></div>
+              </div>
+            ))}
+          </div>
+        ) : listings.length > 0 ? (
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {listings.map((listing) => (
               <ListingCard key={listing.slug} listing={listing} />
             ))}
           </div>
-        ) : (
+        ) : !isLoading ? (
           <EmptyState onClear={clearFilters} filters={filters} />
+        ) : (
+          <div className="text-center py-8">
+            <p className="text-muted-foreground">No listings available</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              The backend may not have any listings yet, or there might be a connection issue.
+            </p>
+          </div>
         )}
       </div>
 

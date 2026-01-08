@@ -7,8 +7,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { localities } from "@/data/localities";
-import { budgetBandLabels, workspaceTypeLabels, teamSizeBands } from "@/data/listings";
+import { useLocalities, useCreateLead } from "@/hooks/useApi";
+import { budgetBandLabels, workspaceTypeLabels, teamSizeBands } from "@/types/models";
 import { buildWhatsAppLink } from "@/lib/whatsapp";
 import { transparencyLines } from "@/config/contact";
 
@@ -69,10 +69,13 @@ export function EnquiryForm({ listingSlug, listingName, locality, source = "cont
     preferredLocality: locality || "",
   });
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({});
   const { toast } = useToast();
+  
+  const { data: localitiesData } = useLocalities();
+  const createLead = useCreateLead();
+  const localities = localitiesData || [];
 
   const validateForm = (): boolean => {
     const newErrors: Partial<Record<keyof FormData, string>> = {};
@@ -98,29 +101,33 @@ export function EnquiryForm({ listingSlug, listingName, locality, source = "cont
     
     if (!validateForm()) return;
 
-    setLoading(true);
-
     try {
-      // Store lead (in real app, this would be an API call)
       const leadData = {
-        ...formData,
-        listingSlug,
+        name: formData.name,
+        phone: formData.phone,
+        email: formData.email || undefined,
+        company: formData.company || undefined,
+        preferredLocalities: formData.preferredLocality ? [formData.preferredLocality] : [],
+        teamSizeBand: formData.teamSize,
+        budgetBandId: formData.budgetBand,
+        spaceType: formData.spaceType,
+        moveInTimeframe: formData.moveInTimeframe,
+        meetingRoomsNeeded: formData.meetingRoomsAddon,
+        gstRequired: formData.gstInvoiceRequired,
+        parkingNeeded: formData.parkingNeeded,
+        powerBackupRequired: formData.powerBackupRequired,
+        nearMetroPreferred: formData.nearMetroPreferred,
+        notes: formData.notes || undefined,
         source,
-        createdAt: new Date().toISOString(),
+        listingSlug,
       };
 
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      // Store in localStorage for MVP (replace with actual API)
-      const existingLeads = JSON.parse(localStorage.getItem("kosmix_leads") || "[]");
-      existingLeads.push(leadData);
-      localStorage.setItem("kosmix_leads", JSON.stringify(existingLeads));
-
+      const response = await createLead.mutateAsync(leadData);
+      
       setSubmitted(true);
       toast({
         title: "Enquiry Submitted!",
-        description: transparencyLines.slaPromise,
+        description: response.message,
       });
     } catch (error) {
       toast({
@@ -128,8 +135,6 @@ export function EnquiryForm({ listingSlug, listingName, locality, source = "cont
         description: "Please try WhatsApp or call us directly.",
         variant: "destructive",
       });
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -389,8 +394,8 @@ export function EnquiryForm({ listingSlug, listingName, locality, source = "cont
       )}
 
       {/* Submit */}
-      <Button type="submit" size="lg" className="w-full" disabled={loading}>
-        {loading ? (
+      <Button type="submit" size="lg" className="w-full" disabled={createLead.isPending}>
+        {createLead.isPending ? (
           <>
             <Loader2 className="h-4 w-4 animate-spin" />
             Submitting...

@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { localities } from "@/data/localities";
+import { useLocalities } from "@/hooks/useApi";
 import { cn } from "@/lib/utils";
 
 interface SearchBarProps {
@@ -15,13 +15,16 @@ export function SearchBar({ onSearch, variant = "hero", initialValue = "" }: Sea
   const [query, setQuery] = useState(initialValue);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const navigate = useNavigate();
+  
+  const { data: localitiesData } = useLocalities();
+  const localities = localitiesData || [];
 
   const filteredLocalities = useMemo(() => {
     if (!query.trim()) return localities.filter((l) => l.popular).slice(0, 6);
     return localities.filter((l) =>
       l.name.toLowerCase().includes(query.toLowerCase())
     );
-  }, [query]);
+  }, [query, localities]);
 
   const handleSelect = (localityId: string) => {
     const locality = localities.find((l) => l.id === localityId);
