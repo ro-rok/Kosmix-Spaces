@@ -1,5 +1,4 @@
-// Shortlist localStorage helpers
-
+// Simple shortlist functionality using localStorage
 const SHORTLIST_KEY = "kosmix_shortlist";
 
 export function getShortlist(): string[] {
@@ -9,6 +8,10 @@ export function getShortlist(): string[] {
   } catch {
     return [];
   }
+}
+
+export function isInShortlist(slug: string): boolean {
+  return getShortlist().includes(slug);
 }
 
 export function addToShortlist(slug: string): string[] {
@@ -28,26 +31,16 @@ export function removeFromShortlist(slug: string): string[] {
   return updated;
 }
 
-export function isInShortlist(slug: string): boolean {
-  return getShortlist().includes(slug);
-}
-
 export function clearShortlist(): void {
   localStorage.setItem(SHORTLIST_KEY, JSON.stringify([]));
 }
 
-export function generateShareUrl(slugs: string[]): string {
+export function generateShareUrl(shortlist: string[]): string {
+  if (shortlist.length === 0) return "";
+  
+  const baseUrl = window.location.origin;
   const params = new URLSearchParams();
-  params.set("shortlist", slugs.join(","));
-  return `${window.location.origin}/explore?${params.toString()}`;
-}
-
-export function parseShareUrl(url: string): string[] {
-  try {
-    const urlObj = new URL(url);
-    const shortlistParam = urlObj.searchParams.get("shortlist");
-    return shortlistParam ? shortlistParam.split(",").filter(Boolean) : [];
-  } catch {
-    return [];
-  }
+  params.set("shortlist", shortlist.join(","));
+  
+  return `${baseUrl}/explore?${params.toString()}`;
 }

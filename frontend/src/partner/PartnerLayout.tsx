@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { Building2, FileText, Plus, Menu, X, LogOut, LayoutDashboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { getPartnerSession, logout, getPartnerAccount } from "@/lib/partnerStore";
+import { usePartnerMe, useLogout } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -13,8 +13,8 @@ const navItems = [
 
 export function PartnerLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const session = getPartnerSession();
-  const partner = session ? getPartnerAccount(session.partnerId) : null;
+  const { data: partner, isLoading } = usePartnerMe();
+  const logout = useLogout();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -23,7 +23,15 @@ export function PartnerLayout() {
     navigate("/partner/login");
   };
 
-  if (!session || !partner) {
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    );
+  }
+
+  if (!partner) {
     return null;
   }
 

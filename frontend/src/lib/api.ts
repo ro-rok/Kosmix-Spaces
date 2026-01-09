@@ -12,21 +12,37 @@ class ApiError extends Error {
 async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const url = `${API_BASE_URL}/api${endpoint}`;
   
+  const requestOptions = {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  };
+  
   try {
-    const response = await fetch(url, {
-      headers: {
-        "Content-Type": "application/json",
-        ...options.headers,
-      },
-      ...options,
-    });
+    const response = await fetch(url, requestOptions);
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new ApiError(
-        response.status,
-        errorData.error?.message || `HTTP ${response.status}: ${response.statusText}`
-      );
+      
+      // Log detailed error information for debugging
+      console.error("API Error Response:", {
+        status: response.status,
+        statusText: response.statusText,
+        url,
+        errorData
+      });
+      
+      // For validation errors, include detailed information
+      let errorMessage = errorData.error?.message || `HTTP ${response.status}: ${response.statusText}`;
+      
+      if (response.status === 422 && errorData.error?.details?.errors) {
+        console.error("Validation errors:", errorData.error.details.errors);
+        errorMessage = `Validation failed: ${errorData.error.details.errors.map(e => `${e.loc?.join('.')} - ${e.msg}`).join(', ')}`;
+      }
+      
+      throw new ApiError(response.status, errorMessage);
     }
 
     return response.json();
@@ -187,6 +203,202 @@ export const api = {
         status: string;
       }>(`/admin/partners/${partnerId}/status`, {
         method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(data),
+      }),
+
+    // Admin Listings
+    getListings: (token: string, params: {
+      status?: string;
+      page?: number;
+      pageSize?: number;
+    } = {}) => {
+      const searchParams = new URLSearchParams();
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          searchParams.append(key, String(value));
+        }
+      });
+      
+      return apiRequest<Array<{
+        listingId: string;
+        slug?: string;
+        partnerId: string;
+        displayName: string;
+        brandHidden: boolean;
+        locality: string;
+        city: string;
+        workspaceTypes: string[];
+        photos: Array<{
+          url: string;
+          publicId: string;
+          width: number;
+          height: number;
+          bytes: number;
+          format: string;
+          tag?: string;
+        }>;
+        seatCapacityMin: number;
+        seatCapacityMax: number;
+        availabilityStatus: string;
+        budgetBandId: string;
+        budgetDisplayText: string;
+        pricingMode: string;
+        nearMetro: boolean;
+        metroNote?: string;
+        parking: string;
+        powerBackup: boolean;
+        gstInvoiceAvailable: boolean;
+        accessHours: string;
+        weekendAccess: boolean;
+        amenities: string[];
+        meetingRooms?: {
+          count: number;
+          addonOnly: boolean;
+        };
+        internetSpeedMbps?: number;
+        dealTags: string[];
+        dealDetails?: string;
+        dealEligibility?: string;
+        overview: string;
+        houseRules?: string;
+        verificationStatus: string;
+        adminNotes?: string;
+        createdAt: string;
+        updatedAt: string;
+        publishedAt?: string;
+        verificationChecks?: any;
+      }>>(`/admin/listings?${searchParams}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+    },
+
+    getListing: (token: string, listingId: string) =>
+      apiRequest<any>(`/admin/listings/${listingId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }),
+
+    approveListing: (token: string, listingId: string, notes?: string) =>
+      apiRequest<{ ok: boolean; message: string }>(`/admin/listings/${listingId}/approve`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ notes }),
+      }),
+
+    needsInfoListing: (token: string, listingId: string, notes: string) =>
+      apiRequest<{ ok: boolean; message: string }>(`/admin/listings/${listingId}/needs-info`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ notes }),
+      }),
+
+    rejectListing: (token: string, listingId: string, reason: string) =>
+      apiRequest<{ ok: boolean; message: string }>(`/admin/listings/${listingId}/reject`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ reason }),
+      }),
+  },
+
+  // Partner endpoints
+  partner: {
+    getListings: (token: string, params: {
+      page?: number;
+      pageSize?: number;
+    } = {}) => {
+      const searchParams = new URLSearchParams();
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          searchParams.append(key, String(value));
+        }
+      });
+      
+      return apiRequest<Array<{
+        listingId: string;
+        slug?: string;
+        partnerId: string;
+        displayName: string;
+        brandHidden: boolean;
+        locality: string;
+        city: string;
+        workspaceTypes: string[];
+        photos: Array<{
+          url: string;
+          publicId: string;
+          width: number;
+          height: number;
+          bytes: number;
+          format: string;
+          tag?: string;
+        }>;
+        seatCapacityMin: number;
+        seatCapacityMax: number;
+        availabilityStatus: string;
+        budgetBandId: string;
+        budgetDisplayText: string;
+        pricingMode: string;
+        nearMetro: boolean;
+        metroNote?: string;
+        parking: string;
+        powerBackup: boolean;
+        gstInvoiceAvailable: boolean;
+        accessHours: string;
+        weekendAccess: boolean;
+        amenities: string[];
+        meetingRooms?: {
+          count: number;
+          addonOnly: boolean;
+        };
+        internetSpeedMbps?: number;
+        dealTags: string[];
+        dealDetails?: string;
+        dealEligibility?: string;
+        overview: string;
+        houseRules?: string;
+        verificationStatus: string;
+        adminNotes?: string;
+        createdAt: string;
+        updatedAt: string;
+        publishedAt?: string;
+      }>>(`/partner/listings?${searchParams}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+    },
+
+    getListing: (token: string, listingId: string) =>
+      apiRequest<any>(`/partner/listings/${listingId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }),
+
+    createListing: (token: string, data: any) =>
+      apiRequest<any>("/partner/listings", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      }),
+
+    updateListing: (token: string, listingId: string, data: any) =>
+      apiRequest<any>(`/partner/listings/${listingId}`, {
+        method: "PUT",
         headers: {
           Authorization: `Bearer ${token}`,
         },

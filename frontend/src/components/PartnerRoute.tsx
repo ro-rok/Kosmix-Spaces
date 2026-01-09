@@ -1,14 +1,15 @@
 import { Navigate } from "react-router-dom";
-import { getPartnerSession } from "@/lib/partnerStore";
+import { getStoredToken, getStoredUserType } from "@/hooks/useAuth";
 
 interface PartnerRouteProps {
   children: React.ReactNode;
 }
 
 export function PartnerRoute({ children }: PartnerRouteProps) {
-  const session = getPartnerSession();
+  const token = getStoredToken();
+  const userType = getStoredUserType();
 
-  if (!session) {
+  if (!token || userType !== "partner") {
     return <Navigate to="/partner/login" replace />;
   }
 

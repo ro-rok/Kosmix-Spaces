@@ -3,17 +3,41 @@ import { Eye, Edit, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { getPartnerSession, getPartnerListings } from "@/lib/partnerStore";
+import { usePartnerListings } from "@/hooks/useAuth";
 import { StatusBadge } from "@/components/StatusBadge";
-import { budgetBandLabels, workspaceTypeLabels } from "@/types/models";
+import { backendBudgetBandLabels, backendWorkspaceTypeLabels } from "@/types/models";
 import { AdminNotesPanel } from "@/components/AdminNotesPanel";
 
 export function PartnerListings() {
-  const session = getPartnerSession();
-  const listings = session ? getPartnerListings(session.partnerId) : [];
+  const { data: listings, isLoading, error } = usePartnerListings();
+  const listingsArray = listings || [];
 
-  if (!session) {
-    return null;
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="font-display text-2xl font-bold text-foreground">My Listings</h1>
+          <p className="text-muted-foreground">View and manage your workspace submissions</p>
+        </div>
+        <div className="text-center py-8">
+          <p className="text-muted-foreground">Loading listings...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="font-display text-2xl font-bold text-foreground">My Listings</h1>
+          <p className="text-muted-foreground">View and manage your workspace submissions</p>
+        </div>
+        <div className="text-center py-8">
+          <p className="text-destructive">Error loading listings: {error.message}</p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -23,7 +47,7 @@ export function PartnerListings() {
         <p className="text-muted-foreground">View and manage your workspace submissions</p>
       </div>
 
-      {listings.length === 0 ? (
+      {listingsArray.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
             <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
@@ -42,8 +66,8 @@ export function PartnerListings() {
         <div className="space-y-4">
           {/* Mobile Card View */}
           <div className="block md:hidden space-y-4">
-            {listings.map((listing) => (
-              <Card key={listing.draftId}>
+            {listingsArray.map((listing) => (
+              <Card key={listing.listingId}>
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
@@ -59,13 +83,13 @@ export function PartnerListings() {
                       <p className="text-muted-foreground">Types</p>
                       <p className="font-medium">
                         {listing.workspaceTypes
-                          .map((t) => workspaceTypeLabels[t].split(" ")[0])
+                          .map((t) => backendWorkspaceTypeLabels[t]?.split(" ")[0] || t)
                           .join(", ")}
                       </p>
                     </div>
                     <div>
                       <p className="text-muted-foreground">Budget</p>
-                      <p className="font-medium">{budgetBandLabels[listing.budgetBand]}</p>
+                      <p className="font-medium">{backendBudgetBandLabels[listing.budgetBandId] || listing.budgetBandId}</p>
                     </div>
                   </div>
                   <div>
@@ -77,21 +101,23 @@ export function PartnerListings() {
                       })}
                     </p>
                   </div>
-                  {listing.verificationStatus === "needs-info" && (
+                  {listing.verificationStatus === "NEEDS_INFO" && listing.adminNotes && (
                     <AdminNotesPanel draft={listing} />
                   )}
                   <div className="flex gap-2 pt-2">
                     <Button asChild variant="outline" size="sm" className="flex-1">
-                      <Link to={`/partner/listings/${listing.draftId}`}>
+                      <Link to={`/partner/listings/${listing.listingId}`}>
                         <Eye className="h-4 w-4" />
                         View
                       </Link>
                     </Button>
-                    {listing.verificationStatus === "needs-info" && (
+                    {(listing.verificationStatus === "NEEDS_INFO" || 
+                      listing.verificationStatus === "PENDING_REVIEW" ||
+                      listing.verificationStatus === "REJECTED") && (
                       <Button asChild size="sm" className="flex-1">
-                        <Link to={`/partner/listings/${listing.draftId}?edit=true`}>
+                        <Link to={`/partner/listings/${listing.listingId}?edit=true`}>
                           <Edit className="h-4 w-4" />
-                          Edit & Resubmit
+                          {listing.verificationStatus === "NEEDS_INFO" ? "Edit & Resubmit" : "Edit"}
                         </Link>
                       </Button>
                     )}
@@ -116,8 +142,8 @@ export function PartnerListings() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {listings.map((listing) => (
-                  <TableRow key={listing.draftId}>
+                {listingsArray.map((listing) => (
+                  <TableRow key={listing.listingId}>
                     <TableCell>
                       <div>
                         <p className="font-medium">{listing.displayName}</p>
@@ -128,12 +154,12 @@ export function PartnerListings() {
                       <div className="flex flex-wrap gap-1">
                         {listing.workspaceTypes.slice(0, 2).map((type) => (
                           <span key={type} className="text-xs bg-muted px-2 py-0.5 rounded">
-                            {workspaceTypeLabels[type].split(" ")[0]}
+                            {backendWorkspaceTypeLabels[type]?.split(" ")[0] || type}
                           </span>
                         ))}
                       </div>
                     </TableCell>
-                    <TableCell>{budgetBandLabels[listing.budgetBand]}</TableCell>
+                    <TableCell>{backendBudgetBandLabels[listing.budgetBandId] || listing.budgetBandId}</TableCell>
                     <TableCell>
                       <StatusBadge status={listing.verificationStatus} />
                     </TableCell>
@@ -146,13 +172,15 @@ export function PartnerListings() {
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
                         <Button variant="ghost" size="icon" asChild>
-                          <Link to={`/partner/listings/${listing.draftId}`}>
+                          <Link to={`/partner/listings/${listing.listingId}`}>
                             <Eye className="h-4 w-4" />
                           </Link>
                         </Button>
-                        {listing.verificationStatus === "needs-info" && (
+                        {(listing.verificationStatus === "NEEDS_INFO" || 
+                          listing.verificationStatus === "PENDING_REVIEW" ||
+                          listing.verificationStatus === "REJECTED") && (
                           <Button variant="ghost" size="icon" asChild>
-                            <Link to={`/partner/listings/${listing.draftId}?edit=true`}>
+                            <Link to={`/partner/listings/${listing.listingId}?edit=true`}>
                               <Edit className="h-4 w-4" />
                             </Link>
                           </Button>

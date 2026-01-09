@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { addVisitRequest } from "@/lib/visits";
 import { buildWhatsAppLink } from "@/lib/whatsapp";
 import { z } from "zod";
 
@@ -74,14 +73,7 @@ export function VisitRequestModal({
       return;
     }
 
-    // TODO: POST to backend endpoint when available
-    addVisitRequest({
-      ...formData,
-      listingSlug,
-      listingName,
-      locality,
-    });
-
+    // For now, just show success and redirect to WhatsApp
     setStep("success");
   };
 
@@ -99,7 +91,25 @@ export function VisitRequestModal({
     onOpenChange(false);
   };
 
-  const whatsappLink = buildWhatsAppLink({ listingName, locality });
+  const formatVisitDetails = () => {
+    const dates = formData.preferredDates.map(date => 
+      new Date(date).toLocaleDateString("en-IN", { day: "numeric", month: "short" })
+    ).join(", ");
+    
+    return `Visit Request for ${listingName}
+Name: ${formData.name}
+Phone: ${formData.phone}
+${formData.email ? `Email: ${formData.email}` : ''}
+Preferred Dates: ${dates}
+Time: ${formData.timeWindow}
+Visitors: ${formData.visitorCount}`;
+  };
+
+  const whatsappLink = buildWhatsAppLink({ 
+    listingName, 
+    locality,
+    customMessage: step === "success" ? formatVisitDetails() : undefined
+  });
 
   if (step === "success") {
     return (
@@ -110,16 +120,16 @@ export function VisitRequestModal({
               <Check className="h-8 w-8 text-success" />
             </div>
             <h3 className="font-display text-xl font-semibold text-foreground">
-              Visit Request Received!
+              Ready to Schedule!
             </h3>
             <p className="mt-2 text-muted-foreground">
-              We'll respond within 3 hours. For faster confirmation, WhatsApp us now.
+              WhatsApp us with your visit details for immediate confirmation.
             </p>
             <div className="mt-6 flex flex-col gap-3">
               <Button variant="whatsapp" asChild>
                 <a href={whatsappLink} target="_blank" rel="noopener noreferrer">
                   <MessageCircle className="h-4 w-4" />
-                  WhatsApp for Faster Response
+                  Send Visit Request via WhatsApp
                 </a>
               </Button>
               <Button variant="outline" onClick={handleClose}>
@@ -263,11 +273,11 @@ export function VisitRequestModal({
 
           <Button onClick={handleSubmit} className="w-full" size="lg">
             <Calendar className="h-4 w-4" />
-            Submit Visit Request
+            Continue to WhatsApp
           </Button>
 
           <p className="text-xs text-muted-foreground text-center">
-            We'll confirm your visit within 3 hours.
+            We'll confirm your visit via WhatsApp within 3 hours.
           </p>
         </div>
       </DialogContent>

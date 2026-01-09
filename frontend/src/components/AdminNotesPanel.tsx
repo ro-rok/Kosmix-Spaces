@@ -1,9 +1,8 @@
-import { WorkspaceDraftListing } from "@/types/models";
 import { AlertCircle, CheckCircle, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface AdminNotesPanelProps {
-  draft: WorkspaceDraftListing;
+  draft: any; // Backend listing format with admin notes
 }
 
 export function AdminNotesPanel({ draft }: AdminNotesPanelProps) {

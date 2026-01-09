@@ -2,7 +2,7 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useState } from "react";
-import { ChevronDown, Plus, X } from "lucide-react";
+import { ChevronDown, Plus, X, Upload, Eye, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,15 +10,52 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { WorkspaceType, BudgetBand, AvailabilityStatus } from "@/types/models";
 import { useLocalities } from "@/hooks/useApi";
+import { WorkspacePreview } from "@/components/WorkspacePreview";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+
+// Image compression utility
+const compressImage = (file: File, maxWidth: number = 1200, quality: number = 0.8): Promise<File> => {
+  return new Promise((resolve) => {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d')!;
+    const img = new Image();
+    
+    img.onload = () => {
+      // Calculate new dimensions
+      let { width, height } = img;
+      if (width > maxWidth) {
+        height = (height * maxWidth) / width;
+        width = maxWidth;
+      }
+      
+      canvas.width = width;
+      canvas.height = height;
+      
+      // Draw and compress
+      ctx.drawImage(img, 0, 0, width, height);
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const compressedFile = new File([blob], file.name, {
+            type: 'image/jpeg',
+            lastModified: Date.now(),
+          });
+          resolve(compressedFile);
+        }
+      }, 'image/jpeg', quality);
+    };
+    
+    img.src = URL.createObjectURL(file);
+  });
+};
 
 const workspaceFormSchema = z.object({
   displayName: z.string().min(1, "Display name is required").max(100),
   localityId: z.string().min(1, "Locality is required"),
   workspaceTypes: z.array(z.enum(["dedicated-desk", "private-cabin", "managed-office"])).min(1, "Select at least one workspace type"),
-  photos: z.array(z.string().url("Must be a valid URL")).min(1, "At least one photo URL is required"),
   seatCapacityMin: z.number().min(1, "Minimum capacity must be at least 1"),
   seatCapacityMax: z.number().min(1, "Maximum capacity must be at least 1"),
   availabilityStatus: z.enum(["available", "limited", "waitlist"]),
@@ -26,9 +63,9 @@ const workspaceFormSchema = z.object({
   budgetDisplayText: z.string().optional(),
   nearMetro: z.boolean(),
   metroNote: z.string().optional(),
-  parking: z.boolean(),
+  parking: z.string().default("NONE"),
   powerBackup: z.boolean(),
-  gstInvoiceAvailable: z.boolean(),
+  weekendAccess: z.boolean().optional(),
   accessHours: z.string().min(1, "Access hours are required"),
   amenities: z.array(z.string()).min(1, "Select at least one amenity"),
   overview: z.string().min(10, "Overview must be at least 10 characters").max(500, "Overview must be 500 characters or less"),
@@ -37,8 +74,10 @@ const workspaceFormSchema = z.object({
   internetSpeedMbps: z.number().optional(),
   dealTags: z.array(z.string()).optional(),
   dealDetails: z.string().optional(),
+  dealEligibility: z.string().optional(),
   houseRules: z.string().optional(),
-  highlights: z.array(z.string()).optional(),
+  // Photos are handled separately, not in form validation
+  photos: z.array(z.any()).optional(),
 });
 
 type WorkspaceFormData = z.infer<typeof workspaceFormSchema>;
@@ -66,13 +105,21 @@ const commonAmenities = [
   "Outdoor Seating",
 ];
 
+const parkingOptions = [
+  { value: "NONE", label: "No Parking" },
+  { value: "TWO_WHEELER", label: "Two Wheeler Only" },
+  { value: "FOUR_WHEELER", label: "Four Wheeler Only" },
+  { value: "BOTH", label: "Both Available" },
+];
+
 export function WorkspaceForm({ onSubmit, initialData, isLoading = false }: WorkspaceFormProps) {
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [photoUrls, setPhotoUrls] = useState<string[]>(initialData?.photos || [""]);
+  const [showPreview, setShowPreview] = useState(false);
+  const [photos, setPhotos] = useState<File[]>([]);
+  const [photoPreviewUrls, setPhotoPreviewUrls] = useState<string[]>([]);
   const [dealTags, setDealTags] = useState<string[]>(initialData?.dealTags || []);
   const [newDealTag, setNewDealTag] = useState("");
-  const [highlights, setHighlights] = useState<string[]>(initialData?.highlights || []);
-  const [newHighlight, setNewHighlight] = useState("");
+  const [formData, setFormData] = useState<WorkspaceFormData | null>(null);
 
   const { data: localitiesData } = useLocalities();
   const localities = localitiesData || [];
@@ -84,13 +131,13 @@ export function WorkspaceForm({ onSubmit, initialData, isLoading = false }: Work
     control,
     watch,
     setValue,
+    getValues,
   } = useForm<WorkspaceFormData>({
     resolver: zodResolver(workspaceFormSchema),
     defaultValues: {
       displayName: initialData?.displayName || "",
       localityId: initialData?.localityId || "",
       workspaceTypes: initialData?.workspaceTypes || [],
-      photos: initialData?.photos || [],
       seatCapacityMin: initialData?.seatCapacityMin || 1,
       seatCapacityMax: initialData?.seatCapacityMax || 10,
       availabilityStatus: initialData?.availabilityStatus || "available",
@@ -98,9 +145,9 @@ export function WorkspaceForm({ onSubmit, initialData, isLoading = false }: Work
       budgetDisplayText: initialData?.budgetDisplayText || "",
       nearMetro: initialData?.nearMetro || false,
       metroNote: initialData?.metroNote || "",
-      parking: initialData?.parking || false,
+      parking: initialData?.parking || "NONE",
       powerBackup: initialData?.powerBackup || false,
-      gstInvoiceAvailable: initialData?.gstInvoiceAvailable || false,
+      weekendAccess: initialData?.weekendAccess || false,
       accessHours: initialData?.accessHours || "9 AM - 9 PM",
       amenities: initialData?.amenities || [],
       overview: initialData?.overview || "",
@@ -109,29 +156,60 @@ export function WorkspaceForm({ onSubmit, initialData, isLoading = false }: Work
       internetSpeedMbps: initialData?.internetSpeedMbps,
       dealTags: initialData?.dealTags || [],
       dealDetails: initialData?.dealDetails || "",
+      dealEligibility: initialData?.dealEligibility || "",
       houseRules: initialData?.houseRules || "",
-      highlights: initialData?.highlights || [],
     },
   });
 
   const selectedWorkspaceTypes = watch("workspaceTypes");
   const selectedAmenities = watch("amenities");
 
-  const addPhotoUrl = () => {
-    setPhotoUrls([...photoUrls, ""]);
+  const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    if (files.length === 0) return;
+
+    try {
+      const compressedFiles: File[] = [];
+      const previewUrls: string[] = [];
+
+      for (const file of files) {
+        if (!file.type.startsWith('image/')) {
+          toast.error(`${file.name} is not an image file`);
+          continue;
+        }
+
+        if (file.size > 10 * 1024 * 1024) { // 10MB limit
+          toast.error(`${file.name} is too large. Maximum size is 10MB`);
+          continue;
+        }
+
+        // Compress image
+        const compressedFile = await compressImage(file);
+        compressedFiles.push(compressedFile);
+        previewUrls.push(URL.createObjectURL(compressedFile));
+      }
+
+      const newPhotos = [...photos, ...compressedFiles];
+      const newPreviewUrls = [...photoPreviewUrls, ...previewUrls];
+
+      setPhotos(newPhotos);
+      setPhotoPreviewUrls(newPreviewUrls);
+
+      toast.success(`${compressedFiles.length} photo(s) added and compressed`);
+    } catch (error) {
+      toast.error("Failed to process images");
+    }
   };
 
-  const removePhotoUrl = (index: number) => {
-    const newUrls = photoUrls.filter((_, i) => i !== index);
-    setPhotoUrls(newUrls);
-    setValue("photos", newUrls.filter((url) => url.trim() !== ""));
-  };
-
-  const updatePhotoUrl = (index: number, value: string) => {
-    const newUrls = [...photoUrls];
-    newUrls[index] = value;
-    setPhotoUrls(newUrls);
-    setValue("photos", newUrls.filter((url) => url.trim() !== ""));
+  const removePhoto = (index: number) => {
+    const newPhotos = photos.filter((_, i) => i !== index);
+    const newPreviewUrls = photoPreviewUrls.filter((_, i) => i !== index);
+    
+    // Revoke the URL to free memory
+    URL.revokeObjectURL(photoPreviewUrls[index]);
+    
+    setPhotos(newPhotos);
+    setPhotoPreviewUrls(newPreviewUrls);
   };
 
   const toggleWorkspaceType = (type: WorkspaceType) => {
@@ -165,24 +243,102 @@ export function WorkspaceForm({ onSubmit, initialData, isLoading = false }: Work
     setValue("dealTags", newTags);
   };
 
-  const addHighlight = () => {
-    if (newHighlight.trim() && !highlights.includes(newHighlight.trim())) {
-      const newHighlights = [...highlights, newHighlight.trim()];
-      setHighlights(newHighlights);
-      setValue("highlights", newHighlights);
-      setNewHighlight("");
+  const onFormSubmit = (data: WorkspaceFormData) => {
+    // Check if photos are required and present
+    if (photos.length === 0) {
+      toast.error("At least one photo is required");
+      return;
+    }
+    
+    // Add photos to form data
+    const formDataWithPhotos = {
+      ...data,
+      photos: photos
+    };
+    
+    setFormData(formDataWithPhotos);
+    setShowPreview(true);
+  };
+
+  const handleFinalSubmit = () => {
+    if (formData) {
+      onSubmit(formData);
     }
   };
 
-  const removeHighlight = (highlight: string) => {
-    const newHighlights = highlights.filter((h) => h !== highlight);
-    setHighlights(newHighlights);
-    setValue("highlights", newHighlights);
+  const handleBackToEdit = () => {
+    setShowPreview(false);
   };
 
-  const onFormSubmit = (data: WorkspaceFormData) => {
-    onSubmit(data);
+  // Convert form data to preview format
+  const getPreviewData = () => {
+    if (!formData) return null;
+
+    const selectedLocality = localities.find(l => l.id === formData.localityId);
+    
+    return {
+      listingId: "preview",
+      slug: "preview",
+      displayName: formData.displayName,
+      locality: selectedLocality?.name || "",
+      city: selectedLocality?.city || "Delhi",
+      workspaceTypes: formData.workspaceTypes,
+      photos: photoPreviewUrls.map(url => ({ url, width: 800, height: 600 })),
+      seatCapacityMin: formData.seatCapacityMin,
+      seatCapacityMax: formData.seatCapacityMax,
+      availabilityStatus: formData.availabilityStatus,
+      budgetBandId: formData.budgetBand,
+      budgetDisplayText: formData.budgetDisplayText || "Contact for pricing",
+      pricingMode: "on-enquiry",
+      nearMetro: formData.nearMetro,
+      metroNote: formData.metroNote,
+      parking: formData.parking !== "NONE",
+      powerBackup: formData.powerBackup,
+      gstInvoiceAvailable: false, // Removed from form
+      accessHours: formData.accessHours,
+      amenities: formData.amenities,
+      meetingRoomsAddon: formData.meetingRoomsAddon || false,
+      dealTags: formData.dealTags || [],
+      verificationStatus: "pending",
+      highlights: [],
+      overview: formData.overview,
+      createdAt: new Date().toISOString(),
+    };
   };
+
+  if (showPreview && formData) {
+    const previewData = getPreviewData();
+    
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" onClick={handleBackToEdit}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div>
+            <h2 className="font-display text-xl font-bold">Preview Your Listing</h2>
+            <p className="text-sm text-muted-foreground">Review your listing before submitting</p>
+          </div>
+        </div>
+
+        <Card>
+          <CardContent className="pt-6">
+            {previewData && <WorkspacePreview listing={previewData} />}
+          </CardContent>
+        </Card>
+
+        <div className="flex gap-4">
+          <Button variant="outline" onClick={handleBackToEdit} className="flex-1">
+            <ArrowLeft className="h-4 w-4" />
+            Back to Edit
+          </Button>
+          <Button onClick={handleFinalSubmit} disabled={isLoading} className="flex-1">
+            {isLoading ? "Submitting..." : "Confirm & Submit"}
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-6">
@@ -249,36 +405,54 @@ export function WorkspaceForm({ onSubmit, initialData, isLoading = false }: Work
         </div>
 
         <div className="space-y-2">
-          <Label>Photos *</Label>
-          <p className="text-xs text-muted-foreground">Enter image URLs (at least one required)</p>
-          <div className="space-y-2">
-            {photoUrls.map((url, index) => (
-              <div key={index} className="flex gap-2">
-                <Input
-                  type="url"
-                  value={url}
-                  onChange={(e) => updatePhotoUrl(index, e.target.value)}
-                  placeholder="https://example.com/image.jpg"
-                  className="flex-1"
-                />
-                {photoUrls.length > 1 && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => removePhotoUrl(index)}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                )}
+          <Label>Photos * (Images will be compressed automatically)</Label>
+          <p className="text-xs text-muted-foreground">Upload high-quality images of your workspace. Maximum 10MB per image.</p>
+          
+          {/* Photo Upload */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-4">
+              <Input
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handlePhotoUpload}
+                className="hidden"
+                id="photo-upload"
+              />
+              <Label
+                htmlFor="photo-upload"
+                className="flex items-center gap-2 px-4 py-2 border border-dashed border-border rounded-lg cursor-pointer hover:bg-muted transition-colors"
+              >
+                <Upload className="h-4 w-4" />
+                Upload Photos
+              </Label>
+              <span className="text-sm text-muted-foreground">
+                {photos.length} photo(s) selected
+              </span>
+            </div>
+
+            {/* Photo Previews */}
+            {photoPreviewUrls.length > 0 && (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {photoPreviewUrls.map((url, index) => (
+                  <div key={index} className="relative group">
+                    <img
+                      src={url}
+                      alt={`Preview ${index + 1}`}
+                      className="w-full h-32 object-cover rounded-lg border"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removePhoto(index)}
+                      className="absolute top-2 right-2 p-1 bg-destructive text-destructive-foreground rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
               </div>
-            ))}
-            <Button type="button" variant="outline" size="sm" onClick={addPhotoUrl}>
-              <Plus className="h-4 w-4" />
-              Add Photo URL
-            </Button>
+            )}
           </div>
-          {errors.photos && <p className="text-xs text-destructive">{errors.photos.message}</p>}
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
@@ -349,6 +523,16 @@ export function WorkspaceForm({ onSubmit, initialData, isLoading = false }: Work
         </div>
 
         <div className="space-y-2">
+          <Label htmlFor="budgetDisplayText">Budget Display Text</Label>
+          <Input
+            id="budgetDisplayText"
+            {...register("budgetDisplayText")}
+            placeholder="e.g., Starting from ₹15,000/seat or Contact for pricing"
+          />
+          <p className="text-xs text-muted-foreground">Optional custom pricing text</p>
+        </div>
+
+        <div className="space-y-2">
           <Label htmlFor="overview">Overview *</Label>
           <Textarea
             id="overview"
@@ -405,6 +589,21 @@ export function WorkspaceForm({ onSubmit, initialData, isLoading = false }: Work
           />
           {errors.accessHours && <p className="text-xs text-destructive">{errors.accessHours.message}</p>}
         </div>
+
+        <div className="flex items-center space-x-2">
+          <Controller
+            name="weekendAccess"
+            control={control}
+            render={({ field }) => (
+              <Checkbox
+                id="weekendAccess"
+                checked={field.value}
+                onCheckedChange={field.onChange}
+              />
+            )}
+          />
+          <Label htmlFor="weekendAccess" className="cursor-pointer">Weekend Access Available</Label>
+        </div>
       </div>
 
       {/* Facilities */}
@@ -412,20 +611,25 @@ export function WorkspaceForm({ onSubmit, initialData, isLoading = false }: Work
         <h2 className="font-display text-lg font-semibold">Facilities</h2>
 
         <div className="space-y-2">
-          <div className="flex items-center space-x-2">
-            <Controller
-              name="parking"
-              control={control}
-              render={({ field }) => (
-                <Checkbox
-                  id="parking"
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
-                />
-              )}
-            />
-            <Label htmlFor="parking" className="cursor-pointer">Parking Available</Label>
-          </div>
+          <Label htmlFor="parking">Parking *</Label>
+          <Controller
+            name="parking"
+            control={control}
+            render={({ field }) => (
+              <Select value={field.value} onValueChange={field.onChange}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {parkingOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          />
         </div>
 
         <div className="space-y-2">
@@ -442,23 +646,6 @@ export function WorkspaceForm({ onSubmit, initialData, isLoading = false }: Work
               )}
             />
             <Label htmlFor="powerBackup" className="cursor-pointer">Power Backup</Label>
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <div className="flex items-center space-x-2">
-            <Controller
-              name="gstInvoiceAvailable"
-              control={control}
-              render={({ field }) => (
-                <Checkbox
-                  id="gstInvoiceAvailable"
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
-                />
-              )}
-            />
-            <Label htmlFor="gstInvoiceAvailable" className="cursor-pointer">GST Invoice Available</Label>
           </div>
         </div>
 
@@ -579,6 +766,16 @@ export function WorkspaceForm({ onSubmit, initialData, isLoading = false }: Work
           </div>
 
           <div className="space-y-2">
+            <Label htmlFor="dealEligibility">Deal Eligibility</Label>
+            <Textarea
+              id="dealEligibility"
+              {...register("dealEligibility")}
+              placeholder="Who is eligible for the deals (e.g., new customers, minimum commitment)"
+              rows={2}
+            />
+          </div>
+
+          <div className="space-y-2">
             <Label htmlFor="houseRules">House Rules</Label>
             <Textarea
               id="houseRules"
@@ -587,51 +784,13 @@ export function WorkspaceForm({ onSubmit, initialData, isLoading = false }: Work
               rows={3}
             />
           </div>
-
-          <div className="space-y-2">
-            <Label>Highlights</Label>
-            <div className="flex gap-2">
-              <Input
-                value={newHighlight}
-                onChange={(e) => setNewHighlight(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    addHighlight();
-                  }
-                }}
-                placeholder="Add highlight"
-              />
-              <Button type="button" variant="outline" onClick={addHighlight}>
-                <Plus className="h-4 w-4" />
-              </Button>
-            </div>
-            {highlights.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-2">
-                {highlights.map((highlight) => (
-                  <span
-                    key={highlight}
-                    className="inline-flex items-center gap-1 rounded-full bg-accent/20 px-3 py-1 text-sm"
-                  >
-                    {highlight}
-                    <button
-                      type="button"
-                      onClick={() => removeHighlight(highlight)}
-                      className="hover:text-destructive"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
         </CollapsibleContent>
       </Collapsible>
 
       <div className="flex gap-4 pt-4">
         <Button type="submit" disabled={isLoading} className="flex-1">
-          {isLoading ? "Submitting..." : "Submit Listing"}
+          <Eye className="h-4 w-4" />
+          Preview Listing
         </Button>
       </div>
     </form>

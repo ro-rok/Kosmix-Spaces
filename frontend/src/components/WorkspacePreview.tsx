@@ -1,10 +1,9 @@
 import { Listing, budgetBandLabels, workspaceTypeLabels } from "@/types/models";
-import { WorkspaceDraftListing } from "@/types/models";
 import { Train, Zap, Car, Clock, FileText, Users, Wifi, Coffee, Shield, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface WorkspacePreviewProps {
-  listing: Listing | WorkspaceDraftListing;
+  listing: Listing | any; // Backend listing format
   showActions?: boolean;
 }
 
@@ -15,7 +14,6 @@ export function WorkspacePreview({ listing, showActions = false }: WorkspacePrev
     { icon: Train, label: "Metro", value: listing.nearMetro ? listing.metroNote || "Near Metro" : "Not near metro" },
     { icon: Car, label: "Parking", value: listing.parking ? "Available" : "Not available" },
     { icon: Zap, label: "Power Backup", value: listing.powerBackup ? "Yes" : "No" },
-    { icon: FileText, label: "GST Invoice", value: listing.gstInvoiceAvailable ? "Available" : "Not available" },
   ];
 
   return (

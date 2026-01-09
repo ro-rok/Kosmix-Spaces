@@ -115,6 +115,136 @@ export function useUpdatePartnerStatus() {
   });
 }
 
+// Admin listing hooks
+export function useAdminListings(params: {
+  status?: string;
+  page?: number;
+  pageSize?: number;
+} = {}) {
+  const token = getStoredToken();
+  const userType = getStoredUserType();
+  
+  return useQuery({
+    queryKey: ["admin", "listings", params],
+    queryFn: () => api.admin.getListings(token!, params),
+    enabled: !!token && userType === "admin",
+    staleTime: 1000 * 60 * 2, // 2 minutes
+  });
+}
+
+export function useAdminListing(listingId: string) {
+  const token = getStoredToken();
+  const userType = getStoredUserType();
+  
+  return useQuery({
+    queryKey: ["admin", "listing", listingId],
+    queryFn: () => api.admin.getListing(token!, listingId),
+    enabled: !!token && userType === "admin" && !!listingId,
+    staleTime: 1000 * 60 * 2, // 2 minutes
+  });
+}
+
+export function useApproveListing() {
+  const queryClient = useQueryClient();
+  const token = getStoredToken();
+  
+  return useMutation({
+    mutationFn: ({ listingId, notes }: { listingId: string; notes?: string }) => 
+      api.admin.approveListing(token!, listingId, notes),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "listings"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "listing"] });
+    },
+  });
+}
+
+export function useNeedsInfoListing() {
+  const queryClient = useQueryClient();
+  const token = getStoredToken();
+  
+  return useMutation({
+    mutationFn: ({ listingId, notes }: { listingId: string; notes: string }) => 
+      api.admin.needsInfoListing(token!, listingId, notes),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "listings"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "listing"] });
+    },
+  });
+}
+
+export function useRejectListing() {
+  const queryClient = useQueryClient();
+  const token = getStoredToken();
+  
+  return useMutation({
+    mutationFn: ({ listingId, reason }: { listingId: string; reason: string }) => 
+      api.admin.rejectListing(token!, listingId, reason),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "listings"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "listing"] });
+    },
+  });
+}
+
+// Partner listing hooks
+export function usePartnerListings(params: {
+  page?: number;
+  pageSize?: number;
+} = {}) {
+  const token = getStoredToken();
+  const userType = getStoredUserType();
+  
+  return useQuery({
+    queryKey: ["partner", "listings", params],
+    queryFn: async () => {
+      console.log("Fetching partner listings with token:", !!token);
+      const result = await api.partner.getListings(token!, params);
+      console.log("Partner listings result:", result);
+      return result;
+    },
+    enabled: !!token && userType === "partner",
+    staleTime: 1000 * 60 * 2, // 2 minutes
+  });
+}
+
+export function usePartnerListing(listingId: string) {
+  const token = getStoredToken();
+  const userType = getStoredUserType();
+  
+  return useQuery({
+    queryKey: ["partner", "listing", listingId],
+    queryFn: () => api.partner.getListing(token!, listingId),
+    enabled: !!token && userType === "partner" && !!listingId,
+    staleTime: 1000 * 60 * 2, // 2 minutes
+  });
+}
+
+export function useCreatePartnerListing() {
+  const queryClient = useQueryClient();
+  const token = getStoredToken();
+  
+  return useMutation({
+    mutationFn: (data: any) => api.partner.createListing(token!, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["partner", "listings"] });
+    },
+  });
+}
+
+export function useUpdatePartnerListing() {
+  const queryClient = useQueryClient();
+  const token = getStoredToken();
+  
+  return useMutation({
+    mutationFn: ({ listingId, data }: { listingId: string; data: any }) => 
+      api.partner.updateListing(token!, listingId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["partner", "listings"] });
+      queryClient.invalidateQueries({ queryKey: ["partner", "listing"] });
+    },
+  });
+}
+
 // Logout hook
 export function useLogout() {
   const queryClient = useQueryClient();

@@ -1,6 +1,6 @@
 """Partner listings routes."""
 from typing import List
-from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
+from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, Request
 from app.core.security import require_partner
 from app.core.image_compress import compress_image
 from app.core.cloudinary import upload_image

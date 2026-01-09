@@ -68,7 +68,8 @@ async def login_partner(credentials: PartnerLoginRequest):
     """Partner login."""
     db = get_database()
     
-    partner = await db.partners.find_one({"email": credentials.email})
+    # Try case-insensitive email search first
+    partner = await db.partners.find_one({"email": {"$regex": f"^{credentials.email}$", "$options": "i"}})
     if not partner:
         raise UnauthorizedError("Invalid email or password")
     
@@ -76,7 +77,12 @@ async def login_partner(credentials: PartnerLoginRequest):
         raise UnauthorizedError("Invalid email or password")
     
     if partner["status"] != "ACTIVE":
-        raise UnauthorizedError("Account is not active")
+        status_messages = {
+            "PENDING": "Account is pending approval. Please wait for admin approval.",
+            "SUSPENDED": "Account has been suspended. Please contact support.",
+        }
+        message = status_messages.get(partner["status"], f"Account status is '{partner['status']}'. Please contact support.")
+        raise UnauthorizedError(message)
     
     # Create JWT token
     token_data = {

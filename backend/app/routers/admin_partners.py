@@ -1,13 +1,13 @@
 """Admin partner management routes."""
-from typing import List, Optional
-from fastapi import APIRouter, Depends, Query
+from typing import List, Optional, Literal
+from fastapi import APIRouter, Depends, Query, Request
 from bson import ObjectId
 from datetime import datetime
 
 from app.core.security import require_admin
 from app.db.mongodb import get_database
 from app.schemas.partner import PartnerResponse
-from app.core.errors import NotFoundError
+from app.core.errors import NotFoundError, ValidationError
 from pydantic import BaseModel
 
 router = APIRouter()
@@ -15,7 +15,7 @@ router = APIRouter()
 
 class PartnerStatusUpdate(BaseModel):
     """Partner status update request."""
-    status: str  # ACTIVE | PENDING | SUSPENDED
+    status: str
     notes: Optional[str] = None
 
 
@@ -107,25 +107,54 @@ async def get_partner(
 @router.patch("/partners/{partner_id}/status", response_model=PartnerResponse)
 async def update_partner_status(
     partner_id: str,
-    status_update: PartnerStatusUpdate,
+    request: Request,
     current_user: dict = Depends(require_admin)
 ):
     """Update partner status (approve/suspend/etc)."""
     db = get_database()
     
+    # Parse request body manually
+    try:
+        body = await request.json()
+        print(f"Received request body: {body}")
+        
+        # Validate required fields
+        if "status" not in body:
+            raise ValidationError("Missing required field: status")
+        
+        status_value = body["status"]
+        notes = body.get("notes")
+        
+        print(f"Status: '{status_value}' (type: {type(status_value)})")
+        print(f"Notes: '{notes}' (type: {type(notes)})")
+        
+    except Exception as e:
+        print(f"Error parsing request body: {e}")
+        raise ValidationError(f"Invalid request body: {str(e)}")
+    
+    # Validate status
+    valid_statuses = ["ACTIVE", "PENDING", "SUSPENDED"]
+    if status_value not in valid_statuses:
+        raise ValidationError(f"Invalid status '{status_value}'. Must be one of: {', '.join(valid_statuses)}")
+    
     try:
         partner_obj_id = ObjectId(partner_id)
-    except:
+    except Exception:
+        raise ValidationError(f"Invalid partner ID format: {partner_id}")
+    
+    # Check if partner exists first
+    existing_partner = await db.partners.find_one({"_id": partner_obj_id})
+    if not existing_partner:
         raise NotFoundError("Partner", partner_id)
     
     # Update partner status
     update_data = {
-        "status": status_update.status,
+        "status": status_value,
         "updatedAt": datetime.utcnow()
     }
     
-    if status_update.notes:
-        update_data["adminNotes"] = status_update.notes
+    if notes:
+        update_data["adminNotes"] = notes
     
     result = await db.partners.update_one(
         {"_id": partner_obj_id},

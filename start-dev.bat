@@ -46,7 +46,7 @@ if not exist "venv" (
 )
 
 REM Start backend with venv activated
-start "Kosmix Backend" cmd /k "call venv\Scripts\activate.bat && python -m uvicorn app.main:app --reload"
+start "Kosmix Backend" cmd /k "call venv\Scripts\activate.bat && python -m uvicorn app.main:app --host 0.0.0.0 --reload"
 cd ..
 
 REM Wait a moment for backend to initialize

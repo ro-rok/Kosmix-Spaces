@@ -37,9 +37,26 @@ export const workspaceTypeLabels: Record<WorkspaceType, string> = {
   "managed-office": "Managed Office",
 };
 
+// Backend format labels
+export const backendWorkspaceTypeLabels: Record<string, string> = {
+  "DEDICATED_DESKS": "Dedicated Desk",
+  "PRIVATE_CABINS": "Private Cabin", 
+  "MANAGED_OFFICE": "Managed Office",
+  "MEETING_ROOMS_ADDON": "Meeting Rooms",
+};
+
 export const budgetBandLabels: Record<BudgetBand, string> = {
   "5k-10k": "₹5K - 10K/seat",
   "10k-20k": "₹10K - 20K/seat",
+  "20k-40k": "₹20K - 40K/seat",
+  "40k-80k": "₹40K - 80K/seat",
+  "80k+": "₹80K+/seat",
+};
+
+// Backend format budget band labels (same values work for both)
+export const backendBudgetBandLabels: Record<string, string> = {
+  "5k-10k": "₹5K - 10K/seat",
+  "10k-20k": "₹10K - 20K/seat", 
   "20k-40k": "₹20K - 40K/seat",
   "40k-80k": "₹40K - 80K/seat",
   "80k+": "₹80K+/seat",
@@ -52,61 +69,3 @@ export const teamSizeBands = [
   { value: "31-50", label: "31-50 people" },
   { value: "50+", label: "50+ people" },
 ];
-
-export interface PartnerAccount {
-  partnerId: string;
-  workspaceBrandName: string;
-  contactName: string;
-  phone: string;
-  email: string;
-  status: "active" | "inactive";
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface PartnerSession {
-  partnerId: string;
-  email: string;
-  token: string;
-  createdAt: string;
-}
-
-export interface WorkspaceDraftListing extends Omit<Listing, "verificationStatus" | "slug"> {
-  draftId: string;
-  slug?: string; // Optional until approved
-  partnerId: string;
-  verificationStatus: VerificationStatus;
-  submittedAt: string;
-  updatedAt: string;
-  adminNotes?: string;
-  rejectionReason?: string;
-  verificationChecklist?: {
-    partnerContactVerified: boolean;
-    photosVerified: boolean;
-    specsVerified: boolean;
-    pricingStructureConfirmed: boolean;
-    addressHidingConfirmed: boolean;
-  };
-  auditTrail?: AuditEntry[];
-}
-
-export interface AuditEntry {
-  id: string;
-  action: string;
-  actorRole: "admin" | "partner" | "system";
-  timestamp: string;
-  notes?: string;
-}
-
-export interface AdminVerification {
-  checks: {
-    partnerContactVerified: boolean;
-    photosVerified: boolean;
-    specsVerified: boolean;
-    pricingStructureConfirmed: boolean;
-    addressHidingConfirmed: boolean;
-  };
-  status: VerificationStatus;
-  notes?: string;
-  auditTrail: AuditEntry[];
-}

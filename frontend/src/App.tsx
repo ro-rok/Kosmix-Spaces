@@ -66,7 +66,7 @@ const App = () => (
           }>
             <Route index element={<AdminDashboard />} />
             <Route path="listings" element={<AdminListings />} />
-            <Route path="listings/:slug" element={<AdminListingDetail />} />
+            <Route path="listings/:listingId" element={<AdminListingDetail />} />
             <Route path="partners" element={<AdminPartners />} />
             <Route path="leads" element={<AdminLeads />} />
             <Route path="visits" element={<AdminVisits />} />

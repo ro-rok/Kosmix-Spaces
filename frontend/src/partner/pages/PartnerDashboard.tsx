@@ -1,13 +1,56 @@
 import { Link } from "react-router-dom";
-import { Plus, FileText, Clock, AlertCircle, CheckCircle, XCircle, Shield } from "lucide-react";
+import { Plus, FileText, Clock, AlertCircle, CheckCircle, XCircle, Shield, Bug } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { usePartnerMe } from "@/hooks/useAuth";
+import { usePartnerMe, useCreatePartnerListing } from "@/hooks/useAuth";
 import { VerificationStatus } from "@/types/models";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 export function PartnerDashboard() {
   const { data: partner, isLoading, error } = usePartnerMe();
+  const createListingMutation = useCreatePartnerListing();
+
+  const testApiCall = async () => {
+    try {
+      // Use the exact same format as the form submission
+      const testData = {
+        displayName: "Test Workspace",
+        brandHidden: false,
+        locality: "Connaught Place",
+        workspaceTypes: ["DEDICATED_DESKS"],
+        seatCapacityMin: 1,
+        seatCapacityMax: 10,
+        availabilityStatus: "AVAILABLE",
+        budgetBandId: "10k-20k",
+        budgetDisplayText: "Contact for pricing",
+        nearMetro: false,
+        metroNote: null,
+        parking: "NONE",
+        powerBackup: false,
+        gstInvoiceAvailable: false,
+        accessHours: "9 AM - 9 PM",
+        weekendAccess: false,
+        amenities: ["High-speed WiFi"],
+        meetingRoomsCount: null,
+        meetingRoomsAddonOnly: true,
+        internetSpeedMbps: null,
+        dealTags: [],
+        dealDetails: null,
+        dealEligibility: null,
+        overview: "This is a test workspace overview with more than 10 characters",
+        houseRules: null,
+      };
+
+      console.log("Test data:", JSON.stringify(testData, null, 2));
+      const result = await createListingMutation.mutateAsync(testData);
+      console.log("Test result:", result);
+      toast.success("Test API call successful!");
+    } catch (error: any) {
+      console.error("Test API call failed:", error);
+      toast.error(`Test failed: ${error.message}`);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -157,6 +200,26 @@ export function PartnerDashboard() {
           </Link>
         </Button>
       </div>
+
+      {/* Debug Test Button */}
+      {isApproved && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Debug Tools</CardTitle>
+            <CardDescription>Test API functionality</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button 
+              onClick={testApiCall}
+              disabled={createListingMutation.isPending}
+              variant="outline"
+            >
+              <Bug className="h-4 w-4" />
+              {createListingMutation.isPending ? "Testing..." : "Test API Call"}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {!isApproved && (
         <Card>
