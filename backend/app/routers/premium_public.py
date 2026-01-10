@@ -21,41 +21,78 @@ router = APIRouter()
 
 @router.get("/localities")
 async def get_localities():
-    """Get list of known localities with enhanced data."""
-    # Enhanced locality data for premium platform
-    localities = [
-        {"id": "connaught-place", "name": "Connaught Place", "city": "Delhi", "popular": True, "metroConnected": True},
-        {"id": "saket", "name": "Saket", "city": "Delhi", "popular": True, "metroConnected": True},
-        {"id": "nehru-place", "name": "Nehru Place", "city": "Delhi", "popular": True, "metroConnected": True},
-        {"id": "okhla", "name": "Okhla", "city": "Delhi", "popular": True, "metroConnected": False},
-        {"id": "janakpuri", "name": "Janakpuri", "city": "Delhi", "popular": False, "metroConnected": True},
-        {"id": "dwarka", "name": "Dwarka", "city": "Delhi", "popular": True, "metroConnected": True},
-        {"id": "vasant-kunj", "name": "Vasant Kunj", "city": "Delhi", "popular": False, "metroConnected": False},
-        {"id": "lajpat-nagar", "name": "Lajpat Nagar", "city": "Delhi", "popular": False, "metroConnected": True},
-        {"id": "karol-bagh", "name": "Karol Bagh", "city": "Delhi", "popular": True, "metroConnected": True},
-        {"id": "pitampura", "name": "Pitampura", "city": "Delhi", "popular": False, "metroConnected": True},
-        {"id": "rohini", "name": "Rohini", "city": "Delhi", "popular": False, "metroConnected": True},
-        {"id": "greater-kailash", "name": "Greater Kailash", "city": "Delhi", "popular": True, "metroConnected": False},
-        {"id": "south-extension", "name": "South Extension", "city": "Delhi", "popular": False, "metroConnected": True},
-        {"id": "hauz-khas", "name": "Hauz Khas", "city": "Delhi", "popular": True, "metroConnected": True},
-        {"id": "green-park", "name": "Green Park", "city": "Delhi", "popular": False, "metroConnected": True},
-    ]
-    return localities
+    """Get list of known localities with enhanced data grouped by city."""
+    # Enhanced locality data for premium platform grouped by city
+    localities_by_city = {
+        "Delhi": [
+            {"id": "connaught-place", "name": "Connaught Place", "popular": True, "metroConnected": True},
+            {"id": "saket", "name": "Saket", "popular": True, "metroConnected": True},
+            {"id": "nehru-place", "name": "Nehru Place", "popular": True, "metroConnected": True},
+            {"id": "okhla", "name": "Okhla", "popular": True, "metroConnected": False},
+            {"id": "dwarka", "name": "Dwarka", "popular": True, "metroConnected": True},
+            {"id": "karol-bagh", "name": "Karol Bagh", "popular": True, "metroConnected": True},
+            {"id": "greater-kailash", "name": "Greater Kailash", "popular": True, "metroConnected": False},
+            {"id": "hauz-khas", "name": "Hauz Khas", "popular": True, "metroConnected": True},
+            {"id": "janakpuri", "name": "Janakpuri", "popular": False, "metroConnected": True},
+            {"id": "vasant-kunj", "name": "Vasant Kunj", "popular": False, "metroConnected": False},
+            {"id": "lajpat-nagar", "name": "Lajpat Nagar", "popular": False, "metroConnected": True},
+            {"id": "pitampura", "name": "Pitampura", "popular": False, "metroConnected": True},
+            {"id": "rohini", "name": "Rohini", "popular": False, "metroConnected": True},
+            {"id": "south-extension", "name": "South Extension", "popular": False, "metroConnected": True},
+            {"id": "green-park", "name": "Green Park", "popular": False, "metroConnected": True},
+        ],
+        "Gurugram": [
+            {"id": "cyber-city", "name": "Cyber City", "popular": True, "metroConnected": True},
+            {"id": "golf-course-road", "name": "Golf Course Road", "popular": True, "metroConnected": False},
+            {"id": "mg-road-gurugram", "name": "MG Road", "popular": True, "metroConnected": True},
+            {"id": "udyog-vihar", "name": "Udyog Vihar", "popular": True, "metroConnected": False},
+            {"id": "dlf-phase-1", "name": "DLF Phase 1", "popular": True, "metroConnected": False},
+            {"id": "sohna-road", "name": "Sohna Road", "popular": False, "metroConnected": False},
+            {"id": "sector-32", "name": "Sector 32", "popular": False, "metroConnected": False},
+            {"id": "dlf-phase-2", "name": "DLF Phase 2", "popular": False, "metroConnected": False},
+            {"id": "dlf-phase-3", "name": "DLF Phase 3", "popular": False, "metroConnected": False},
+        ],
+        "Noida": [
+            {"id": "sector-62", "name": "Sector 62", "popular": True, "metroConnected": True},
+            {"id": "sector-63", "name": "Sector 63", "popular": True, "metroConnected": True},
+            {"id": "sector-18", "name": "Sector 18", "popular": True, "metroConnected": True},
+            {"id": "film-city", "name": "Film City", "popular": True, "metroConnected": False},
+            {"id": "city-center", "name": "City Center", "popular": True, "metroConnected": True},
+            {"id": "sector-16", "name": "Sector 16", "popular": False, "metroConnected": True},
+            {"id": "sector-135", "name": "Sector 135", "popular": False, "metroConnected": True},
+            {"id": "botanical-garden", "name": "Botanical Garden", "popular": False, "metroConnected": True},
+            {"id": "wave-city", "name": "Wave City", "popular": False, "metroConnected": False},
+        ]
+    }
+    
+    # Also provide flat list for backward compatibility
+    flat_localities = []
+    for city, localities in localities_by_city.items():
+        for locality in localities:
+            flat_localities.append({
+                **locality,
+                "city": city
+            })
+    
+    return {
+        "by_city": localities_by_city,
+        "flat": flat_localities
+    }
 
 
 @router.get("/listings")
 async def get_enhanced_listings(
     # Search and filtering
     query: Optional[str] = Query(None, description="Search query for listings"),
-    locality: Optional[List[str]] = Query(None, description="Filter by localities"),
-    budgetBand: Optional[List[str]] = Query(None, description="Filter by budget bands"),
+    locality: Optional[str] = Query(None, description="Filter by locality (single value)"),
+    budgetBand: Optional[str] = Query(None, description="Filter by budget band (single value)"),
     teamSize: Optional[str] = Query(None, description="Filter by team size"),
     
     # Amenity filters
     meetingRooms: Optional[bool] = Query(None, description="Filter by meeting rooms availability"),
     privateOffice: Optional[bool] = Query(None, description="Filter by private office availability"),
     verifiedOnly: Optional[bool] = Query(None, description="Show only verified listings"),
-    amenities: Optional[List[str]] = Query(None, description="Filter by amenities"),
+    amenities: Optional[str] = Query(None, description="Filter by amenities (comma-separated)"),
     
     # Legacy filters for backward compatibility
     budgetBandId: Optional[str] = Query(None, description="Legacy budget band filter"),
@@ -67,12 +104,17 @@ async def get_enhanced_listings(
     gstInvoice: Optional[bool] = Query(None, description="Filter by GST invoice availability"),
     
     # Sorting and pagination
-    sort: str = Query("recommended", regex="^(recommended|most_enquired|budget_low)$"),
+    sort: str = Query("best_match", description="Sort order: best_match, recommended, most_enquired, budget_low"),
     page: int = Query(1, ge=1),
     pageSize: int = Query(20, ge=1, le=100)
 ):
     """Get enhanced listings with advanced filtering."""
     db = get_database()
+    
+    # Validate sort parameter
+    valid_sorts = ["best_match", "recommended", "most_enquired", "budget_low"]
+    if sort not in valid_sorts:
+        sort = "best_match"
     
     # Build query for premium listings
     query_filter = {
@@ -84,18 +126,15 @@ async def get_enhanced_listings(
     if query:
         query_filter["$text"] = {"$search": query}
     
-    # Locality filter (support both single and multiple)
+    # Locality filter (handle single value)
     if locality:
-        if isinstance(locality, list):
-            query_filter["location.locality"] = {"$in": locality}
-        else:
-            query_filter["location.locality"] = locality
+        query_filter["location.locality"] = locality
     
     # Legacy locality filter
     if budgetBandId:
         # Map legacy budget band to new format
         if not budgetBand:
-            budgetBand = [budgetBandId]
+            budgetBand = budgetBandId
     
     # Team size filter
     team_size_filter = teamSize or teamSizeBand
@@ -123,13 +162,15 @@ async def get_enhanced_listings(
     if offering_filters:
         query_filter["$and"] = offering_filters
     
-    # Amenities filter
+    # Amenities filter (handle comma-separated string)
     if amenities:
-        query_filter["amenities"] = {"$in": amenities}
+        amenity_list = [a.strip() for a in amenities.split(',') if a.strip()]
+        if amenity_list:
+            query_filter["amenities"] = {"$in": amenity_list}
     
     # Build sort criteria
     sort_criteria = []
-    if sort == "recommended":
+    if sort == "recommended" or sort == "best_match":
         # Sort by view count and enquiry count
         sort_criteria = [("viewCount", -1), ("enquiryCount", -1), ("updatedAt", -1)]
     elif sort == "most_enquired":
@@ -143,14 +184,40 @@ async def get_enhanced_listings(
     # Execute query with pagination
     skip = (page - 1) * pageSize
     
+    # Try premium listings first
     cursor = db.premium_listings.find(query_filter).sort(sort_criteria).skip(skip).limit(pageSize)
     listings = await cursor.to_list(length=pageSize)
     
     # Get total count
     total = await db.premium_listings.count_documents(query_filter)
     
-    # Convert to public format
-    items = [listing_to_public_response(listing) for listing in listings]
+    # If no premium listings found, fallback to legacy listings
+    if not listings and total == 0:
+        # Fallback to legacy listings collection
+        legacy_filter = {
+            "verificationStatus": "APPROVED_VERIFIED"
+        }
+        
+        # Map some basic filters to legacy format
+        if locality:
+            legacy_filter["locality"] = locality
+        if nearMetro:
+            legacy_filter["nearMetro"] = True
+        if powerBackup:
+            legacy_filter["powerBackup"] = True
+        if gstInvoice:
+            legacy_filter["gstInvoiceAvailable"] = True
+            
+        cursor = db.listings.find(legacy_filter).sort([("updatedAt", -1)]).skip(skip).limit(pageSize)
+        listings = await cursor.to_list(length=pageSize)
+        total = await db.listings.count_documents(legacy_filter)
+        
+        # Convert legacy listings to public format
+        from app.services.listing_service import listing_to_public_card
+        items = [listing_to_public_card(listing) for listing in listings]
+    else:
+        # Convert premium listings to public format
+        items = [listing_to_public_response(listing) for listing in listings]
     
     return {
         "items": items,

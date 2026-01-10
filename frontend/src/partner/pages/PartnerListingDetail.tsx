@@ -91,7 +91,7 @@ export function PartnerListingDetail() {
   const canEdit = listing.verificationStatus === 'NEEDS_INFO' || 
                   listing.verificationStatus === 'PENDING_REVIEW' ||
                   listing.verificationStatus === 'REJECTED' ||
-                  listing.status === 'draft';
+                  listing.status === 'pending';
 
   return (
     <div className="space-y-6">
@@ -153,7 +153,7 @@ export function PartnerListingDetail() {
         
         {listing.verificationStatus === 'NEEDS_INFO' && (
           <CardContent>
-            <AdminNotesPanel draft={listing} />
+            <AdminNotesPanel listing={listing} />
           </CardContent>
         )}
       </Card>

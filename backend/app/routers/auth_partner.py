@@ -76,9 +76,8 @@ async def login_partner(credentials: PartnerLoginRequest):
     if not verify_password(credentials.password, partner["passwordHash"]):
         raise UnauthorizedError("Invalid email or password")
     
-    if partner["status"] != "ACTIVE":
+    if partner["status"] not in ["ACTIVE", "PENDING"]:
         status_messages = {
-            "PENDING": "Account is pending approval. Please wait for admin approval.",
             "SUSPENDED": "Account has been suspended. Please contact support.",
         }
         message = status_messages.get(partner["status"], f"Account status is '{partner['status']}'. Please contact support.")

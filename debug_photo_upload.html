@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Photo Upload</title>
+</head>
+<body>
+    <h1>Debug Photo Upload</h1>
+    
+    <form id="uploadForm">
+        <input type="file" id="fileInput" accept="image/*" required>
+        <input type="text" id="offeringType" placeholder="Offering Type (optional)">
+        <button type="submit">Upload Photo</button>
+    </form>
+    
+    <div id="result"></div>
+    
+    <script>
+        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const fileInput = document.getElementById('fileInput');
+            const offeringTypeInput = document.getElementById('offeringType');
+            const resultDiv = document.getElementById('result');
+            
+            if (!fileInput.files[0]) {
+                resultDiv.innerHTML = '<p style="color: red;">Please select a file</p>';
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            if (offeringTypeInput.value) {
+                formData.append('offering_type', offeringTypeInput.value);
+            }
+            
+            // Get auth token from localStorage (if available)
+            const token = localStorage.getItem('kosmix_auth_token');
+            
+            try {
+                resultDiv.innerHTML = '<p>Uploading...</p>';
+                
+                const response = await fetch('http://localhost:8000/api/partner/temp-photos', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token || 'test-token'}`
+                    },
+                    body: formData
+                });
+                
+                const responseText = await response.text();
+                let responseData;
+                
+                try {
+                    responseData = JSON.parse(responseText);
+                } catch {
+                    responseData = responseText;
+                }
+                
+                resultDiv.innerHTML = `
+                    <h3>Response:</h3>
+                    <p><strong>Status:</strong> ${response.status} ${response.statusText}</p>
+                    <p><strong>Headers:</strong></p>
+                    <pre>${JSON.stringify(Object.fromEntries(response.headers.entries()), null, 2)}</pre>
+                    <p><strong>Body:</strong></p>
+                    <pre>${JSON.stringify(responseData, null, 2)}</pre>
+                `;
+                
+                if (response.ok) {
+                    resultDiv.style.color = 'green';
+                } else {
+                    resultDiv.style.color = 'red';
+                }
+                
+            } catch (error) {
+                resultDiv.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+                console.error('Upload error:', error);
+            }
+        });
+    </script>
+</body>
+</html>

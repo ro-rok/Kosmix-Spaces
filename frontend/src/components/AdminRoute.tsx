@@ -9,21 +9,26 @@ interface AdminRouteProps {
 export function AdminRoute({ children }: AdminRouteProps) {
   const { user, isAuthenticated, isLoading, userRole, isSessionExpired, refreshSession } = useAuth();
   
+  console.log("AdminRoute - Auth state:", {
+    user,
+    isAuthenticated,
+    isLoading,
+    userRole,
+    isSessionExpired
+  });
+  
   // Handle session expiry
   useEffect(() => {
     if (isSessionExpired) {
+      console.log("AdminRoute - Session expired, redirecting to login");
       // Context will handle redirect to login
       return;
     }
   }, [isSessionExpired]);
 
-  // If not authenticated or wrong user type, redirect to login
-  if (!isAuthenticated || userRole !== "admin") {
-    return <Navigate to="/admin/login" replace />;
-  }
-  
   // If loading, show loading state
   if (isLoading) {
+    console.log("AdminRoute - Loading auth state");
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -33,11 +38,19 @@ export function AdminRoute({ children }: AdminRouteProps) {
       </div>
     );
   }
-  
-  // If no user data after loading, redirect to login
-  if (!user) {
+
+  // If not authenticated or wrong user type, redirect to login
+  if (!isAuthenticated || userRole !== "admin") {
+    console.log("AdminRoute - Not authenticated or wrong role, redirecting to login");
     return <Navigate to="/admin/login" replace />;
   }
   
+  // If no user data after loading, redirect to login
+  if (!user) {
+    console.log("AdminRoute - No user data, redirecting to login");
+    return <Navigate to="/admin/login" replace />;
+  }
+  
+  console.log("AdminRoute - Auth successful, rendering children");
   return <>{children}</>;
 }

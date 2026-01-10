@@ -2,15 +2,16 @@ import { AlertCircle, CheckCircle, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface AdminNotesPanelProps {
-  draft: any; // Backend listing format with admin notes
+  listing: any; // Backend listing format with admin notes
 }
 
-export function AdminNotesPanel({ draft }: AdminNotesPanelProps) {
-  if (draft.verificationStatus !== "needs-info" && draft.verificationStatus !== "rejected") {
+export function AdminNotesPanel({ listing }: AdminNotesPanelProps) {
+  if (listing.verificationStatus !== "needs-info" && listing.verificationStatus !== "rejected" &&
+      listing.verificationStatus !== "NEEDS_INFO" && listing.verificationStatus !== "REJECTED") {
     return null;
   }
 
-  const checklist = draft.verificationChecklist || {
+  const checklist = listing.verificationChecklist || {
     partnerContactVerified: false,
     photosVerified: false,
     specsVerified: false,
@@ -31,16 +32,19 @@ export function AdminNotesPanel({ draft }: AdminNotesPanelProps) {
       return labels[key] || key;
     });
 
+  const isNeedsInfo = listing.verificationStatus === "needs-info" || listing.verificationStatus === "NEEDS_INFO";
+  const isRejected = listing.verificationStatus === "rejected" || listing.verificationStatus === "REJECTED";
+
   return (
     <div className="space-y-4">
-      {draft.verificationStatus === "needs-info" && (
+      {isNeedsInfo && (
         <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-4">
           <div className="flex items-start gap-3">
             <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-500 shrink-0 mt-0.5" />
             <div className="flex-1 space-y-2">
               <h3 className="font-semibold text-foreground">Additional Information Required</h3>
-              {draft.adminNotes && (
-                <p className="text-sm text-muted-foreground">{draft.adminNotes}</p>
+              {listing.adminNotes && (
+                <p className="text-sm text-muted-foreground">{listing.adminNotes}</p>
               )}
               {missingChecks.length > 0 && (
                 <div className="mt-3 space-y-1">
@@ -57,15 +61,15 @@ export function AdminNotesPanel({ draft }: AdminNotesPanelProps) {
         </div>
       )}
 
-      {draft.verificationStatus === "rejected" && (
+      {isRejected && (
         <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-4">
           <div className="flex items-start gap-3">
             <XCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
             <div className="flex-1 space-y-2">
               <h3 className="font-semibold text-foreground">Listing Rejected</h3>
-              {(draft.rejectionReason || draft.adminNotes) && (
+              {(listing.rejectionReason || listing.adminNotes) && (
                 <p className="text-sm text-muted-foreground">
-                  {draft.rejectionReason || draft.adminNotes}
+                  {listing.rejectionReason || listing.adminNotes}
                 </p>
               )}
             </div>

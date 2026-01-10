@@ -27,6 +27,7 @@ export function AdminListingDetail() {
   const [notes, setNotes] = useState("");
   const [reason, setReason] = useState("");
 
+  // Try to get the listing - this might be a slug or an ID
   const { data: listing, isLoading, error } = useAdminListing(listingId!);
   const approveMutation = useApproveListing();
   const needsInfoMutation = useNeedsInfoListing();

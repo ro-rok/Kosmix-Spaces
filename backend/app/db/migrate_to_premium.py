@@ -187,7 +187,7 @@ def _map_legacy_type_to_offering(legacy_type: str) -> str:
 def _map_verification_status(legacy_status: str) -> str:
     """Map legacy verification status to premium status."""
     if not legacy_status:
-        return "DRAFT"
+        return "PENDING"
     
     mapping = {
         "PENDING_REVIEW": "PENDING_REVIEW",
@@ -197,7 +197,7 @@ def _map_verification_status(legacy_status: str) -> str:
         "SUSPENDED": "REJECTED"
     }
     
-    return mapping.get(legacy_status, "DRAFT")
+    return mapping.get(legacy_status, "PENDING")
 
 
 def _get_default_offering_title(offering_type: OfferingType) -> str:

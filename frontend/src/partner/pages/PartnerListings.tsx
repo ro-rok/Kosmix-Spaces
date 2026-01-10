@@ -82,29 +82,36 @@ export function PartnerListings() {
                     <div className="space-y-1">
                       <p className="text-muted-premium font-medium">Types</p>
                       <p className="font-medium text-foreground">
-                        {listing.workspaceTypes
-                          .map((t) => backendWorkspaceTypeLabels[t]?.split(" ")[0] || t)
-                          .join(", ")}
+                        {listing.offerings ? Object.keys(listing.offerings)
+                          .filter(key => listing.offerings[key]?.enabled)
+                          .map(type => type.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase()))
+                          .join(", ") : 'Not specified'}
                       </p>
                     </div>
                     <div className="space-y-1">
                       <p className="text-muted-premium font-medium">Budget</p>
-                      <p className="font-medium text-foreground">{backendBudgetBandLabels[listing.budgetBandId] || listing.budgetBandId}</p>
+                      <p className="font-medium text-foreground">
+                        {listing.offerings && Object.values(listing.offerings).some(o => o?.startingPrice) 
+                          ? `From ₹${Math.min(...Object.values(listing.offerings)
+                              .filter(o => o?.startingPrice)
+                              .map(o => o.startingPrice))}`
+                          : 'On Enquiry'}
+                      </p>
                     </div>
                   </div>
                   
                   <div className="pt-2 border-t border-border/50">
                     <p className="text-xs text-muted-premium">
-                      Updated: {new Date(listing.updatedAt).toLocaleDateString("en-IN", {
+                      Updated: {listing.updatedAt ? new Date(listing.updatedAt).toLocaleDateString("en-IN", {
                         day: "numeric",
                         month: "short",
                         year: "numeric",
-                      })}
+                      }) : 'Unknown'}
                     </p>
                   </div>
                   
                   {listing.verificationStatus === "NEEDS_INFO" && listing.adminNotes && (
-                    <AdminNotesPanel draft={listing} />
+                    <AdminNotesPanel listing={listing} />
                   )}
                   
                   <div className="flex gap-2 pt-2">
@@ -155,22 +162,31 @@ export function PartnerListings() {
                     <TableCell className="text-muted-premium">{listing.locality}</TableCell>
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
-                        {listing.workspaceTypes.slice(0, 2).map((type) => (
-                          <span key={type} className="text-xs bg-muted/50 px-2 py-0.5 rounded-full border border-border/50">
-                            {backendWorkspaceTypeLabels[type]?.split(" ")[0] || type}
-                          </span>
-                        ))}
+                        {listing.offerings ? Object.keys(listing.offerings)
+                          .filter(key => listing.offerings[key]?.enabled)
+                          .slice(0, 2)
+                          .map((type) => (
+                            <span key={type} className="text-xs bg-muted/50 px-2 py-0.5 rounded-full border border-border/50">
+                              {type.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                            </span>
+                          )) : []}
                       </div>
                     </TableCell>
-                    <TableCell className="font-medium">{backendBudgetBandLabels[listing.budgetBandId] || listing.budgetBandId}</TableCell>
+                    <TableCell className="font-medium">
+                      {listing.offerings && Object.values(listing.offerings).some(o => o?.startingPrice) 
+                        ? `From ₹${Math.min(...Object.values(listing.offerings)
+                            .filter(o => o?.startingPrice)
+                            .map(o => o.startingPrice))}`
+                        : 'On Enquiry'}
+                    </TableCell>
                     <TableCell>
                       <StatusBadge status={listing.verificationStatus} />
                     </TableCell>
                     <TableCell className="text-muted-premium text-sm">
-                      {new Date(listing.updatedAt).toLocaleDateString("en-IN", {
+                      {listing.updatedAt ? new Date(listing.updatedAt).toLocaleDateString("en-IN", {
                         day: "numeric",
                         month: "short",
-                      })}
+                      }) : 'Unknown'}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">

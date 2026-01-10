@@ -106,7 +106,7 @@ export interface EnhancedListing {
   overview: string;
   
   // Status and verification
-  status: 'draft' | 'submitted' | 'approved' | 'rejected' | 'published';
+  status: 'pending' | 'approved' | 'rejected';
   verificationStatus: VerificationStatus;
   
   // Offerings (5 types)
@@ -145,7 +145,6 @@ export interface EnhancedListing {
 export interface ListingBuilderState {
   step: 'basic-info' | 'offerings' | 'location';
   data: ListingFormData;
-  isDraft: boolean;
   validationErrors: Record<string, string>;
 }
 

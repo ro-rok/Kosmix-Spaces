@@ -160,13 +160,13 @@ class PremiumWorkspaceListing(TimestampMixin):
     
     # Trust and verification
     verificationStatus: Literal[
-        "DRAFT",
-        "SUBMITTED", 
+        "PENDING",
+        "APPROVED",
+        "REJECTED",
         "PENDING_REVIEW",
         "NEEDS_INFO",
-        "APPROVED_VERIFIED",
-        "REJECTED"
-    ] = "DRAFT"
+        "APPROVED_VERIFIED"
+    ] = "PENDING"
     
     verificationChecks: Optional[VerificationChecks] = None
     adminNotes: Optional[str] = None
@@ -300,3 +300,13 @@ class PhotoUploadResponse(BaseModel):
     format: str
     offeringType: OfferingType
     order: int
+
+
+class TempPhotoUploadResponse(BaseModel):
+    """Response model for temporary photo upload."""
+    url: str
+    publicId: str
+    width: int
+    height: int
+    bytes: int
+    format: str

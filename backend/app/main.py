@@ -21,6 +21,7 @@ from app.routers import (
     partner_listings,
     premium_listings,
     admin_listings, 
+    admin_premium_listings,
     admin_partners, 
     leads, 
     visits, 
@@ -49,7 +50,7 @@ async def lifespan(app: FastAPI):
     # Initialize database optimization
     try:
         from app.db.mongodb import get_database
-        db = await get_database()
+        db = get_database()  # Remove await - get_database() is not async
         optimizer = DatabaseOptimizer(db)
         await optimizer.create_indexes()
     except Exception as e:
@@ -175,6 +176,7 @@ app.include_router(partner_listings.router, prefix="/api/partner/legacy", tags=[
 
 # Admin routes
 app.include_router(admin_listings.router, prefix="/api/admin", tags=["Admin Listings"])
+app.include_router(admin_premium_listings.router, prefix="/api/admin", tags=["Admin Premium Listings"])
 app.include_router(admin_partners.router, prefix="/api/admin", tags=["Admin Partners"])
 app.include_router(leads.router, prefix="/api/admin", tags=["Admin Leads"])
 app.include_router(visits.router, prefix="/api/admin", tags=["Admin Visits"])

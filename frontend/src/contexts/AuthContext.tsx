@@ -27,7 +27,7 @@ export interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   userRole: UserRole;
-  login: (token: string, userType: UserRole) => void;
+  login: (token: string, userType: UserRole) => Promise<void>;
   logout: () => void;
   refreshSession: () => Promise<void>;
   isSessionExpired: boolean;
@@ -70,6 +70,7 @@ interface AuthProviderProps {
 
 export function AuthProvider({ children }: AuthProviderProps) {
   const [isSessionExpired, setIsSessionExpired] = useState(false);
+  const [forceUpdate, setForceUpdate] = useState(0); // Force re-render trigger
   const queryClient = useQueryClient();
   
   // Initialize auth state from localStorage
@@ -85,7 +86,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // Session hydration queries
   const partnerQuery = useQuery({
-    queryKey: ['auth', 'partner'],
+    queryKey: ['auth', 'partner', forceUpdate],
     queryFn: async () => {
       const data = await api.auth.getPartnerMe();
       return {
@@ -111,7 +112,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   });
 
   const adminQuery = useQuery({
-    queryKey: ['auth', 'admin'],
+    queryKey: ['auth', 'admin', forceUpdate],
     queryFn: async () => {
       const data = await api.auth.getAdminMe();
       return {
@@ -158,12 +159,25 @@ export function AuthProvider({ children }: AuthProviderProps) {
   };
 
   // Login function
-  const login = (token: string, userType: UserRole) => {
+  const login = async (token: string, userType: UserRole) => {
     setAuthData(token, userType);
     setIsSessionExpired(false);
     
-    // Invalidate and refetch auth queries
+    // Force re-render to pick up new localStorage values
+    setForceUpdate(prev => prev + 1);
+    
+    // Small delay to ensure localStorage is updated
+    await new Promise(resolve => setTimeout(resolve, 50));
+    
+    // Invalidate and refetch auth queries immediately
     queryClient.invalidateQueries({ queryKey: ['auth'] });
+    
+    // Force refetch the appropriate query and wait for it to complete
+    if (userType === 'partner') {
+      await queryClient.refetchQueries({ queryKey: ['auth', 'partner'] });
+    } else if (userType === 'admin') {
+      await queryClient.refetchQueries({ queryKey: ['auth', 'admin'] });
+    }
   };
 
   // Logout function

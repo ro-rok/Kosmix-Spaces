@@ -2,6 +2,8 @@
  * Performance optimization utilities for the premium workspace platform
  */
 
+import React from 'react';
+
 // Image lazy loading with progressive enhancement
 export interface LazyImageOptions {
   threshold?: number;

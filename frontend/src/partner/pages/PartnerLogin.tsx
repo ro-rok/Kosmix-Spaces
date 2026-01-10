@@ -50,8 +50,10 @@ export function PartnerLogin() {
       // Use the new auth context login method
       login(response.accessToken, 'partner');
       
-      toast.success("Login successful!");
-      navigate("/partner");
+      toast.success("Login successful! Redirecting...");
+      
+      // Navigate immediately - the PartnerRoute will handle the loading state
+      navigate("/partner", { replace: true });
     } catch (error: any) {
       toast.error(error.message || "Login failed");
     } finally {

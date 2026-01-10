@@ -9,7 +9,8 @@ from app.models.premium_listing import (
     PremiumListingUpdate,
     OfferingUpdateRequest,
     OfferingType,
-    PhotoUploadResponse
+    PhotoUploadResponse,
+    TempPhotoUploadResponse
 )
 from app.services.premium_listing_service import (
     create_premium_listing,
@@ -33,7 +34,8 @@ from app.services.cloudinary_service import (
     upload_offering_photo,
     upload_hero_photo,
     validate_image_file,
-    get_compression_stats
+    get_compression_stats,
+    upload_temporary_photo
 )
 from app.core.errors import ValidationError, NotFoundError
 
@@ -143,7 +145,8 @@ async def upload_offering_photo(
     # Enhanced file validation
     is_valid, error_message = validate_image_file(file)
     if not is_valid:
-        raise ValidationError(error_message)
+        error_msg = error_message or "File validation failed"
+        raise ValidationError(error_msg)
     
     try:
         # Upload with offering-specific compression
@@ -164,6 +167,9 @@ async def upload_offering_photo(
         
         return PhotoUploadResponse(**photo)
         
+    except ValidationError:
+        # Re-raise validation errors as-is
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Photo upload failed: {str(e)}")
 
@@ -180,7 +186,8 @@ async def upload_hero_photo(
     # Enhanced file validation
     is_valid, error_message = validate_image_file(file)
     if not is_valid:
-        raise ValidationError(error_message)
+        error_msg = error_message or "File validation failed"
+        raise ValidationError(error_msg)
     
     try:
         # Upload with hero-specific compression (higher quality)
@@ -199,6 +206,9 @@ async def upload_hero_photo(
         
         return PhotoUploadResponse(**photo)
         
+    except ValidationError:
+        # Re-raise validation errors as-is
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Hero photo upload failed: {str(e)}")
 
@@ -491,19 +501,19 @@ async def reorder_photos(
     return listing_to_public_response(listing)
 
 
-@router.post("/listings/{listing_id}/save-draft")
-async def save_listing_draft(
+@router.post("/listings/{listing_id}/save")
+async def save_listing(
     listing_id: str,
     current_user: dict = Depends(require_partner)
 ):
-    """Save listing as draft."""
+    """Save listing (sets status to pending)."""
     partner_id = current_user["partnerId"]
     
     # Get listing to verify ownership
     listing = await get_premium_listing(listing_id, partner_id)
     
-    # Update status to draft if not already
-    if listing.get("verificationStatus") != "DRAFT":
+    # Update status to pending if not already approved
+    if listing.get("verificationStatus") not in ["APPROVED", "APPROVED_VERIFIED"]:
         from app.db.mongodb import get_database
         from datetime import datetime
         db = get_database()
@@ -511,7 +521,7 @@ async def save_listing_draft(
             {"_id": ObjectId(listing_id)},
             {
                 "$set": {
-                    "verificationStatus": "DRAFT",
+                    "verificationStatus": "PENDING",
                     "updatedAt": datetime.utcnow()
                 }
             }
@@ -519,5 +529,141 @@ async def save_listing_draft(
     
     return {
         "ok": True,
-        "message": "Draft saved successfully"
+        "message": "Listing saved successfully"
     }
+
+
+@router.post("/temp-photos", response_model=TempPhotoUploadResponse)
+async def upload_temporary_photo(
+    file: UploadFile = File(...),
+    offering_type: Optional[str] = Form(None),
+    current_user: dict = Depends(require_partner)
+):
+    """Upload photo to temporary storage without requiring listing ID."""
+    partner_id = current_user["partnerId"]
+    
+    # Debug logging
+    print(f"DEBUG: Upload request from partner {partner_id}")
+    print(f"DEBUG: File info - name: {file.filename}, type: {file.content_type}, size: {file.size}")
+    print(f"DEBUG: Offering type: {offering_type}")
+    
+    # Enhanced file validation
+    is_valid, error_message = validate_image_file(file)
+    print(f"DEBUG: Validation result - valid: {is_valid}, error: {error_message}")
+    
+    if not is_valid:
+        error_msg = error_message or "File validation failed"
+        print(f"DEBUG: Raising ValidationError: {error_msg}")
+        raise ValidationError(error_msg)
+    
+    try:
+        from app.services.cloudinary_service import upload_temporary_photo
+        
+        # Upload to temporary folder
+        upload_result = await upload_temporary_photo(
+            file=file,
+            partner_id=partner_id,
+            offering_type=offering_type,
+            tags=["temp-upload", f"partner:{partner_id}"]
+        )
+        
+        return TempPhotoUploadResponse(**upload_result)
+        
+    except ValidationError:
+        # Re-raise validation errors as-is
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Temporary photo upload failed: {str(e)}")
+
+
+@router.post("/listings/{listing_id}/move-temp-photos")
+async def move_temporary_photos(
+    listing_id: str,
+    temp_photos: List[str],  # List of temporary public IDs
+    offering_type: Optional[str] = None,
+    current_user: dict = Depends(require_partner)
+):
+    """Move temporary photos to permanent listing folder."""
+    partner_id = current_user["partnerId"]
+    
+    # Verify listing ownership
+    listing = await get_premium_listing(listing_id, partner_id)
+    if not listing:
+        raise HTTPException(status_code=404, detail="Listing not found")
+    
+    try:
+        from app.services.cloudinary_service import move_temporary_photos_to_listing
+        
+        # Move photos to permanent location
+        moved_photos = await move_temporary_photos_to_listing(
+            partner_id=partner_id,
+            listing_id=listing_id,
+            temp_public_ids=temp_photos,
+            offering_type=offering_type
+        )
+        
+        # Add photos to listing in database
+        if offering_type and moved_photos:
+            from app.services.premium_listing_service import add_offering_photo
+            
+            for photo_data in moved_photos:
+                await add_offering_photo(
+                    listing_id=listing_id,
+                    partner_id=partner_id,
+                    offering_type=offering_type,
+                    photo_data=photo_data
+                )
+        
+        return {
+            "ok": True,
+            "moved_photos": moved_photos,
+            "message": f"Moved {len(moved_photos)} photos to listing"
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to move photos: {str(e)}")
+
+
+@router.delete("/temp-photos/{public_id}")
+async def delete_temporary_photo(
+    public_id: str,
+    current_user: dict = Depends(require_partner)
+):
+    """Delete temporary photo."""
+    partner_id = current_user["partnerId"]
+    
+    # Verify the photo belongs to this partner (check if public_id contains partner folder)
+    if f"temp/{partner_id}" not in public_id:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this photo")
+    
+    try:
+        success = await delete_image(public_id)
+        if not success:
+            raise HTTPException(status_code=404, detail="Photo not found")
+        
+        return {"ok": True, "message": "Temporary photo deleted"}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to delete photo: {str(e)}")
+
+
+@router.post("/cleanup-temp-photos")
+async def cleanup_old_temporary_photos(
+    max_age_hours: int = 24,
+    current_user: dict = Depends(require_partner)
+):
+    """Clean up old temporary photos for current partner."""
+    partner_id = current_user["partnerId"]
+    
+    try:
+        from app.services.cloudinary_service import cleanup_temporary_photos
+        
+        success = await cleanup_temporary_photos(partner_id, max_age_hours)
+        
+        return {
+            "ok": success,
+            "message": f"Cleaned up temporary photos older than {max_age_hours} hours"
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Cleanup failed: {str(e)}")

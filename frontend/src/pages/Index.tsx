@@ -33,9 +33,16 @@ export default function Index() {
     pageSize: 6,
   });
 
-  const localities = localitiesData || [];
+  const localities = localitiesData?.localities || [];
+  const localitiesByCity = localitiesData?.by_city || {};
   const popularLocalities = localities.filter(l => l.popular);
   const featuredListings = featuredListingsData?.items || [];
+  
+  // Available cities
+  const cities = ["Delhi", "Gurugram", "Noida"];
+  
+  // State for city selection
+  const [selectedCity, setSelectedCity] = useState("");
 
   const whatsappLink = buildWhatsAppLink({
     locality: selectedLocality,
@@ -105,19 +112,50 @@ const testimonials = [
             {/* Search Form */}
             <div className="mt-8 mx-auto max-w-3xl">
               <div className="rounded-xl border border-border bg-card p-4 shadow-lg md:p-6">
-                <div className="grid gap-4 md:grid-cols-3">
-                  {/* Locality */}
+                <div className="grid gap-4 md:grid-cols-4">
+                  {/* City */}
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block text-left">
+                      City
+                    </label>
+                    <Select value={selectedCity} onValueChange={(value) => {
+                      setSelectedCity(value);
+                      setSelectedLocality(""); // Clear locality when city changes
+                    }}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select city" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {cities.map((city) => (
+                          <SelectItem key={city} value={city}>
+                            {city}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Locality - Only show if city is selected */}
                   <div>
                     <label className="text-xs font-medium text-muted-foreground mb-1 block text-left">
                       Locality
                     </label>
-                    <Select value={selectedLocality} onValueChange={setSelectedLocality}>
+                    <Select 
+                      value={selectedLocality} 
+                      onValueChange={setSelectedLocality}
+                      disabled={!selectedCity}
+                    >
                       <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select area" />
+                        <SelectValue placeholder={selectedCity ? `Select area in ${selectedCity}` : "Select city first"} />
                       </SelectTrigger>
                       <SelectContent>
-                        {localities.map((loc) => (
-                          <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
+                        {selectedCity && localitiesByCity[selectedCity]?.map((loc) => (
+                          <SelectItem key={loc.id} value={loc.id}>
+                            {loc.name}
+                            {loc.popular && (
+                              <span className="ml-2 text-xs text-primary">Popular</span>
+                            )}
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>

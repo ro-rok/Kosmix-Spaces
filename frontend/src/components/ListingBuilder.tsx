@@ -11,14 +11,12 @@ import { cn } from "@/lib/utils";
 // Step components
 import { BasicInfoStep } from "./listing-builder/BasicInfoStep";
 import { OfferingsStep } from "./listing-builder/OfferingsStep";
-import { LocationStep } from "./listing-builder/LocationStep";
 
 // Types and utilities
 import { 
   ListingBuilderState, 
   ListingFormData, 
   BasicInfoData, 
-  LocationData,
   OfferingType,
   OfferingFormData,
   VerificationStatus
@@ -35,7 +33,6 @@ interface ListingBuilderProps {
 const steps = [
   { id: 'basic-info', title: 'Basic Info', description: 'Name, locality, and overview' },
   { id: 'offerings', title: 'Offerings', description: 'Workspace types and photos' },
-  { id: 'location', title: 'Location', description: 'Access and amenities' },
 ] as const;
 
 type StepId = typeof steps[number]['id'];
@@ -63,7 +60,6 @@ export function ListingBuilder({ listingId, isEdit = false }: ListingBuilderProp
       city: '',
     },
   });
-  const [isDraft, setIsDraft] = useState(true);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -75,6 +71,21 @@ export function ListingBuilder({ listingId, isEdit = false }: ListingBuilderProp
   // Load existing listing data if editing
   useEffect(() => {
     if (isEdit && existingListing) {
+      // Map backend boolean fields to amenities
+      const baseAmenities = existingListing.amenities || [];
+      const derivedAmenities = [...baseAmenities];
+      
+      // Add amenities based on backend boolean fields
+      if (existingListing.nearMetro && !derivedAmenities.includes('Near Metro Station')) {
+        derivedAmenities.push('Near Metro Station');
+      }
+      if (existingListing.parking === 'AVAILABLE' && !derivedAmenities.includes('Parking')) {
+        derivedAmenities.push('Parking');
+      }
+      if (existingListing.powerBackup && !derivedAmenities.includes('Power Backup')) {
+        derivedAmenities.push('Power Backup');
+      }
+
       // Map backend listing to form data
       setFormData({
         basicInfo: {
@@ -82,7 +93,7 @@ export function ListingBuilder({ listingId, isEdit = false }: ListingBuilderProp
           locality: existingListing.locality || '',
           city: existingListing.city || 'Delhi',
           overview: existingListing.overview || '',
-          amenities: existingListing.amenities || [],
+          amenities: derivedAmenities,
           accessHours: existingListing.accessHours || '9 AM - 9 PM',
           weekendAccess: existingListing.weekendAccess || false,
         },
@@ -93,7 +104,6 @@ export function ListingBuilder({ listingId, isEdit = false }: ListingBuilderProp
           approximateCoordinates: existingListing.location?.approximateCoordinates,
         },
       });
-      setIsDraft(existingListing.status === 'draft');
     }
   }, [isEdit, existingListing]);
 
@@ -159,13 +169,6 @@ export function ListingBuilder({ listingId, isEdit = false }: ListingBuilderProp
     }));
   };
 
-  const updateLocation = (updates: Partial<LocationData>) => {
-    setFormData(prev => ({
-      ...prev,
-      location: { ...prev.location, ...updates },
-    }));
-  };
-
   // Validation
   const validateCurrentStep = (): boolean => {
     const errors: Record<string, string> = {};
@@ -187,19 +190,13 @@ export function ListingBuilder({ listingId, isEdit = false }: ListingBuilderProp
         break;
 
       case 'offerings':
-        const offeringsValidation = validateOfferingsForSubmission(formData.offerings);
-        if (!offeringsValidation.isValid) {
-          errors.offerings = offeringsValidation.errors.join(', ');
+        // Check if at least one offering is enabled
+        const enabledOfferings = Object.values(formData.offerings).filter(o => o.enabled);
+        if (enabledOfferings.length === 0) {
+          errors.offerings = 'At least one offering must be enabled';
         }
-        break;
-
-      case 'location':
-        if (!formData.location.locality.trim()) {
-          errors.locality = 'Locality is required';
-        }
-        if (!formData.location.city.trim()) {
-          errors.city = 'City is required';
-        }
+        // Note: Photo validation is handled by OfferingsStep component which includes temp photos
+        // We don't validate photos here since temp photos are stored in OfferingsStep's local state
         break;
     }
 
@@ -207,23 +204,23 @@ export function ListingBuilder({ listingId, isEdit = false }: ListingBuilderProp
     return Object.keys(errors).length === 0;
   };
 
-  // Save as draft
-  const saveDraft = async () => {
+  // Save listing (pending status)
+  const saveListing = async () => {
     setIsSubmitting(true);
     try {
-      const listingData = mapFormDataToBackend(formData, true);
+      const listingData = mapFormDataToBackend(formData);
       
       if (isEdit && listingId) {
         await updateListingMutation.mutateAsync({ listingId, data: listingData });
-        toast.success('Draft saved successfully');
+        toast.success('Listing saved successfully');
       } else {
         const result = await createListingMutation.mutateAsync(listingData);
-        toast.success('Draft saved successfully');
+        toast.success('Listing saved successfully');
         // Navigate to edit mode with the new listing ID
         navigate(`/partner/listings/${result.listingId}?edit=true&step=${currentStep}`);
       }
     } catch (error: any) {
-      toast.error(`Failed to save draft: ${error.message}`);
+      toast.error(`Failed to save listing: ${error.message}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -247,7 +244,7 @@ export function ListingBuilder({ listingId, isEdit = false }: ListingBuilderProp
 
     setIsSubmitting(true);
     try {
-      const listingData = mapFormDataToBackend(formData, false);
+      const listingData = mapFormDataToBackend(formData);
       
       if (isEdit && listingId) {
         await updateListingMutation.mutateAsync({ listingId, data: listingData });
@@ -282,7 +279,13 @@ export function ListingBuilder({ listingId, isEdit = false }: ListingBuilderProp
   };
 
   // Map form data to backend format
-  const mapFormDataToBackend = (data: ListingFormData, isDraft: boolean) => {
+  const mapFormDataToBackend = (data: ListingFormData) => {
+    // Derive boolean fields from amenities
+    const amenities = data.basicInfo.amenities || [];
+    const nearMetro = amenities.includes('Near Metro Station');
+    const parking = amenities.includes('Parking') ? 'AVAILABLE' : 'NONE';
+    const powerBackup = amenities.includes('Power Backup');
+
     // This is a simplified mapping - actual implementation depends on backend structure
     return {
       displayName: data.basicInfo.displayName,
@@ -294,7 +297,7 @@ export function ListingBuilder({ listingId, isEdit = false }: ListingBuilderProp
       weekendAccess: data.basicInfo.weekendAccess,
       offerings: data.offerings,
       location: data.location,
-      status: isDraft ? 'draft' : 'submitted',
+      status: 'pending',
       // Add other required backend fields
       brandHidden: false,
       workspaceTypes: ['DEDICATED_DESKS'], // Default - should be derived from offerings
@@ -303,9 +306,9 @@ export function ListingBuilder({ listingId, isEdit = false }: ListingBuilderProp
       availabilityStatus: 'AVAILABLE',
       budgetBandId: '10k-20k',
       budgetDisplayText: 'Contact for pricing',
-      nearMetro: false,
-      parking: 'NONE',
-      powerBackup: false,
+      nearMetro,
+      parking,
+      powerBackup,
       gstInvoiceAvailable: false,
       meetingRoomsCount: null,
       meetingRoomsAddonOnly: true,
@@ -342,10 +345,10 @@ export function ListingBuilder({ listingId, isEdit = false }: ListingBuilderProp
     );
   };
 
-  // Check if fields should be locked (submitted but not needs info)
+  // Check if fields should be locked (approved listings can't be edited)
   const isFieldsLocked = isEdit && existingListing && 
     existingListing.verificationStatus !== 'NEEDS_INFO' && 
-    existingListing.status !== 'draft';
+    existingListing.status === 'approved';
 
   if (isLoadingListing) {
     return (
@@ -447,15 +450,7 @@ export function ListingBuilder({ listingId, isEdit = false }: ListingBuilderProp
               errors={validationErrors}
               disabled={isFieldsLocked}
               listingId={listingId}
-            />
-          )}
-          
-          {currentStep === 'location' && (
-            <LocationStep
-              data={formData.location}
-              onChange={updateLocation}
-              errors={validationErrors}
-              disabled={isFieldsLocked}
+              onSaveListing={saveListing}
             />
           )}
 
@@ -487,12 +482,12 @@ export function ListingBuilder({ listingId, isEdit = false }: ListingBuilderProp
             <div className="flex gap-2">
               <Button
                 variant="outline"
-                onClick={saveDraft}
+                onClick={saveListing}
                 disabled={isSubmitting || isFieldsLocked}
                 className="flex-1 sm:flex-none"
               >
                 <Save className="h-4 w-4" />
-                Save Draft
+                Save
               </Button>
 
               {isLastStep && (

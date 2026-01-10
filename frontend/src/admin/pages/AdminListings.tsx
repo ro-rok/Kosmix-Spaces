@@ -5,7 +5,6 @@ import {
   CheckCircle, 
   AlertCircle, 
   XCircle, 
-  Clock,
   Filter,
   Search,
   MoreHorizontal,
@@ -33,12 +32,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useAdminListings, useApproveListing, useNeedsInfoListing, useRejectListing } from "@/hooks/useAuth";
+import { useAdminPremiumListings, useApprovePremiumListing, useNeedsInfoPremiumListing, useRejectPremiumListing } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
 
 const statusOptions = [
   { value: "all", label: "All Statuses" },
+  { value: "DRAFT", label: "Draft" },
   { value: "PENDING_REVIEW", label: "Pending Review" },
   { value: "NEEDS_INFO", label: "Needs Info" },
   { value: "APPROVED_VERIFIED", label: "Approved" },
@@ -52,15 +51,20 @@ export function AdminListings() {
   const [page, setPage] = useState(1);
   const pageSize = 20;
 
-  const { data: listings, isLoading, error } = useAdminListings({
+  // Fetch premium listings from API
+  const { 
+    data: listings, 
+    isLoading, 
+    error 
+  } = useAdminPremiumListings({
     status: statusFilter === "all" ? undefined : statusFilter,
     page,
-    pageSize,
+    pageSize
   });
 
-  const approveMutation = useApproveListing();
-  const needsInfoMutation = useNeedsInfoListing();
-  const rejectMutation = useRejectListing();
+  const approveMutation = useApprovePremiumListing();
+  const needsInfoMutation = useNeedsInfoPremiumListing();
+  const rejectMutation = useRejectPremiumListing();
 
   const handleApprove = async (listingId: string, displayName: string) => {
     try {
@@ -98,23 +102,32 @@ export function AdminListings() {
     }
   };
 
-  // Filter listings by search query
-  const filteredListings = listings?.filter(listing =>
-    listing.displayName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    listing.locality.toLowerCase().includes(searchQuery.toLowerCase())
-  ) || [];
+  // Filter listings by search query (client-side filtering for now)
+  const filteredListings = (listings || []).filter(listing => {
+    const matchesSearch = !searchQuery || 
+      listing.displayName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      listing.locality?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      listing.city?.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    return matchesSearch;
+  });
+
+  // For now, since API returns array directly, we'll handle pagination client-side
+  const totalCount = filteredListings.length;
+  const totalPages = Math.ceil(totalCount / pageSize);
+  const paginatedListings = filteredListings.slice((page - 1) * pageSize, page * pageSize);
 
   if (isLoading) {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="font-display text-2xl font-bold text-foreground">Listings Management</h1>
-          <p className="text-muted-foreground">Manage and verify workspace listings</p>
+          <h1 className="font-display text-2xl font-bold text-foreground">Premium Listings Management</h1>
+          <p className="text-muted-foreground">Manage and verify premium workspace listings</p>
         </div>
         <Card>
           <CardContent className="pt-6">
             <div className="text-center py-8">
-              <p className="text-muted-foreground">Loading listings...</p>
+              <p className="text-muted-foreground">Loading premium listings...</p>
             </div>
           </CardContent>
         </Card>
@@ -126,14 +139,14 @@ export function AdminListings() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="font-display text-2xl font-bold text-foreground">Listings Management</h1>
-          <p className="text-muted-foreground">Manage and verify workspace listings</p>
+          <h1 className="font-display text-2xl font-bold text-foreground">Premium Listings Management</h1>
+          <p className="text-muted-foreground">Manage and verify premium workspace listings</p>
         </div>
         <Card>
           <CardContent className="pt-6">
             <div className="text-center py-8 text-destructive">
               <AlertCircle className="h-8 w-8 mx-auto mb-2" />
-              <p>Failed to load listings</p>
+              <p>Failed to load premium listings</p>
             </div>
           </CardContent>
         </Card>
@@ -144,8 +157,8 @@ export function AdminListings() {
   return (
     <div className="space-y-6">
       <div className="animate-fade-in">
-        <h1 className="font-display text-2xl font-bold text-foreground">Listings Management</h1>
-        <p className="text-muted-premium">Manage and verify workspace listings</p>
+        <h1 className="font-display text-2xl font-bold text-foreground">Premium Listings Management</h1>
+        <p className="text-muted-premium">Manage and verify premium workspace listings</p>
       </div>
 
       {/* Filters */}
@@ -191,11 +204,11 @@ export function AdminListings() {
       <div className="card-premium animate-slide-up" style={{ animationDelay: '0.1s' }}>
         <CardHeader>
           <CardTitle className="font-display">
-            Workspace Listings ({filteredListings.length})
+            Premium Workspace Listings ({totalCount})
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {filteredListings.length === 0 ? (
+          {paginatedListings.length === 0 ? (
             <div className="text-center py-8 text-muted-premium">
               <FileText className="h-8 w-8 mx-auto mb-2" />
               <p>No listings found</p>
@@ -204,7 +217,7 @@ export function AdminListings() {
             <>
               {/* Mobile Card View */}
               <div className="block lg:hidden space-y-4">
-                {filteredListings.map((listing, index) => (
+                {paginatedListings.map((listing, index) => (
                   <div key={listing.listingId} className="card-premium p-4 space-y-3 animate-fade-in" style={{ animationDelay: `${index * 0.05}s` }}>
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
@@ -226,7 +239,7 @@ export function AdminListings() {
                     </div>
                     
                     <div className="flex flex-wrap gap-1">
-                      {listing.workspaceTypes.map((type) => (
+                      {(listing.workspaceTypes || []).map((type) => (
                         <Badge key={type} variant="secondary" className="text-xs">
                           {type.replace('_', ' ')}
                         </Badge>
@@ -240,10 +253,10 @@ export function AdminListings() {
                     </div>
                     
                     <div className="flex gap-2">
-                      <Button asChild variant="outline" size="sm" className="flex-1 btn-premium">
-                        <Link to={`/admin/listings/${listing.listingId}`}>
+                      <Button variant="outline" size="sm" className="flex-1 btn-premium" asChild>
+                        <Link to={`/admin/listings/${listing.slugData?.slug || listing.slug || listing.listingId}`}>
                           <Eye className="h-4 w-4" />
-                          View
+                          View Details
                         </Link>
                       </Button>
                       
@@ -289,13 +302,13 @@ export function AdminListings() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredListings.map((listing, index) => (
+                    {paginatedListings.map((listing, index) => (
                       <TableRow key={listing.listingId} className="hover:bg-muted/30 transition-colors animate-fade-in" style={{ animationDelay: `${index * 0.02}s` }}>
                         <TableCell>
                           <div className="space-y-1">
                             <div className="font-medium font-display">{listing.displayName}</div>
                             <div className="flex flex-wrap gap-1">
-                              {listing.workspaceTypes.map((type) => (
+                              {(listing.workspaceTypes || []).map((type) => (
                                 <Badge key={type} variant="secondary" className="text-xs">
                                   {type.replace('_', ' ')}
                                 </Badge>
@@ -335,7 +348,7 @@ export function AdminListings() {
                             <DropdownMenuContent align="end" className="glass">
                               <DropdownMenuLabel>Actions</DropdownMenuLabel>
                               <DropdownMenuItem asChild>
-                                <Link to={`/admin/listings/${listing.listingId}`}>
+                                <Link to={`/admin/listings/${listing.slugData?.slug || listing.slug || listing.listingId}`}>
                                   <Eye className="h-4 w-4" />
                                   View Details
                                 </Link>
@@ -398,6 +411,57 @@ export function AdminListings() {
           )}
         </CardContent>
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="card-premium animate-slide-up" style={{ animationDelay: '0.2s' }}>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-muted-premium">
+                Showing {((page - 1) * pageSize) + 1} to {Math.min(page * pageSize, totalCount)} of {totalCount} listings
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage(page - 1)}
+                  disabled={page <= 1}
+                  className="btn-premium"
+                >
+                  Previous
+                </Button>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    const pageNum = Math.max(1, Math.min(totalPages - 4, page - 2)) + i;
+                    if (pageNum > totalPages) return null;
+                    
+                    return (
+                      <Button
+                        key={pageNum}
+                        variant={pageNum === page ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setPage(pageNum)}
+                        className="btn-premium w-8"
+                      >
+                        {pageNum}
+                      </Button>
+                    );
+                  })}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage(page + 1)}
+                  disabled={page >= totalPages}
+                  className="btn-premium"
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </div>
+      )}
     </div>
   );
 }

@@ -8,8 +8,8 @@ from app.models.analytics import (
     AnalyticsEventCreate, AnalyticsEventBatch, AnalyticsSummary, 
     PartnerAnalytics, ListingPerformance
 )
-from app.services.analytics_service import analytics_service
-from app.core.security import verify_admin_token, verify_partner_token, get_current_partner
+from app.services.analytics_service import get_analytics_service
+from app.core.security import verify_admin_token, verify_partner_token, get_current_partner, get_current_user
 from app.core.errors import AppError
 
 router = APIRouter()
@@ -27,6 +27,7 @@ async def track_events(
     No authentication required as this is used for anonymous user tracking.
     """
     try:
+        analytics_service = get_analytics_service()
         events = await analytics_service.track_events_batch(batch.events)
         return {
             "success": True,
@@ -51,6 +52,7 @@ async def track_single_event(
     No authentication required for anonymous tracking.
     """
     try:
+        analytics_service = get_analytics_service()
         tracked_event = await analytics_service.track_event(event)
         return {
             "success": True,
@@ -66,7 +68,7 @@ async def track_single_event(
 
 @router.get("/admin", response_model=AnalyticsSummary)
 async def get_admin_analytics(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
+    admin_data: dict = Depends(verify_admin_token),
     start_date: Optional[datetime] = Query(None, description="Start date for analytics (ISO format)"),
     end_date: Optional[datetime] = Query(None, description="End date for analytics (ISO format)")
 ):
@@ -76,9 +78,6 @@ async def get_admin_analytics(
     Requires admin authentication.
     Returns aggregated metrics including views, enquiries, conversions, and top performers.
     """
-    # Verify admin token
-    admin_data = await verify_admin_token(credentials.credentials)
-    
     try:
         # Default to last 30 days if no dates provided
         if not start_date:
@@ -86,6 +85,7 @@ async def get_admin_analytics(
         if not end_date:
             end_date = datetime.now(timezone.utc)
         
+        analytics_service = get_analytics_service()
         analytics = await analytics_service.get_admin_analytics(start_date, end_date)
         return analytics
     except Exception as e:
@@ -98,7 +98,7 @@ async def get_admin_analytics(
 @router.get("/partner/{partner_id}", response_model=PartnerAnalytics)
 async def get_partner_analytics(
     partner_id: str,
-    credentials: HTTPAuthorizationCredentials = Depends(security),
+    current_user: dict = Depends(get_current_user),
     start_date: Optional[datetime] = Query(None, description="Start date for analytics (ISO format)"),
     end_date: Optional[datetime] = Query(None, description="End date for analytics (ISO format)")
 ):
@@ -109,20 +109,20 @@ async def get_partner_analytics(
     Admins can access any partner's analytics.
     """
     try:
-        # Try partner authentication first
-        current_partner = None
-        try:
-            current_partner = await get_current_partner(credentials.credentials)
-            # Partners can only access their own analytics
-            if current_partner["partnerId"] != partner_id:
+        # Check if user is admin or the partner themselves
+        if current_user.get("role") == "PARTNER":
+            if current_user.get("partnerId") != partner_id:
                 raise AppError(
                     status_code=status.HTTP_403_FORBIDDEN,
                     code="ACCESS_DENIED",
                     message="Partners can only access their own analytics"
                 )
-        except AppError:
-            # If partner auth fails, try admin auth
-            await verify_admin_token(credentials.credentials)
+        elif current_user.get("role") != "ADMIN":
+            raise AppError(
+                status_code=status.HTTP_403_FORBIDDEN,
+                code="ACCESS_DENIED",
+                message="Admin or partner access required"
+            )
         
         # Default to last 30 days if no dates provided
         if not start_date:
@@ -130,6 +130,7 @@ async def get_partner_analytics(
         if not end_date:
             end_date = datetime.now(timezone.utc)
         
+        analytics_service = get_analytics_service()
         analytics = await analytics_service.get_partner_analytics(partner_id, start_date, end_date)
         return analytics
     except AppError:
@@ -144,7 +145,7 @@ async def get_partner_analytics(
 @router.get("/listing/{listing_id}", response_model=ListingPerformance)
 async def get_listing_performance(
     listing_id: str,
-    credentials: HTTPAuthorizationCredentials = Depends(security),
+    current_user: dict = Depends(get_current_user),
     start_date: Optional[datetime] = Query(None, description="Start date for analytics (ISO format)"),
     end_date: Optional[datetime] = Query(None, description="End date for analytics (ISO format)")
 ):
@@ -155,35 +156,34 @@ async def get_listing_performance(
     Admins can access any listing.
     """
     try:
-        # Try partner authentication first
-        current_partner = None
-        try:
-            current_partner = await get_current_partner(credentials.credentials)
-        except AppError:
-            # If partner auth fails, try admin auth
-            await verify_admin_token(credentials.credentials)
-        
         # Default to last 30 days if no dates provided
         if not start_date:
             start_date = datetime.now(timezone.utc) - timedelta(days=30)
         if not end_date:
             end_date = datetime.now(timezone.utc)
         
+        analytics_service = get_analytics_service()
         performance = await analytics_service.get_listing_performance(listing_id, start_date, end_date)
         
         # If partner is requesting, verify they own the listing
-        if current_partner:
+        if current_user.get("role") == "PARTNER":
             from app.db.mongodb import get_database
             from bson import ObjectId
             
             db = get_database()
             listing = await db.listings.find_one({"_id": ObjectId(listing_id)})
-            if not listing or listing.get("partnerId") != current_partner["partnerId"]:
+            if not listing or listing.get("partnerId") != current_user.get("partnerId"):
                 raise AppError(
                     status_code=status.HTTP_403_FORBIDDEN,
                     code="ACCESS_DENIED",
                     message="Partners can only access their own listings"
                 )
+        elif current_user.get("role") != "ADMIN":
+            raise AppError(
+                status_code=status.HTTP_403_FORBIDDEN,
+                code="ACCESS_DENIED",
+                message="Admin or partner access required"
+            )
         
         return performance
     except AppError:

@@ -18,11 +18,6 @@ export function PartnerRoute({ children, requireApproved = false }: PartnerRoute
     }
   }, [isSessionExpired]);
 
-  // If not authenticated or wrong user type, redirect to login
-  if (!isAuthenticated || userRole !== "partner") {
-    return <Navigate to="/partner/login" replace />;
-  }
-
   // If loading, show loading state
   if (isLoading) {
     return (
@@ -35,13 +30,31 @@ export function PartnerRoute({ children, requireApproved = false }: PartnerRoute
     );
   }
 
-  // If no user data after loading, redirect to login
-  if (!user) {
+  // If not authenticated or wrong user type, redirect to login
+  // But only after loading is complete to avoid premature redirects
+  if (!isLoading && (!isAuthenticated || userRole !== "partner")) {
     return <Navigate to="/partner/login" replace />;
   }
 
+  // If no user data after loading, redirect to login
+  if (!isLoading && !user) {
+    return <Navigate to="/partner/login" replace />;
+  }
+
+  // If still loading user data, show loading
+  if (!user && isAuthenticated && userRole === "partner") {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+          <p className="text-muted-foreground">Loading partner data...</p>
+        </div>
+      </div>
+    );
+  }
+
   // If partner approval is required and partner is not approved
-  if (requireApproved && user.status !== "ACTIVE") {
+  if (requireApproved && user && user.status !== "ACTIVE") {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center max-w-md mx-auto p-6">

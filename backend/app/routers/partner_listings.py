@@ -90,7 +90,7 @@ async def create_listing(
     listing: ListingCreateRequest,
     current_user: dict = Depends(require_partner)
 ):
-    """Create a new listing (draft with PENDING_REVIEW status)."""
+    """Create a new listing with PENDING_REVIEW status."""
     db = get_database()
     partner_id = current_user["partnerId"]
     

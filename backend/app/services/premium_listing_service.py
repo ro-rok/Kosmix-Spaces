@@ -73,7 +73,7 @@ async def create_premium_listing(partner_id: str, listing_data: dict) -> dict:
         "heroPhotos": [],
         "amenities": listing_data.get("amenities", []),
         "highlights": listing_data.get("highlights", []),
-        "verificationStatus": "DRAFT",
+        "verificationStatus": "PENDING",
         "isPublished": False,
         "viewCount": 0,
         "enquiryCount": 0,
@@ -471,7 +471,7 @@ def listing_to_public_response(listing: dict) -> dict:
         "verificationStatus": listing["verificationStatus"],
         "isPublished": listing["isPublished"],
         "viewCount": listing["viewCount"],
-        "status": listing.get("verificationStatus", "DRAFT").lower(),  # For frontend compatibility
+        "status": listing.get("verificationStatus", "PENDING").lower(),  # For frontend compatibility
         "adminNotes": listing.get("adminNotes"),  # Include admin notes for partners
         "createdAt": listing["createdAt"].isoformat() if listing.get("createdAt") else None,
         "updatedAt": listing["updatedAt"].isoformat() if listing.get("updatedAt") else None

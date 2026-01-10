@@ -113,11 +113,19 @@ async def get_admin_listing(
     """Get a listing by ID (admin view)."""
     db = get_database()
     
-    listing = await db.listings.find_one({"_id": ObjectId(listing_id)})
+    # Try to find by ObjectId first, then by slug
+    listing = None
+    try:
+        # Try as ObjectId first
+        listing = await db.listings.find_one({"_id": ObjectId(listing_id)})
+    except:
+        # If ObjectId fails, try as slug
+        listing = await db.listings.find_one({"slug": listing_id})
+    
     if not listing:
         raise NotFoundError("Listing", listing_id)
     
-    verification = await get_or_create_verification(listing_id)
+    verification = await get_or_create_verification(str(listing["_id"]))
     
     return AdminListingResponse(
         listingId=str(listing["_id"]),

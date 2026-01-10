@@ -46,9 +46,13 @@ async function apiRequest<T>(
   
   // Prepare headers with automatic auth injection
   const headers: Record<string, string> = {
-    "Content-Type": "application/json",
     ...options.headers as Record<string, string>,
   };
+
+  // Only set Content-Type if not explicitly overridden and not FormData
+  if (!headers.hasOwnProperty("Content-Type") && !(options.body instanceof FormData)) {
+    headers["Content-Type"] = "application/json";
+  }
 
   // Auto-inject Bearer token for authenticated requests
   const token = getAuthToken();
@@ -233,7 +237,10 @@ export const api = {
   public: {
     // Localities - cache for 10 minutes
     getLocalities: () => 
-      apiRequest<Array<{ id: string; name: string; city: string; popular: boolean }>>("/public/localities", {}, "localities", 600000),
+      apiRequest<{
+        by_city: Record<string, Array<{ id: string; name: string; popular: boolean; metroConnected?: boolean }>>;
+        flat: Array<{ id: string; name: string; city: string; popular: boolean; metroConnected?: boolean }>;
+      }>("/public/localities", {}, "localities", 600000),
 
     // Listings - cache based on params
     getListings: (params: {
@@ -378,6 +385,58 @@ export const api = {
       apiRequest<{ ok: boolean }>(`/partner/listings/${listingId}/photos/${publicId}`, {
         method: "DELETE",
       }),
+
+    // Temporary photo management (no listing ID required)
+    uploadTempPhoto: (file: File, offeringType?: string) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      if (offeringType) {
+        formData.append('offering_type', offeringType);
+      }
+      
+      return apiRequest<{
+        url: string;
+        publicId: string;
+        width: number;
+        height: number;
+        bytes: number;
+        format: string;
+      }>(`/partner/temp-photos`, {
+        method: "POST",
+        body: formData,
+      });
+    },
+
+    moveTempPhotos: (listingId: string, tempPhotoIds: string[], offeringType?: string) =>
+      apiRequest<{
+        ok: boolean;
+        moved_photos: Array<{
+          url: string;
+          publicId: string;
+          width: number;
+          height: number;
+          bytes: number;
+          format: string;
+        }>;
+        message: string;
+      }>(`/partner/listings/${listingId}/move-temp-photos`, {
+        method: "POST",
+        body: JSON.stringify({
+          temp_photos: tempPhotoIds,
+          offering_type: offeringType
+        }),
+      }),
+
+    deleteTempPhoto: (publicId: string) =>
+      apiRequest<{ ok: boolean; message: string }>(`/partner/temp-photos/${publicId}`, {
+        method: "DELETE",
+      }),
+
+    cleanupTempPhotos: (maxAgeHours: number = 24) =>
+      apiRequest<{ ok: boolean; message: string }>(`/partner/cleanup-temp-photos`, {
+        method: "POST",
+        body: JSON.stringify({ max_age_hours: maxAgeHours }),
+      }),
   },
 
   // Admin endpoints
@@ -457,6 +516,43 @@ export const api = {
       
       return apiRequest<Array<any>>(`/admin/listings?${searchParams}`);
     },
+
+    // Premium listing moderation
+    getPremiumListings: (params: {
+      status?: string;
+      page?: number;
+      pageSize?: number;
+    } = {}) => {
+      const searchParams = new URLSearchParams();
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          searchParams.append(key, String(value));
+        }
+      });
+      
+      return apiRequest<Array<any>>(`/admin/premium-listings?${searchParams}`);
+    },
+
+    getPremiumListing: (listingId: string) =>
+      apiRequest<any>(`/admin/premium-listings/${listingId}`),
+
+    approvePremiumListing: (listingId: string, notes?: string) =>
+      apiRequest<{ ok: boolean; message: string }>(`/admin/premium-listings/${listingId}/approve`, {
+        method: "POST",
+        body: JSON.stringify({ notes }),
+      }),
+
+    needsInfoPremiumListing: (listingId: string, notes: string) =>
+      apiRequest<{ ok: boolean; message: string }>(`/admin/premium-listings/${listingId}/needs-info`, {
+        method: "POST",
+        body: JSON.stringify({ notes }),
+      }),
+
+    rejectPremiumListing: (listingId: string, reason: string) =>
+      apiRequest<{ ok: boolean; message: string }>(`/admin/premium-listings/${listingId}/reject`, {
+        method: "POST",
+        body: JSON.stringify({ reason }),
+      }),
 
     getListing: (listingId: string) =>
       apiRequest<any>(`/admin/listings/${listingId}`),

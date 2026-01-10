@@ -32,6 +32,7 @@ import {
   validateOfferingsForSubmission 
 } from "@/lib/offerings";
 import { useUploadPhoto, useDeletePhoto } from "@/hooks/useAuth";
+import { useUploadTempPhoto, useDeleteTempPhoto, TempPhoto } from "@/hooks/useTempPhotos";
 
 interface OfferingsStepProps {
   data: Record<OfferingType, OfferingFormData>;
@@ -39,6 +40,7 @@ interface OfferingsStepProps {
   errors: Record<string, string>;
   disabled?: boolean;
   listingId?: string;
+  onSaveListing?: () => Promise<void>;
 }
 
 const offeringTypes: OfferingType[] = [
@@ -107,13 +109,23 @@ export function OfferingsStep({
   onChange, 
   errors, 
   disabled = false, 
-  listingId 
+  listingId,
+  onSaveListing
 }: OfferingsStepProps) {
   const [expandedOffering, setExpandedOffering] = useState<OfferingType | null>('private-offices');
   const [uploadingPhotos, setUploadingPhotos] = useState<Record<string, boolean>>({});
+  const [tempPhotos, setTempPhotos] = useState<Record<OfferingType, TempPhoto[]>>({
+    'private-offices': [],
+    'dedicated-desks': [],
+    'hot-desks': [],
+    'meeting-rooms': [],
+    'event-spaces': []
+  });
   
   const uploadPhotoMutation = useUploadPhoto();
   const deletePhotoMutation = useDeletePhoto();
+  const uploadTempPhotoMutation = useUploadTempPhoto();
+  const deleteTempPhotoMutation = useDeleteTempPhoto();
 
   const updateOfferingData = (type: OfferingType, updates: Partial<OfferingFormData>) => {
     const updatedOfferings = updateOffering(data, type, updates);
@@ -145,7 +157,7 @@ export function OfferingsStep({
   };
 
   const handlePhotoUpload = async (type: OfferingType, files: FileList) => {
-    if (disabled || !listingId) return;
+    if (disabled) return;
 
     const fileArray = Array.from(files);
     
@@ -180,26 +192,49 @@ export function OfferingsStep({
           }
         }
 
-        const result = await uploadPhotoMutation.mutateAsync({
-          listingId,
+        // Upload to temporary storage (no listing ID required)
+        const result = await uploadTempPhotoMutation.mutateAsync({
+          file: fileToUpload,
+          offeringType: type
+        });
+
+        // Add to temporary photos state
+        const tempPhoto: TempPhoto = {
+          ...result,
           file: fileToUpload
-        });
+        };
 
-        // Add photo URL to offering with tag metadata
-        const currentPhotos = data[type].photos || [];
-        updateOfferingData(type, {
-          photos: [...currentPhotos, ...result.map(photo => ({
-            ...photo,
-            tag: type // Tag photo with offering type
-          }))]
-        });
+        setTempPhotos(prev => ({
+          ...prev,
+          [type]: [...prev[type], tempPhoto]
+        }));
 
-        toast.success(`Photo uploaded to ${offeringTypeLabels[type]}`);
+        toast.success(`Photo uploaded for ${offeringTypeLabels[type]}`);
       } catch (error: any) {
         toast.error(`Failed to upload ${file.name}: ${error.message}`);
       } finally {
         setUploadingPhotos(prev => ({ ...prev, [uploadKey]: false }));
       }
+    }
+  };
+
+  const removeTempPhoto = async (type: OfferingType, photoIndex: number) => {
+    if (disabled) return;
+
+    const tempPhoto = tempPhotos[type][photoIndex];
+    if (!tempPhoto) return;
+
+    try {
+      await deleteTempPhotoMutation.mutateAsync(tempPhoto.publicId);
+
+      setTempPhotos(prev => ({
+        ...prev,
+        [type]: prev[type].filter((_, index) => index !== photoIndex)
+      }));
+
+      toast.success('Photo removed');
+    } catch (error: any) {
+      toast.error(`Failed to remove photo: ${error.message}`);
     }
   };
 
@@ -231,7 +266,12 @@ export function OfferingsStep({
     const issues: string[] = [];
 
     if (offering.enabled) {
-      if (!offering.photos || offering.photos.length === 0) {
+      // Count both permanent photos and temp photos
+      const permanentPhotos = offering.photos || [];
+      const tempPhotosForType = tempPhotos[type] || [];
+      const totalPhotos = permanentPhotos.length + tempPhotosForType.length;
+      
+      if (totalPhotos === 0) {
         issues.push('At least 1 photo required');
       }
       if (!offering.description.trim()) {
@@ -420,12 +460,12 @@ export function OfferingsStep({
               <div className="flex items-center justify-between">
                 <Label>Photos *</Label>
                 <p className="text-xs text-muted-foreground">
-                  {offering.photos?.length || 0} photos uploaded
+                  {(offering.photos?.length || 0) + tempPhotos[type].length} photos
                 </p>
               </div>
 
               {/* Photo upload */}
-              {!disabled && listingId && (
+              {!disabled && (
                 <div>
                   <Input
                     type="file"
@@ -456,31 +496,70 @@ export function OfferingsStep({
                 </div>
               )}
 
-              {/* Photo grid */}
-              {offering.photos && offering.photos.length > 0 && (
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {offering.photos.map((photo, index) => (
-                    <div key={index} className="relative group">
-                      <img
-                        src={typeof photo === 'string' ? photo : photo.url}
-                        alt={`${offeringTypeLabels[type]} ${index + 1}`}
-                        className="w-full h-32 object-cover rounded-lg border"
-                      />
-                      {!disabled && (
-                        <button
-                          onClick={() => removePhoto(type, index)}
-                          className="absolute top-2 right-2 p-1 bg-destructive text-destructive-foreground rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      )}
-                      <div className="absolute bottom-2 left-2 right-2">
-                        <Badge variant="secondary" className="text-xs">
-                          {index + 1}
-                        </Badge>
+              {/* Photo grid - show both permanent and temporary photos */}
+              {((offering.photos && offering.photos.length > 0) || tempPhotos[type].length > 0) && (
+                <div className="space-y-4">
+                  {/* Permanent photos */}
+                  {offering.photos && offering.photos.length > 0 && (
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground mb-2">Saved Photos</p>
+                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                        {offering.photos.map((photo, index) => (
+                          <div key={`permanent-${index}`} className="relative group">
+                            <img
+                              src={typeof photo === 'string' ? photo : photo.url}
+                              alt={`${offeringTypeLabels[type]} ${index + 1}`}
+                              className="w-full h-32 object-cover rounded-lg border"
+                            />
+                            {!disabled && listingId && (
+                              <button
+                                onClick={() => removePhoto(type, index)}
+                                className="absolute top-2 right-2 p-1 bg-destructive text-destructive-foreground rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            )}
+                            <div className="absolute bottom-2 left-2">
+                              <Badge variant="default" className="text-xs">Saved</Badge>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
-                  ))}
+                  )}
+                  
+                  {/* Temporary photos */}
+                  {tempPhotos[type].length > 0 && (
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground mb-2">
+                        Recent Photos ({tempPhotos[type].length})
+                      </p>
+                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                        {tempPhotos[type].map((photo, index) => (
+                          <div key={`temp-${index}`} className="relative group">
+                            <img
+                              src={photo.url}
+                              alt={`${offeringTypeLabels[type]} temp ${index + 1}`}
+                              className="w-full h-32 object-cover rounded-lg border border-orange-200"
+                            />
+                            {!disabled && (
+                              <button
+                                onClick={() => removeTempPhoto(type, index)}
+                                className="absolute top-2 right-2 p-1 bg-destructive text-destructive-foreground rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            )}
+                            <div className="absolute bottom-2 left-2">
+                              <Badge variant="outline" className="text-xs bg-blue-100 text-blue-700 border-blue-300">
+                                Uploaded
+                              </Badge>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -505,8 +584,35 @@ export function OfferingsStep({
     );
   };
 
+  // Custom validation that includes temp photos
+  const validateOfferingsWithTempPhotos = () => {
+    const errors: string[] = [];
+    const enabledOfferings = Object.entries(data)
+      .filter(([_, offering]) => offering.enabled)
+      .map(([type, offering]) => ({ type: type as OfferingType, ...offering }));
+    
+    if (enabledOfferings.length === 0) {
+      errors.push('At least one offering must be enabled');
+    }
+    
+    enabledOfferings.forEach(offering => {
+      const permanentPhotos = offering.photos || [];
+      const tempPhotosForType = tempPhotos[offering.type] || [];
+      const totalPhotos = permanentPhotos.length + tempPhotosForType.length;
+      
+      if (totalPhotos === 0) {
+        errors.push(`${offering.title} must have at least 1 photo`);
+      }
+    });
+    
+    return {
+      isValid: errors.length === 0,
+      errors,
+    };
+  };
+
   // Overall validation
-  const overallValidation = validateOfferingsForSubmission(data);
+  const overallValidation = validateOfferingsWithTempPhotos();
 
   return (
     <div className="space-y-6">
@@ -552,7 +658,8 @@ export function OfferingsStep({
           <div>
             <p className="text-muted-foreground">Total Photos</p>
             <p className="font-medium">
-              {Object.values(data).reduce((total, o) => total + (o.photos?.length || 0), 0)}
+              {Object.values(data).reduce((total, o) => total + (o.photos?.length || 0), 0) + 
+               Object.values(tempPhotos).reduce((total, photos) => total + photos.length, 0)}
             </p>
           </div>
           <div>

@@ -10,18 +10,41 @@ from app.models.analytics import (
     AnalyticsEvent, AnalyticsEventCreate, AnalyticsSummary, PartnerAnalytics,
     EventName, UserRole, ListingPerformance, LocalityPerformance, PartnerPerformance
 )
-from app.models.listing import Listing
-from app.models.partner import Partner
+from app.models.listing import WorkspaceListing
+from app.models.partner import PartnerAccount
 
 
 class AnalyticsService:
     """Service for analytics operations."""
     
     def __init__(self):
-        self.db: AsyncIOMotorDatabase = get_database()
-        self.events_collection = self.db.analytics_events
-        self.listings_collection = self.db.listings
-        self.partners_collection = self.db.partners
+        self._db = None
+    
+    @property
+    def db(self) -> AsyncIOMotorDatabase:
+        """Get database connection (lazy-loaded)."""
+        if self._db is None:
+            try:
+                self._db = get_database()
+            except RuntimeError:
+                # Database not initialized yet, will retry later
+                raise RuntimeError("Database not initialized. Please ensure the application has started properly.")
+        return self._db
+    
+    @property
+    def events_collection(self):
+        """Get events collection."""
+        return self.db.analytics_events
+    
+    @property
+    def listings_collection(self):
+        """Get listings collection."""
+        return self.db.listings
+    
+    @property
+    def partners_collection(self):
+        """Get partners collection."""
+        return self.db.partners
     
     async def track_event(self, event_data: AnalyticsEventCreate) -> AnalyticsEvent:
         """Track a single analytics event."""
@@ -437,5 +460,15 @@ class AnalyticsService:
         return top_localities[:limit]
 
 
-# Global service instance
-analytics_service = AnalyticsService()
+# Global service instance - lazy initialization
+_analytics_service = None
+
+def get_analytics_service() -> AnalyticsService:
+    """Get analytics service instance (lazy-loaded)."""
+    global _analytics_service
+    if _analytics_service is None:
+        _analytics_service = AnalyticsService()
+    return _analytics_service
+
+# For backward compatibility
+analytics_service = get_analytics_service()

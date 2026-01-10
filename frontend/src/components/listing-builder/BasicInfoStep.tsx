@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -33,18 +33,64 @@ const commonAmenities = [
   "Air Conditioning",
   "Power Backup",
   "Parking",
+  "Near Metro Station",
   "Tea/Coffee",
   "Lockers",
   "Mail Handling",
+  "Onsite Staff",
+  "Cleaning Services",
+  "Micro-Roasted Coffee",
+  "Lift Access",
+  "Unique Common Areas",
+  "CCTV Cameras",
 ];
 
 export function BasicInfoStep({ data, onChange, errors, disabled = false }: BasicInfoStepProps) {
   const { data: localitiesData } = useLocalities();
-  const localities = localitiesData || [];
+  const localities = localitiesData?.localities || [];
+  const localitiesByCity = localitiesData?.by_city || {};
+  
+  // Available cities
+  const cities = ["Delhi", "Gurugram", "Noida"];
+  
+  // Get localities for selected city
+  const selectedCityLocalities = data.city ? localitiesByCity[data.city] || [] : [];
+  
+  // State for custom locality
+  const [isCustomLocality, setIsCustomLocality] = useState(false);
+  const [customLocalityValue, setCustomLocalityValue] = useState("");
 
   const handleInputChange = (field: keyof BasicInfoData, value: any) => {
     onChange({ [field]: value });
   };
+
+  const handleLocalityChange = (value: string) => {
+    if (value === "custom") {
+      setIsCustomLocality(true);
+      setCustomLocalityValue("");
+      handleInputChange('locality', '');
+    } else {
+      setIsCustomLocality(false);
+      setCustomLocalityValue("");
+      handleInputChange('locality', value);
+    }
+  };
+
+  const handleCustomLocalityChange = (value: string) => {
+    setCustomLocalityValue(value);
+    handleInputChange('locality', value);
+  };
+
+  // Initialize custom locality state based on existing data
+  useEffect(() => {
+    if (data.locality && data.city) {
+      const existingLocality = selectedCityLocalities.find(loc => loc.name === data.locality);
+      if (!existingLocality && data.locality) {
+        setIsCustomLocality(true);
+        setCustomLocalityValue(data.locality);
+      }
+    }
+  }, [data.locality, data.city, selectedCityLocalities]);
 
   const toggleAmenity = (amenity: string) => {
     if (disabled) return;
@@ -80,53 +126,94 @@ export function BasicInfoStep({ data, onChange, errors, disabled = false }: Basi
         </p>
       </div>
 
-      {/* Locality Selection */}
+      {/* City Selection */}
       <div className="space-y-2">
-        <Label htmlFor="locality">
-          Locality *
+        <Label htmlFor="city">
+          City *
         </Label>
         <Select
-          value={data.locality}
+          value={data.city}
           onValueChange={(value) => {
-            const selectedLocality = localities.find(l => l.name === value);
-            handleInputChange('locality', value);
-            if (selectedLocality) {
-              handleInputChange('city', selectedLocality.city);
-            }
+            handleInputChange('city', value);
+            // Clear locality when city changes
+            handleInputChange('locality', '');
+            // Reset custom locality state
+            setIsCustomLocality(false);
+            setCustomLocalityValue("");
           }}
           disabled={disabled}
         >
-          <SelectTrigger className={cn(errors.locality && "border-destructive")}>
-            <SelectValue placeholder="Select locality" />
+          <SelectTrigger className={cn(errors.city && "border-destructive")}>
+            <SelectValue placeholder="Select city" />
           </SelectTrigger>
           <SelectContent>
-            {localities.map((locality) => (
-              <SelectItem key={locality.id} value={locality.name}>
-                {locality.name}, {locality.city}
+            {cities.map((city) => (
+              <SelectItem key={city} value={city}>
+                {city}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
-        {errors.locality && (
-          <p className="text-xs text-destructive">{errors.locality}</p>
+        {errors.city && (
+          <p className="text-xs text-destructive">{errors.city}</p>
         )}
       </div>
 
-      {/* City (auto-filled) */}
-      <div className="space-y-2">
-        <Label htmlFor="city">
-          City
-        </Label>
-        <Input
-          id="city"
-          value={data.city}
-          disabled
-          className="bg-muted"
-        />
-        <p className="text-xs text-muted-foreground">
-          Automatically filled based on locality selection
-        </p>
-      </div>
+      {/* Locality Selection - Only show if city is selected */}
+      {data.city && (
+        <div className="space-y-2">
+          <Label htmlFor="locality">
+            Locality *
+          </Label>
+          <Select
+            value={isCustomLocality ? "custom" : data.locality}
+            onValueChange={handleLocalityChange}
+            disabled={disabled}
+          >
+            <SelectTrigger className={cn(errors.locality && "border-destructive")}>
+              <SelectValue placeholder={`Select locality in ${data.city}`} />
+            </SelectTrigger>
+            <SelectContent>
+              {selectedCityLocalities.map((locality) => (
+                <SelectItem key={locality.id} value={locality.name}>
+                  {locality.name}
+                  {locality.popular && (
+                    <span className="ml-2 text-xs text-primary">Popular</span>
+                  )}
+                </SelectItem>
+              ))}
+              <SelectItem value="custom" className="border-t border-border mt-1 pt-2">
+                <span className="flex items-center gap-2">
+                  <span>+ Add custom locality</span>
+                </span>
+              </SelectItem>
+            </SelectContent>
+          </Select>
+          {errors.locality && (
+            <p className="text-xs text-destructive">{errors.locality}</p>
+          )}
+          
+          {/* Custom locality input */}
+          {isCustomLocality && (
+            <div className="space-y-2">
+              <Label htmlFor="customLocality">
+                Enter locality name
+              </Label>
+              <Input
+                id="customLocality"
+                value={customLocalityValue}
+                onChange={(e) => handleCustomLocalityChange(e.target.value)}
+                placeholder={`Enter locality name in ${data.city}`}
+                className={cn(errors.locality && "border-destructive")}
+                disabled={disabled}
+              />
+              <p className="text-xs text-muted-foreground">
+                This will be reviewed by our team before being added to the system
+              </p>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Overview */}
       <div className="space-y-2">

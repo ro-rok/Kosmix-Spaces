@@ -26,17 +26,22 @@ export function AdminLogin() {
 
     setIsLoading(true);
     try {
+      console.log("Attempting admin login...");
       const response = await api.auth.loginAdmin({
         email: email.trim(),
         password,
       });
       
-      // Use the new auth context login method
-      login(response.accessToken, 'admin');
+      console.log("Login response:", response);
       
+      // Use the new auth context login method
+      await login(response.accessToken, 'admin');
+      
+      console.log("Auth context login completed, navigating to /admin");
       toast.success("Login successful!");
       navigate("/admin");
     } catch (error: any) {
+      console.error("Login error:", error);
       toast.error(error.message || "Login failed");
     } finally {
       setIsLoading(false);

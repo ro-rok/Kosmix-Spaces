@@ -188,11 +188,9 @@ export const STATUS_BADGES = {
     SUSPENDED: { label: 'Suspended', variant: 'destructive' as const },
   },
   LISTING: {
-    draft: { label: 'Draft', variant: 'outline' as const },
-    submitted: { label: 'Submitted', variant: 'secondary' as const },
+    pending: { label: 'Pending', variant: 'secondary' as const },
     approved: { label: 'Approved', variant: 'default' as const },
     rejected: { label: 'Rejected', variant: 'destructive' as const },
-    published: { label: 'Published', variant: 'default' as const },
   },
 };
 

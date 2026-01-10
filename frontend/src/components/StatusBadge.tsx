@@ -65,6 +65,21 @@ const statusConfig: Record<string, { label: string; icon: typeof Clock; classNam
     icon: XCircle,
     className: "bg-destructive/10 text-destructive",
   },
+  "PENDING": {
+    label: "Pending",
+    icon: Clock,
+    className: "bg-accent/20 text-accent-foreground",
+  },
+  "APPROVED": {
+    label: "Approved",
+    icon: CheckCircle,
+    className: "bg-success/10 text-success",
+  },
+  approved: {
+    label: "Approved",
+    icon: CheckCircle,
+    className: "bg-success/10 text-success",
+  },
 };
 
 export function StatusBadge({ status, className }: StatusBadgeProps) {

@@ -191,6 +191,74 @@ export function useRejectListing() {
   });
 }
 
+// Admin premium listing hooks
+export function useAdminPremiumListings(params: {
+  status?: string;
+  page?: number;
+  pageSize?: number;
+} = {}) {
+  const token = getStoredToken();
+  const userType = getStoredUserType();
+  
+  return useQuery({
+    queryKey: ["admin", "premium-listings", params],
+    queryFn: () => api.admin.getPremiumListings(params),
+    enabled: !!token && userType === "admin",
+    staleTime: 1000 * 60 * 2, // 2 minutes
+  });
+}
+
+export function useAdminPremiumListing(listingId: string) {
+  const token = getStoredToken();
+  const userType = getStoredUserType();
+  
+  return useQuery({
+    queryKey: ["admin", "premium-listing", listingId],
+    queryFn: () => api.admin.getPremiumListing(listingId),
+    enabled: !!token && userType === "admin" && !!listingId,
+    staleTime: 1000 * 60 * 2, // 2 minutes
+  });
+}
+
+export function useApprovePremiumListing() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: ({ listingId, notes }: { listingId: string; notes?: string }) => 
+      api.admin.approvePremiumListing(listingId, notes),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "premium-listings"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "premium-listing"] });
+    },
+  });
+}
+
+export function useNeedsInfoPremiumListing() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: ({ listingId, notes }: { listingId: string; notes: string }) => 
+      api.admin.needsInfoPremiumListing(listingId, notes),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "premium-listings"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "premium-listing"] });
+    },
+  });
+}
+
+export function useRejectPremiumListing() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: ({ listingId, reason }: { listingId: string; reason: string }) => 
+      api.admin.rejectPremiumListing(listingId, reason),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "premium-listings"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "premium-listing"] });
+    },
+  });
+}
+
 // Partner listing hooks
 export function usePartnerListings(params: {
   page?: number;
@@ -205,7 +273,15 @@ export function usePartnerListings(params: {
       console.log("Fetching partner listings with token:", !!token);
       const result = await api.partner.getListings(params);
       console.log("Partner listings result:", result);
-      return result;
+      
+      // Handle both paginated response (premium) and direct array (legacy)
+      if (Array.isArray(result)) {
+        return result; // Legacy format
+      } else if (result && Array.isArray(result.items)) {
+        return result.items; // Premium paginated format
+      } else {
+        return []; // Fallback
+      }
     },
     enabled: !!token && userType === "partner",
     staleTime: 1000 * 60 * 2, // 2 minutes

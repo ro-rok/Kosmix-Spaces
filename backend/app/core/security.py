@@ -103,3 +103,40 @@ async def require_admin(
     if not current_user.get("adminId"):
         raise ForbiddenError("Invalid admin token")
     return current_user
+
+
+# Alias functions for backward compatibility
+async def verify_admin_token(
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+) -> Dict[str, Any]:
+    """Verify admin token (alias for require_admin)."""
+    current_user = await get_current_user(credentials)
+    return await require_admin(current_user)
+
+
+async def verify_partner_token(
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+) -> Dict[str, Any]:
+    """Verify partner token (alias for require_partner)."""
+    current_user = await get_current_user(credentials)
+    return await require_partner(current_user)
+
+
+async def get_current_partner(
+    current_user: Dict[str, Any] = Depends(require_partner)
+) -> Dict[str, Any]:
+    """Get current partner (alias for require_partner)."""
+    return current_user
+
+
+async def get_current_admin(
+    current_user: Dict[str, Any] = Depends(require_admin)
+) -> Dict[str, Any]:
+    """Get current admin (alias for require_admin)."""
+    return current_user
+
+
+# Alias for backward compatibility
+def get_password_hash(password: str) -> str:
+    """Alias for hash_password function."""
+    return hash_password(password)

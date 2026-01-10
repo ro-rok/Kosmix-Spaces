@@ -18,26 +18,63 @@ router = APIRouter()
 
 @router.get("/localities")
 async def get_localities():
-    """Get list of known localities."""
-    # For MVP, return hardcoded list. In production, this could come from a config or database.
-    localities = [
-        {"id": "connaught-place", "name": "Connaught Place", "city": "Delhi", "popular": True},
-        {"id": "saket", "name": "Saket", "city": "Delhi", "popular": True},
-        {"id": "nehru-place", "name": "Nehru Place", "city": "Delhi", "popular": True},
-        {"id": "okhla", "name": "Okhla", "city": "Delhi", "popular": True},
-        {"id": "janakpuri", "name": "Janakpuri", "city": "Delhi", "popular": False},
-        {"id": "dwarka", "name": "Dwarka", "city": "Delhi", "popular": True},
-        {"id": "vasant-kunj", "name": "Vasant Kunj", "city": "Delhi", "popular": False},
-        {"id": "lajpat-nagar", "name": "Lajpat Nagar", "city": "Delhi", "popular": False},
-        {"id": "karol-bagh", "name": "Karol Bagh", "city": "Delhi", "popular": True},
-        {"id": "pitampura", "name": "Pitampura", "city": "Delhi", "popular": False},
-        {"id": "rohini", "name": "Rohini", "city": "Delhi", "popular": False},
-        {"id": "greater-kailash", "name": "Greater Kailash", "city": "Delhi", "popular": True},
-        {"id": "south-extension", "name": "South Extension", "city": "Delhi", "popular": False},
-        {"id": "hauz-khas", "name": "Hauz Khas", "city": "Delhi", "popular": True},
-        {"id": "green-park", "name": "Green Park", "city": "Delhi", "popular": False},
-    ]
-    return localities
+    """Get list of known localities grouped by city."""
+    # Return localities grouped by city for better organization
+    localities_by_city = {
+        "Delhi": [
+            {"id": "connaught-place", "name": "Connaught Place", "popular": True},
+            {"id": "saket", "name": "Saket", "popular": True},
+            {"id": "nehru-place", "name": "Nehru Place", "popular": True},
+            {"id": "okhla", "name": "Okhla", "popular": True},
+            {"id": "dwarka", "name": "Dwarka", "popular": True},
+            {"id": "karol-bagh", "name": "Karol Bagh", "popular": True},
+            {"id": "greater-kailash", "name": "Greater Kailash", "popular": True},
+            {"id": "hauz-khas", "name": "Hauz Khas", "popular": True},
+            {"id": "janakpuri", "name": "Janakpuri", "popular": False},
+            {"id": "vasant-kunj", "name": "Vasant Kunj", "popular": False},
+            {"id": "lajpat-nagar", "name": "Lajpat Nagar", "popular": False},
+            {"id": "pitampura", "name": "Pitampura", "popular": False},
+            {"id": "rohini", "name": "Rohini", "popular": False},
+            {"id": "south-extension", "name": "South Extension", "popular": False},
+            {"id": "green-park", "name": "Green Park", "popular": False},
+        ],
+        "Gurugram": [
+            {"id": "cyber-city", "name": "Cyber City", "popular": True},
+            {"id": "golf-course-road", "name": "Golf Course Road", "popular": True},
+            {"id": "mg-road-gurugram", "name": "MG Road", "popular": True},
+            {"id": "udyog-vihar", "name": "Udyog Vihar", "popular": True},
+            {"id": "dlf-phase-1", "name": "DLF Phase 1", "popular": True},
+            {"id": "sohna-road", "name": "Sohna Road", "popular": False},
+            {"id": "sector-32", "name": "Sector 32", "popular": False},
+            {"id": "dlf-phase-2", "name": "DLF Phase 2", "popular": False},
+            {"id": "dlf-phase-3", "name": "DLF Phase 3", "popular": False},
+        ],
+        "Noida": [
+            {"id": "sector-62", "name": "Sector 62", "popular": True},
+            {"id": "sector-63", "name": "Sector 63", "popular": True},
+            {"id": "sector-18", "name": "Sector 18", "popular": True},
+            {"id": "film-city", "name": "Film City", "popular": True},
+            {"id": "city-center", "name": "City Center", "popular": True},
+            {"id": "sector-16", "name": "Sector 16", "popular": False},
+            {"id": "sector-135", "name": "Sector 135", "popular": False},
+            {"id": "botanical-garden", "name": "Botanical Garden", "popular": False},
+            {"id": "wave-city", "name": "Wave City", "popular": False},
+        ]
+    }
+    
+    # Also provide flat list for backward compatibility
+    flat_localities = []
+    for city, localities in localities_by_city.items():
+        for locality in localities:
+            flat_localities.append({
+                **locality,
+                "city": city
+            })
+    
+    return {
+        "by_city": localities_by_city,
+        "flat": flat_localities
+    }
 
 
 @router.get("/listings")

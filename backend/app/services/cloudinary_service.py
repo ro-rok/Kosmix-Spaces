@@ -22,42 +22,34 @@ class CompressionSettings:
     
     # Workspace listing photos - high quality for hero images
     WORKSPACE_HERO = {
-        "quality": "auto:best",
-        "format": "auto",
+        "quality": "90",
         "width": 1920,
         "height": 1080,
-        "crop": "limit",
-        "fetch_format": "auto"
+        "crop": "limit"
     }
     
     # Offering-specific photos - balanced quality and size
     OFFERING_PHOTOS = {
-        "quality": "auto:good", 
-        "format": "auto",
+        "quality": "80", 
         "width": 1200,
         "height": 800,
-        "crop": "limit",
-        "fetch_format": "auto"
+        "crop": "limit"
     }
     
     # Thumbnail generation
     THUMBNAILS = {
-        "quality": "auto:good",
-        "format": "auto", 
+        "quality": "75",
         "width": 400,
         "height": 300,
-        "crop": "fill",
-        "fetch_format": "auto"
+        "crop": "fill"
     }
     
     # Mobile optimized
     MOBILE_OPTIMIZED = {
-        "quality": "auto:eco",
-        "format": "auto",
+        "quality": "70",
         "width": 800,
         "height": 600,
-        "crop": "limit",
-        "fetch_format": "auto"
+        "crop": "limit"
     }
 
 
@@ -184,14 +176,13 @@ async def upload_image(
         upload_options = {
             "folder": f"{settings.CLOUDINARY_FOLDER}/{folder}",
             "resource_type": "image",
-            "format": "auto",  # Auto-optimize format (WebP when supported)
             "quality": compression_settings["quality"],
             "transformation": [compression_settings] if photo_type != "original" else None,
             "eager": [
                 # Generate multiple optimized versions
-                {"width": 400, "height": 300, "crop": "fill", "quality": "auto:good", "format": "auto"},  # Thumbnail
-                {"width": 800, "height": 600, "crop": "limit", "quality": "auto:good", "format": "auto"},  # Mobile
-                {"width": 1200, "height": 800, "crop": "limit", "quality": "auto:good", "format": "auto"}  # Desktop
+                {"width": 400, "height": 300, "crop": "fill", "quality": "75"},  # Thumbnail
+                {"width": 800, "height": 600, "crop": "limit", "quality": "80"},  # Mobile
+                {"width": 1200, "height": 800, "crop": "limit", "quality": "85"}  # Desktop
             ],
             "eager_async": True  # Generate variants asynchronously
         }
@@ -427,27 +418,40 @@ async def get_compression_stats(public_ids: List[str]) -> Dict[str, Any]:
 
 def validate_image_file(file: UploadFile) -> tuple[bool, Optional[str]]:
     """Validate uploaded image file with enhanced checks."""
-    # Check content type
-    if not file.content_type or not file.content_type.startswith('image/'):
-        return False, "File must be an image"
-    
-    # Check file size (max 15MB for raw uploads, will be compressed)
-    if file.size and file.size > 15 * 1024 * 1024:
-        return False, "File size must be less than 15MB"
-    
-    # Check allowed formats
-    allowed_formats = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/heic']
-    if file.content_type not in allowed_formats:
-        return False, f"Allowed formats: JPEG, PNG, WebP, HEIC"
-    
-    # Check filename
-    if not file.filename:
-        return False, "Filename is required"
-    
-    # Check for potentially malicious filenames
-    dangerous_extensions = ['.exe', '.bat', '.cmd', '.scr', '.pif']
-    if any(file.filename.lower().endswith(ext) for ext in dangerous_extensions):
-        return False, "Invalid file type"
+    try:
+        # Check if file exists
+        if not file:
+            return False, "No file provided"
+        
+        # Check filename
+        if not file.filename:
+            return False, "Filename is required"
+        
+        # Check content type
+        if not file.content_type:
+            return False, "File content type is missing"
+            
+        if not file.content_type.startswith('image/'):
+            return False, "File must be an image"
+        
+        # Check file size (max 15MB for raw uploads, will be compressed)
+        if file.size and file.size > 15 * 1024 * 1024:
+            return False, "File size must be less than 15MB"
+        
+        # Check allowed formats
+        allowed_formats = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/heic']
+        if file.content_type not in allowed_formats:
+            return False, f"Allowed formats: JPEG, PNG, WebP, HEIC. Got: {file.content_type}"
+        
+        # Check for potentially malicious filenames
+        dangerous_extensions = ['.exe', '.bat', '.cmd', '.scr', '.pif']
+        if any(file.filename.lower().endswith(ext) for ext in dangerous_extensions):
+            return False, "Invalid file type detected"
+        
+        return True, None
+        
+    except Exception as e:
+        return False, f"File validation error: {str(e)}"
     
     return True, None
 
@@ -515,19 +519,117 @@ async def bulk_delete_images(public_ids: List[str]) -> Dict[str, Any]:
         return {"error": str(e)}
 
 
-def validate_image_file(file: UploadFile) -> tuple[bool, Optional[str]]:
-    """Validate uploaded image file."""
-    # Check content type
-    if not file.content_type or not file.content_type.startswith('image/'):
-        return False, "File must be an image"
+
+async def upload_temporary_photo(
+    file: UploadFile,
+    partner_id: str,
+    offering_type: Optional[str] = None,
+    tags: Optional[List[str]] = None
+) -> Dict[str, Any]:
+    """Upload photo to temporary folder for listing builder without requiring listing ID."""
+    # Add temporary-specific tags
+    photo_tags = [f"partner:{partner_id}", "temporary", "listing-builder"]
+    if offering_type:
+        photo_tags.append(f"offering:{offering_type}")
+    if tags:
+        photo_tags.extend(tags)
     
-    # Check file size (max 10MB)
-    if file.size and file.size > 10 * 1024 * 1024:
-        return False, "File size must be less than 10MB"
+    # Use temporary folder structure
+    folder = f"temp/{partner_id}"
+    if offering_type:
+        folder += f"/{offering_type}"
     
-    # Check allowed formats
-    allowed_formats = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
-    if file.content_type not in allowed_formats:
-        return False, f"Allowed formats: {', '.join(allowed_formats)}"
+    return await upload_image(
+        file=file,
+        folder=folder,
+        tags=photo_tags,
+        photo_type="offering",  # Use offering compression settings
+        enable_compression=True,
+        max_size_kb=400
+    )
+
+
+async def move_temporary_photos_to_listing(
+    partner_id: str,
+    listing_id: str,
+    temp_public_ids: List[str],
+    offering_type: Optional[str] = None
+) -> List[Dict[str, Any]]:
+    """Move temporary photos to permanent listing folder."""
+    results = []
     
-    return True, None
+    for public_id in temp_public_ids:
+        try:
+            # Get the current image info
+            resource = cloudinary.api.resource(public_id)
+            
+            # Create new public_id for permanent location
+            new_folder = f"listings/{listing_id}"
+            if offering_type:
+                new_folder += f"/{offering_type}"
+            
+            # Generate new public_id
+            original_filename = resource.get('original_filename', 'photo')
+            new_public_id = f"{new_folder}/{original_filename}_{len(results)}"
+            
+            # Copy to new location with updated tags
+            new_tags = [f"listing:{listing_id}"]
+            if offering_type:
+                new_tags.append(f"offering:{offering_type}")
+            
+            # Use Cloudinary's rename/copy functionality
+            result = cloudinary.uploader.rename(
+                public_id,
+                new_public_id,
+                overwrite=True,
+                tags=new_tags
+            )
+            
+            results.append({
+                "url": result["secure_url"],
+                "publicId": result["public_id"],
+                "width": result["width"],
+                "height": result["height"],
+                "bytes": result["bytes"],
+                "format": result["format"]
+            })
+            
+        except Exception as e:
+            print(f"Failed to move photo {public_id}: {e}")
+            continue
+    
+    return results
+
+
+async def cleanup_temporary_photos(partner_id: str, max_age_hours: int = 24) -> bool:
+    """Clean up temporary photos older than specified hours."""
+    try:
+        # Search for temporary photos for this partner
+        search_query = f"folder:temp/{partner_id}/* AND tags:temporary"
+        
+        # Get resources older than max_age_hours
+        from datetime import datetime, timedelta
+        cutoff_time = datetime.utcnow() - timedelta(hours=max_age_hours)
+        
+        resources = cloudinary.api.resources(
+            type="upload",
+            prefix=f"temp/{partner_id}/",
+            max_results=500
+        )
+        
+        old_public_ids = []
+        for resource in resources.get("resources", []):
+            created_at = datetime.fromisoformat(resource["created_at"].replace('Z', '+00:00'))
+            if created_at < cutoff_time:
+                old_public_ids.append(resource["public_id"])
+        
+        # Delete old temporary photos
+        if old_public_ids:
+            cloudinary.api.delete_resources(old_public_ids)
+            print(f"Cleaned up {len(old_public_ids)} temporary photos for partner {partner_id}")
+        
+        return True
+        
+    except Exception as e:
+        print(f"Failed to cleanup temporary photos: {e}")
+        return False

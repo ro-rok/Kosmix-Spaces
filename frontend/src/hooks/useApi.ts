@@ -5,7 +5,19 @@ import { api, ApiError } from "@/lib/api";
 export function useLocalities() {
   return useQuery({
     queryKey: ["localities"],
-    queryFn: api.getLocalities,
+    queryFn: async () => {
+      const response = await api.getLocalities();
+      // Return flat array for backward compatibility, but also provide structured data
+      return {
+        ...response,
+        // For backward compatibility, default to flat array
+        localities: response.flat || [],
+        // Structured data by city
+        by_city: response.by_city || {},
+        // Flat array
+        flat: response.flat || []
+      };
+    },
     staleTime: 1000 * 60 * 60, // 1 hour
     retry: (failureCount, error) => {
       // Don't retry on 4xx errors, but retry on network errors
@@ -14,6 +26,23 @@ export function useLocalities() {
       }
       return failureCount < 3;
     },
+    // Transform the data to maintain backward compatibility
+    select: (data) => {
+      // If the API returns the old format (array), handle it
+      if (Array.isArray(data)) {
+        return {
+          localities: data,
+          by_city: {},
+          flat: data
+        };
+      }
+      // New structured format
+      return {
+        localities: data.flat || [],
+        by_city: data.by_city || {},
+        flat: data.flat || []
+      };
+    }
   });
 }
 
