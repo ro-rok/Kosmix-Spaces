@@ -103,7 +103,7 @@ This implementation plan converts the approved design into actionable coding tas
 - [ ] 4. Checkpoint - Test listing detail page functionality
   - Ensure all tests pass, ask the user if questions arise.
 
-- [-] 5. Enhance partner portal with advanced listing builder
+- [x] 5. Enhance partner portal with advanced listing builder
   - Upgrade listing builder to 3-step wizard (Basic Info, Offerings Editor, Location)
   - Implement 5 offering types management (Private Offices, Dedicated Desks, Hot Desks, Meeting Rooms, Event Spaces)
   - Create advanced photo upload system with drag-and-drop, progress tracking, and thumbnail management
@@ -135,7 +135,7 @@ This implementation plan converts the approved design into actionable coding tas
   - Test photo reorder and delete operations
   - _Requirements: 4.4, 4.6_
 
-- [ ] 6. Implement enhanced authentication and route guards
+- [-] 6. Implement enhanced authentication and route guards
   - Upgrade authentication system with JWT session management
   - Implement route guards for partner and admin sections
   - Add session hydration on app load (/auth/me endpoint)

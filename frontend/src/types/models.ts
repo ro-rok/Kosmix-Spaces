@@ -31,6 +31,19 @@ export interface LocationData {
     lat: number; // rounded to 2 decimal places
     lng: number; // rounded to 2 decimal places
   };
+  accessHours?: string;
+  customAccessHours?: string;
+  weekendAccess?: boolean;
+  twentyFourSevenAccess?: boolean;
+  nearMetro?: boolean;
+  metroDetails?: string;
+  parking?: string;
+  parkingNotes?: string;
+  powerBackup?: boolean;
+  internetSpeedMbps?: number;
+  wifiDetails?: string;
+  houseRules?: string;
+  specialInstructions?: string;
 }
 
 export interface Listing {
