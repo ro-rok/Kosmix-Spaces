@@ -9,7 +9,8 @@ import {
   X, 
   Shield,
   LogOut,
-  UserCheck
+  UserCheck,
+  BarChart3
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
@@ -21,6 +22,7 @@ const navItems = [
   { icon: UserCheck, label: "Partners", href: "/admin/partners" },
   { icon: Users, label: "Leads", href: "/admin/leads" },
   { icon: Calendar, label: "Visits", href: "/admin/visits" },
+  { icon: BarChart3, label: "Analytics", href: "/admin/analytics" },
 ];
 
 export function AdminLayout() {

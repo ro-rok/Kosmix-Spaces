@@ -503,6 +503,102 @@
 
 ---
 
+---
+
+## Analytics Endpoints
+
+### POST `/api/analytics/events`
+**Description**: Track analytics events in batch  
+**Authentication**: None (for anonymous user tracking)  
+**Request Body**:
+```json
+{
+  "events": [
+    {
+      "eventId": "evt_1234567890_abc123",
+      "eventName": "listing_view",
+      "timestamp": "2024-01-15T10:30:00Z",
+      "sessionId": "sess_1234567890_xyz789",
+      "userRole": "anon",
+      "listingId": "listing_123",
+      "path": "/spaces/premium-office-cp",
+      "metadata": {
+        "locality": "Connaught Place"
+      }
+    }
+  ]
+}
+```
+**Response**:
+```json
+{
+  "success": true,
+  "eventsTracked": 1,
+  "message": "Successfully tracked 1 events"
+}
+```
+
+### GET `/api/analytics/admin`
+**Description**: Get comprehensive analytics for admin dashboard  
+**Authentication**: Required (Admin)  
+**Query Parameters**:
+- `start_date` (optional): Start date in ISO format
+- `end_date` (optional): End date in ISO format
+
+**Response**:
+```json
+{
+  "totalViews": 1250,
+  "totalEnquiries": 89,
+  "totalSearches": 2340,
+  "partnerSignups": 23,
+  "conversionRate": 7.1,
+  "topListings": [...],
+  "topLocalities": [...]
+}
+```
+
+### GET `/api/analytics/partner/{partner_id}`
+**Description**: Get analytics for a specific partner  
+**Authentication**: Required (Partner/Admin)  
+**Query Parameters**: Same as admin endpoint  
+**Response**:
+```json
+{
+  "views": 456,
+  "enquiries": 23,
+  "conversionRate": 5.0,
+  "topListings": [...]
+}
+```
+
+### GET `/api/analytics/listing/{listing_id}`
+**Description**: Get performance metrics for a specific listing  
+**Authentication**: Required (Owner/Admin)  
+**Response**:
+```json
+{
+  "listingId": "listing_123",
+  "views": 234,
+  "enquiries": 15,
+  "conversionRate": 6.4,
+  "lastActivity": "2024-01-15T10:30:00Z"
+}
+```
+
+### GET `/api/analytics/health`
+**Description**: Health check for analytics service  
+**Authentication**: None  
+**Response**:
+```json
+{
+  "status": "healthy",
+  "service": "analytics",
+  "totalEvents": 12450,
+  "timestamp": "2024-01-15T10:30:00Z"
+}
+```
+
 ## Root Endpoint
 
 ### GET `/`

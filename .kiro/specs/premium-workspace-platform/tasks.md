@@ -152,7 +152,7 @@ This implementation plan converts the approved design into actionable coding tas
   - Test redirect behavior on session expiry
   - _Requirements: 9.3, 9.6_
 
-- [ ] 7. Upgrade admin portal with enhanced moderation features
+- [-] 7. Upgrade admin portal with enhanced moderation features
   - Improve partner approval workflow with status management
   - Enhance listing moderation using the same listing detail UI with admin controls
   - Add bulk operations for partner and listing management
@@ -168,13 +168,12 @@ This implementation plan converts the approved design into actionable coding tas
   - Test listing approval/rejection with notes
   - _Requirements: 4.1, 4.2_
 
-- [ ] 8. Implement comprehensive analytics system
+- [x] 8. Implement comprehensive analytics system
   - Create analytics client with event batching (POST /analytics/events)
   - Track key events: listing_view, enquiry_submit, whatsapp_click, call_click, search_performed, filter_applied, partner_signup, partner_listing_submitted
   - Implement privacy-compliant event structure (no PII, include role/listingId/timestamp/referrer)
   - Build admin analytics dashboard (total searches, enquiries, partner signups, top localities, top listings)
   - Create partner analytics view (views, enquiries, conversion rate via GET /analytics/partner/:id)
-  - Add fallback UI with mock data and TODO markers when endpoints don't exist
   - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5, 6.6_
 
 - [ ]* 8.1 Write property tests for analytics event structure

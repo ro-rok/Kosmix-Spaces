@@ -529,43 +529,64 @@ export const api = {
       }),
   },
 
-  // Analytics endpoints (placeholder - backend doesn't have these yet)
+  // Analytics endpoints
   analytics: {
-    // TODO: These endpoints don't exist in backend yet
-    // Will need to be implemented backend-side or use mock data
-    
-    trackEvent: (event: {
+    // Track events in batch
+    trackEvents: (events: Array<{
+      eventId: string;
       eventName: string;
+      timestamp: number;
+      sessionId: string;
+      userRole: 'anon' | 'partner' | 'admin';
       listingId?: string;
       listingSlug?: string;
+      partnerId?: string;
+      referrer?: string;
+      path: string;
       metadata?: Record<string, any>;
+    }>) =>
+      apiRequest<{ success: boolean; eventsTracked: number; message: string }>("/analytics/events", {
+        method: "POST",
+        body: JSON.stringify({ events }),
+      }),
+
+    // Get admin analytics dashboard data
+    getAdminAnalytics: (params?: {
+      startDate?: string;
+      endDate?: string;
     }) => {
-      // TODO: Implement when backend analytics endpoints are available
-      console.log('Analytics event tracked (mock):', event);
-      return Promise.resolve({ ok: true });
+      const searchParams = new URLSearchParams();
+      if (params?.startDate) searchParams.append('start_date', params.startDate);
+      if (params?.endDate) searchParams.append('end_date', params.endDate);
+      
+      const queryString = searchParams.toString();
+      return apiRequest<{
+        totalViews: number;
+        totalEnquiries: number;
+        totalSearches: number;
+        partnerSignups: number;
+        conversionRate: number;
+        topLocalities: Array<{ locality: string; searches: number; views: number }>;
+        topListings: Array<{ listingId: string; displayName: string; views: number; enquiries: number }>;
+      }>(`/analytics/admin${queryString ? `?${queryString}` : ''}`);
     },
 
-    getAdminAnalytics: () => {
-      // TODO: Implement when GET /analytics/admin is available
-      console.log('Admin analytics requested (mock)');
-      return Promise.resolve({
-        totalSearches: 0,
-        totalEnquiries: 0,
-        partnerSignups: 0,
-        listingViews: 0,
-        topLocalities: [],
-        topListings: []
-      });
-    },
-
-    getPartnerAnalytics: (partnerId: string) => {
-      // TODO: Implement when GET /analytics/partner/:id is available
-      console.log('Partner analytics requested (mock):', partnerId);
-      return Promise.resolve({
-        views: 0,
-        enquiries: 0,
-        conversionRate: 0
-      });
+    // Get partner-specific analytics
+    getPartnerAnalytics: (partnerId: string, params?: {
+      startDate?: string;
+      endDate?: string;
+    }) => {
+      const searchParams = new URLSearchParams();
+      if (params?.startDate) searchParams.append('start_date', params.startDate);
+      if (params?.endDate) searchParams.append('end_date', params.endDate);
+      
+      const queryString = searchParams.toString();
+      return apiRequest<{
+        views: number;
+        enquiries: number;
+        conversionRate: number;
+        topListings: Array<{ listingId: string; displayName: string; views: number; enquiries: number }>;
+      }>(`/analytics/partner/${partnerId}${queryString ? `?${queryString}` : ''}`);
     },
   },
 

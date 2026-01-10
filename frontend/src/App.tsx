@@ -27,6 +27,7 @@ import { AdminLeads } from "@/admin/pages/AdminLeads";
 import { AdminVisits } from "@/admin/pages/AdminVisits";
 import { AdminPartners } from "@/admin/pages/AdminPartners";
 import { AdminLogin } from "@/admin/pages/AdminLogin";
+import AdminAnalytics from "@/admin/pages/AdminAnalytics";
 
 // Partner
 import { PartnerLayout } from "@/partner/PartnerLayout";
@@ -36,6 +37,7 @@ import { PartnerDashboard } from "@/partner/pages/PartnerDashboard";
 import { PartnerListings } from "@/partner/pages/PartnerListings";
 import { PartnerListingDetail } from "@/partner/pages/PartnerListingDetail";
 import { SubmitListing } from "@/partner/pages/SubmitListing";
+import PartnerAnalytics from "@/partner/pages/PartnerAnalytics";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -86,6 +88,7 @@ const App = () => (
               <Route path="partners" element={<AdminPartners />} />
               <Route path="leads" element={<AdminLeads />} />
               <Route path="visits" element={<AdminVisits />} />
+              <Route path="analytics" element={<AdminAnalytics />} />
             </Route>
 
             {/* Partner Routes */}
@@ -102,6 +105,7 @@ const App = () => (
               <Route path="listings" element={<PartnerListings />} />
               <Route path="listings/new" element={<SubmitListing />} />
               <Route path="listings/:id" element={<PartnerListingDetail />} />
+              <Route path="analytics" element={<PartnerAnalytics />} />
             </Route>
 
             <Route path="*" element={<NotFound />} />

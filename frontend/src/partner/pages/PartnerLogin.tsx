@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
+import { trackPartnerSignup } from "@/lib/analytics";
 
 export function PartnerLogin() {
   const navigate = useNavigate();
@@ -80,13 +81,21 @@ export function PartnerLogin() {
 
     setIsRegisterLoading(true);
     try {
-      await api.auth.registerPartner({
+      const result = await api.auth.registerPartner({
         workspaceBrandName: workspaceBrandName.trim(),
         contactName: contactName.trim(),
         phone: phone.trim(),
         email: email.trim(),
         password,
       });
+      
+      // Track successful partner signup
+      trackPartnerSignup('PENDING', {
+        workspaceBrandName: workspaceBrandName.trim(),
+        hasPhone: !!phone.trim(),
+        hasEmail: !!email.trim()
+      });
+      
       toast.success("Registration successful! Your account is pending approval.");
       setActiveTab("login");
       setLoginEmail(email);

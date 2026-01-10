@@ -1,0 +1,316 @@
+"""Enhanced public API routes for premium listings."""
+from typing import Optional, List
+from fastapi import APIRouter, Query, HTTPException
+from app.services.premium_listing_service import (
+    get_premium_listing_by_slug,
+    increment_listing_view,
+    increment_listing_enquiry,
+    listing_to_public_response
+)
+from app.services.slug_service import find_listing_by_slug
+from app.services.lead_service import create_lead, build_whatsapp_link
+from app.services.visit_service import create_visit_request
+from app.schemas.lead import EnquiryLeadCreate, LeadCreateResponse
+from app.schemas.visit import SiteVisitCreate, VisitCreateResponse
+from app.core.errors import NotFoundError
+from app.db.mongodb import get_database
+from bson import ObjectId
+
+router = APIRouter()
+
+
+@router.get("/localities")
+async def get_localities():
+    """Get list of known localities with enhanced data."""
+    # Enhanced locality data for premium platform
+    localities = [
+        {"id": "connaught-place", "name": "Connaught Place", "city": "Delhi", "popular": True, "metroConnected": True},
+        {"id": "saket", "name": "Saket", "city": "Delhi", "popular": True, "metroConnected": True},
+        {"id": "nehru-place", "name": "Nehru Place", "city": "Delhi", "popular": True, "metroConnected": True},
+        {"id": "okhla", "name": "Okhla", "city": "Delhi", "popular": True, "metroConnected": False},
+        {"id": "janakpuri", "name": "Janakpuri", "city": "Delhi", "popular": False, "metroConnected": True},
+        {"id": "dwarka", "name": "Dwarka", "city": "Delhi", "popular": True, "metroConnected": True},
+        {"id": "vasant-kunj", "name": "Vasant Kunj", "city": "Delhi", "popular": False, "metroConnected": False},
+        {"id": "lajpat-nagar", "name": "Lajpat Nagar", "city": "Delhi", "popular": False, "metroConnected": True},
+        {"id": "karol-bagh", "name": "Karol Bagh", "city": "Delhi", "popular": True, "metroConnected": True},
+        {"id": "pitampura", "name": "Pitampura", "city": "Delhi", "popular": False, "metroConnected": True},
+        {"id": "rohini", "name": "Rohini", "city": "Delhi", "popular": False, "metroConnected": True},
+        {"id": "greater-kailash", "name": "Greater Kailash", "city": "Delhi", "popular": True, "metroConnected": False},
+        {"id": "south-extension", "name": "South Extension", "city": "Delhi", "popular": False, "metroConnected": True},
+        {"id": "hauz-khas", "name": "Hauz Khas", "city": "Delhi", "popular": True, "metroConnected": True},
+        {"id": "green-park", "name": "Green Park", "city": "Delhi", "popular": False, "metroConnected": True},
+    ]
+    return localities
+
+
+@router.get("/listings")
+async def get_enhanced_listings(
+    # Search and filtering
+    query: Optional[str] = Query(None, description="Search query for listings"),
+    locality: Optional[List[str]] = Query(None, description="Filter by localities"),
+    budgetBand: Optional[List[str]] = Query(None, description="Filter by budget bands"),
+    teamSize: Optional[str] = Query(None, description="Filter by team size"),
+    
+    # Amenity filters
+    meetingRooms: Optional[bool] = Query(None, description="Filter by meeting rooms availability"),
+    privateOffice: Optional[bool] = Query(None, description="Filter by private office availability"),
+    verifiedOnly: Optional[bool] = Query(None, description="Show only verified listings"),
+    amenities: Optional[List[str]] = Query(None, description="Filter by amenities"),
+    
+    # Legacy filters for backward compatibility
+    budgetBandId: Optional[str] = Query(None, description="Legacy budget band filter"),
+    teamSizeBand: Optional[str] = Query(None, description="Legacy team size filter"),
+    spaceType: Optional[str] = Query(None, description="Legacy space type filter"),
+    nearMetro: Optional[bool] = Query(None, description="Filter by metro proximity"),
+    parking: Optional[str] = Query(None, description="Filter by parking availability"),
+    powerBackup: Optional[bool] = Query(None, description="Filter by power backup"),
+    gstInvoice: Optional[bool] = Query(None, description="Filter by GST invoice availability"),
+    
+    # Sorting and pagination
+    sort: str = Query("recommended", regex="^(recommended|most_enquired|budget_low)$"),
+    page: int = Query(1, ge=1),
+    pageSize: int = Query(20, ge=1, le=100)
+):
+    """Get enhanced listings with advanced filtering."""
+    db = get_database()
+    
+    # Build query for premium listings
+    query_filter = {
+        "isPublished": True,
+        "verificationStatus": "APPROVED_VERIFIED"
+    }
+    
+    # Text search
+    if query:
+        query_filter["$text"] = {"$search": query}
+    
+    # Locality filter (support both single and multiple)
+    if locality:
+        if isinstance(locality, list):
+            query_filter["location.locality"] = {"$in": locality}
+        else:
+            query_filter["location.locality"] = locality
+    
+    # Legacy locality filter
+    if budgetBandId:
+        # Map legacy budget band to new format
+        if not budgetBand:
+            budgetBand = [budgetBandId]
+    
+    # Team size filter
+    team_size_filter = teamSize or teamSizeBand
+    if team_size_filter:
+        # Add team size logic based on offerings capacity
+        pass  # TODO: Implement team size filtering based on offerings
+    
+    # Verified only filter
+    if verifiedOnly:
+        query_filter["verificationStatus"] = "APPROVED_VERIFIED"
+    
+    # Metro proximity filter
+    if nearMetro:
+        query_filter["location.nearMetro"] = True
+    
+    # Offering-specific filters
+    offering_filters = []
+    
+    if meetingRooms:
+        offering_filters.append({"offerings.meeting-rooms.enabled": True})
+    
+    if privateOffice:
+        offering_filters.append({"offerings.private-offices.enabled": True})
+    
+    if offering_filters:
+        query_filter["$and"] = offering_filters
+    
+    # Amenities filter
+    if amenities:
+        query_filter["amenities"] = {"$in": amenities}
+    
+    # Build sort criteria
+    sort_criteria = []
+    if sort == "recommended":
+        # Sort by view count and enquiry count
+        sort_criteria = [("viewCount", -1), ("enquiryCount", -1), ("updatedAt", -1)]
+    elif sort == "most_enquired":
+        sort_criteria = [("enquiryCount", -1), ("viewCount", -1)]
+    elif sort == "budget_low":
+        # Sort by lowest starting price in enabled offerings
+        sort_criteria = [("updatedAt", -1)]  # TODO: Implement price-based sorting
+    else:
+        sort_criteria = [("updatedAt", -1)]
+    
+    # Execute query with pagination
+    skip = (page - 1) * pageSize
+    
+    cursor = db.premium_listings.find(query_filter).sort(sort_criteria).skip(skip).limit(pageSize)
+    listings = await cursor.to_list(length=pageSize)
+    
+    # Get total count
+    total = await db.premium_listings.count_documents(query_filter)
+    
+    # Convert to public format
+    items = [listing_to_public_response(listing) for listing in listings]
+    
+    return {
+        "items": items,
+        "total": total,
+        "page": page,
+        "pageSize": pageSize,
+        "sort": sort
+    }
+
+
+@router.get("/listings/{slug}")
+async def get_enhanced_listing_detail(slug: str):
+    """Get enhanced listing detail by slug with analytics tracking."""
+    # Try to find premium listing first
+    listing = await find_listing_by_slug(slug)
+    
+    if not listing:
+        raise NotFoundError("Listing", slug)
+    
+    # Check if it's a premium listing
+    if "slugData" in listing:
+        # Premium listing
+        if not listing.get("isPublished") or listing.get("verificationStatus") != "APPROVED_VERIFIED":
+            raise NotFoundError("Listing", slug)
+        
+        # Increment view count
+        await increment_listing_view(str(listing["_id"]))
+        
+        return listing_to_public_response(listing)
+    else:
+        # Legacy listing - use existing logic
+        from app.services.listing_service import listing_to_public_detail
+        return listing_to_public_detail(listing)
+
+
+@router.post("/leads", response_model=LeadCreateResponse)
+async def create_enhanced_lead(lead: EnquiryLeadCreate):
+    """Create an enquiry lead with enhanced tracking."""
+    lead_data = lead.model_dump()
+    created_lead = await create_lead(lead_data)
+    
+    # If lead is for a specific listing, increment enquiry count
+    if lead.listingSlug:
+        listing = await find_listing_by_slug(lead.listingSlug)
+        if listing and "slugData" in listing:  # Premium listing
+            await increment_listing_enquiry(str(listing["_id"]))
+    
+    whatsapp_link = build_whatsapp_link(
+        name=lead.name,
+        phone=lead.phone,
+        preferred_localities=lead.preferredLocalities,
+        budget_band=lead.budgetBandId,
+        team_size=lead.teamSizeBand,
+        space_type=lead.spaceType
+    )
+    
+    return LeadCreateResponse(
+        leadId=str(created_lead["_id"]),
+        message="Thank you! We'll get back to you within 3 hours.",
+        whatsappDeepLink=whatsapp_link
+    )
+
+
+@router.post("/site-visits", response_model=VisitCreateResponse)
+async def create_enhanced_site_visit(visit: SiteVisitCreate):
+    """Create a site visit request with enhanced tracking."""
+    from app.services.lead_service import create_lead
+    
+    # First create a lead if needed
+    lead_data = {
+        "name": visit.name,
+        "phone": visit.phone,
+        "email": visit.email,
+        "source": "site-visit",
+        "status": "VISIT_REQUESTED"
+    }
+    created_lead = await create_lead(lead_data)
+    
+    # Create visit request
+    visit_data = {
+        "leadId": created_lead["_id"],
+        "listingIds": [ObjectId(lid) for lid in visit.listingIds],
+        "preferredSlots": [slot.model_dump() for slot in visit.preferredSlots],
+        "visitorCount": visit.visitorCount
+    }
+    created_visit = await create_visit_request(visit_data)
+    
+    # Increment enquiry count for premium listings
+    for listing_id in visit.listingIds:
+        try:
+            listing = await get_database().premium_listings.find_one({"_id": ObjectId(listing_id)})
+            if listing:
+                await increment_listing_enquiry(listing_id)
+        except:
+            pass  # Continue if listing not found
+    
+    return VisitCreateResponse(
+        visitRequestId=str(created_visit["_id"]),
+        message="Visit request received! We'll confirm within 3 hours."
+    )
+
+
+@router.get("/search/suggestions")
+async def get_search_suggestions(
+    query: str = Query(..., min_length=2, description="Search query for suggestions")
+):
+    """Get search suggestions based on query."""
+    db = get_database()
+    
+    # Get locality suggestions
+    locality_suggestions = []
+    localities = await get_localities()
+    
+    for locality in localities:
+        if query.lower() in locality["name"].lower():
+            locality_suggestions.append({
+                "type": "locality",
+                "text": locality["name"],
+                "value": locality["id"]
+            })
+    
+    # Get listing name suggestions
+    listing_suggestions = []
+    cursor = db.premium_listings.find(
+        {
+            "isPublished": True,
+            "verificationStatus": "APPROVED_VERIFIED",
+            "$text": {"$search": query}
+        },
+        {"displayName": 1, "location.locality": 1}
+    ).limit(5)
+    
+    async for listing in cursor:
+        listing_suggestions.append({
+            "type": "listing",
+            "text": listing["displayName"],
+            "subtitle": listing["location"]["locality"],
+            "value": listing["slugData"]["slug"]
+        })
+    
+    return {
+        "suggestions": locality_suggestions + listing_suggestions
+    }
+
+
+@router.get("/featured")
+async def get_featured_listings(limit: int = Query(6, ge=1, le=20)):
+    """Get featured listings for homepage."""
+    db = get_database()
+    
+    # Get top listings by view count and enquiry count
+    cursor = db.premium_listings.find(
+        {
+            "isPublished": True,
+            "verificationStatus": "APPROVED_VERIFIED"
+        }
+    ).sort([("viewCount", -1), ("enquiryCount", -1)]).limit(limit)
+    
+    listings = await cursor.to_list(length=limit)
+    
+    return {
+        "items": [listing_to_public_response(listing) for listing in listings]
+    }

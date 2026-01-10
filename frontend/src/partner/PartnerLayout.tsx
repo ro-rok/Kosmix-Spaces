@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { Building2, FileText, Plus, Menu, X, LogOut, LayoutDashboard } from "lucide-react";
+import { Building2, FileText, Plus, Menu, X, LogOut, LayoutDashboard, BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
@@ -9,6 +9,7 @@ const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/partner" },
   { icon: FileText, label: "My Listings", href: "/partner/listings" },
   { icon: Plus, label: "Submit New", href: "/partner/listings/new" },
+  { icon: BarChart3, label: "Analytics", href: "/partner/analytics" },
 ];
 
 export function PartnerLayout() {

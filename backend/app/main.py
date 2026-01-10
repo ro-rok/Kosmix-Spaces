@@ -11,7 +11,20 @@ from app.db.mongodb import connect_to_mongo, close_mongo_connection
 from app.db.indexes import create_indexes
 
 # Import routers
-from app.routers import health, public, auth_partner, auth_admin, partner_listings, admin_listings, admin_partners, leads, visits
+from app.routers import (
+    health, 
+    public, 
+    premium_public,
+    auth_partner, 
+    auth_admin, 
+    partner_listings,
+    premium_listings,
+    admin_listings, 
+    admin_partners, 
+    leads, 
+    visits, 
+    analytics
+)
 
 settings = get_settings()
 
@@ -29,8 +42,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Kosmix Spaces API",
-    description="Backend API for Kosmix Spaces workspace marketplace",
-    version="1.0.0",
+    description="Backend API for Kosmix Spaces premium workspace marketplace",
+    version="2.0.0",
     lifespan=lifespan
 )
 
@@ -99,21 +112,41 @@ async def general_exception_handler(request: Request, exc: Exception):
 
 # Include routers
 app.include_router(health.router, prefix="/api", tags=["Health"])
-app.include_router(public.router, prefix="/api/public", tags=["Public"])
+
+# Public routes (enhanced and legacy)
+app.include_router(premium_public.router, prefix="/api/public", tags=["Public Enhanced"])
+app.include_router(public.router, prefix="/api/public/legacy", tags=["Public Legacy"])
+
+# Authentication routes
 app.include_router(auth_partner.router, prefix="/api/partner/auth", tags=["Partner Auth"])
-app.include_router(partner_listings.router, prefix="/api/partner", tags=["Partner Listings"])
 app.include_router(auth_admin.router, prefix="/api/admin/auth", tags=["Admin Auth"])
+
+# Partner routes (enhanced and legacy)
+app.include_router(premium_listings.router, prefix="/api/partner", tags=["Partner Premium"])
+app.include_router(partner_listings.router, prefix="/api/partner/legacy", tags=["Partner Legacy"])
+
+# Admin routes
 app.include_router(admin_listings.router, prefix="/api/admin", tags=["Admin Listings"])
 app.include_router(admin_partners.router, prefix="/api/admin", tags=["Admin Partners"])
 app.include_router(leads.router, prefix="/api/admin", tags=["Admin Leads"])
 app.include_router(visits.router, prefix="/api/admin", tags=["Admin Visits"])
+
+# Analytics routes
+app.include_router(analytics.router, prefix="/api/analytics", tags=["Analytics"])
 
 
 @app.get("/")
 async def root():
     """Root endpoint."""
     return {
-        "message": "Kosmix Spaces API",
-        "version": "1.0.0",
+        "message": "Kosmix Spaces Premium API",
+        "version": "2.0.0",
+        "features": [
+            "Enhanced slug-based routing",
+            "Premium offering management",
+            "Advanced photo management",
+            "Enhanced authentication",
+            "Comprehensive analytics"
+        ],
         "docs": "/docs"
     }

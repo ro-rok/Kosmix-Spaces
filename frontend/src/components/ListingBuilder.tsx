@@ -25,6 +25,7 @@ import {
 } from "@/types/models";
 import { initializeAllOfferings, validateOfferingsForSubmission } from "@/lib/offerings";
 import { usePartnerListing, useCreatePartnerListing, useUpdatePartnerListing } from "@/hooks/useAuth";
+import { trackPartnerListingSubmitted } from "@/lib/analytics";
 
 interface ListingBuilderProps {
   listingId?: string;
@@ -254,6 +255,20 @@ export function ListingBuilder({ listingId, isEdit = false }: ListingBuilderProp
       } else {
         const result = await createListingMutation.mutateAsync(listingData);
         toast.success('Listing submitted for approval');
+        
+        // Track listing submission for new listings
+        const enabledOfferings = Object.entries(formData.offerings)
+          .filter(([_, offering]) => offering.enabled)
+          .map(([type, _]) => type);
+        
+        trackPartnerListingSubmitted(result?.listingId || 'new', enabledOfferings.join(','), {
+          locality: formData.basicInfo.locality,
+          offeringsCount: enabledOfferings.length,
+          hasPhotos: enabledOfferings.some(type => 
+            formData.offerings[type as OfferingType]?.photos?.length > 0
+          )
+        });
+        
         navigate(`/partner/listings/${result.listingId}`);
         return;
       }

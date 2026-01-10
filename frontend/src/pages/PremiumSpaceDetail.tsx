@@ -29,6 +29,7 @@ import { formatPrice } from "@/lib/price";
 import { offeringTypeLabels, OfferingType } from "@/types/models";
 import { transparencyLines } from "@/config/contact";
 import { cn } from "@/lib/utils";
+import { trackListingView, trackWhatsAppClick, trackCallClick, trackEnquirySubmit } from "@/lib/analytics";
 
 // Navigation tabs for scroll-spy
 const navigationTabs = [
@@ -58,6 +59,17 @@ export default function PremiumSpaceDetail() {
   const observerRef = useRef<IntersectionObserver | null>(null);
 
   const { data: listing, isLoading, error } = useListingDetail(slug!);
+
+  // Track listing view when listing data is loaded
+  useEffect(() => {
+    if (listing && slug) {
+      trackListingView(listing.slug, slug, {
+        verificationStatus: listing.verificationStatus,
+        locality: listing.locality,
+        city: listing.city
+      });
+    }
+  }, [listing, slug]);
 
   // Set up scroll-spy intersection observer
   useEffect(() => {
@@ -108,6 +120,28 @@ export default function PremiumSpaceDetail() {
     listingName: listing.displayName,
     locality: listing.locality,
   });
+
+  // Analytics tracking handlers
+  const handleWhatsAppClick = () => {
+    trackWhatsAppClick(listing.slug, slug, {
+      locality: listing.locality,
+      verificationStatus: listing.verificationStatus
+    });
+  };
+
+  const handleCallClick = () => {
+    trackCallClick(listing.slug, slug, {
+      locality: listing.locality,
+      verificationStatus: listing.verificationStatus
+    });
+  };
+
+  const handleEnquirySubmit = () => {
+    trackEnquirySubmit(listing.slug, 'form', {
+      locality: listing.locality,
+      verificationStatus: listing.verificationStatus
+    });
+  };
 
   const nextImage = () => {
     setCurrentImage((prev) => (prev + 1) % listing.photos.length);
@@ -558,14 +592,19 @@ export default function PremiumSpaceDetail() {
 
                     <div className="space-y-3">
                       <Button variant="whatsapp" size="lg" className="w-full" asChild>
-                        <a href={whatsappLink} target="_blank" rel="noopener noreferrer">
+                        <a 
+                          href={whatsappLink} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          onClick={handleWhatsAppClick}
+                        >
                           <MessageCircle className="h-5 w-5" />
                           WhatsApp Us
                         </a>
                       </Button>
                       
                       <Button variant="call" size="lg" className="w-full" asChild>
-                        <a href={buildCallLink()}>
+                        <a href={buildCallLink()} onClick={handleCallClick}>
                           <Phone className="h-5 w-5" />
                           Call Us
                         </a>
@@ -575,7 +614,10 @@ export default function PremiumSpaceDetail() {
                         variant="default" 
                         size="lg" 
                         className="w-full"
-                        onClick={() => setEnquiryDialogOpen(true)}
+                        onClick={() => {
+                          handleEnquirySubmit();
+                          setEnquiryDialogOpen(true);
+                        }}
                       >
                         Enquire Now
                       </Button>
@@ -647,13 +689,18 @@ export default function PremiumSpaceDetail() {
       <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background/95 backdrop-blur-md p-3 lg:hidden">
         <div className="flex gap-2">
           <Button variant="whatsapp" size="lg" className="flex-1" asChild>
-            <a href={whatsappLink} target="_blank" rel="noopener noreferrer">
+            <a 
+              href={whatsappLink} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              onClick={handleWhatsAppClick}
+            >
               <MessageCircle className="h-5 w-5" />
               WhatsApp
             </a>
           </Button>
           <Button variant="call" size="lg" className="flex-1" asChild>
-            <a href={buildCallLink()}>
+            <a href={buildCallLink()} onClick={handleCallClick}>
               <Phone className="h-5 w-5" />
               Call
             </a>
@@ -662,7 +709,10 @@ export default function PremiumSpaceDetail() {
             variant="default" 
             size="lg" 
             className="flex-1"
-            onClick={() => setEnquiryDialogOpen(true)}
+            onClick={() => {
+              handleEnquirySubmit();
+              setEnquiryDialogOpen(true);
+            }}
           >
             Enquire
           </Button>

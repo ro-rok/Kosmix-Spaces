@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useDebounce } from './useDebounce';
 import { api } from '@/lib/api';
 import { SearchFilters } from '@/types/models';
+import { trackSearchPerformed, trackFilterApplied } from '@/lib/analytics';
 
 interface SearchParams {
   query?: string;
@@ -18,6 +19,17 @@ interface SearchParams {
 export function useSearchWithCache(params: SearchParams) {
   const [searchQuery, setSearchQuery] = useState(params.query || '');
   const debouncedQuery = useDebounce(searchQuery, 300);
+
+  // Track search events when debounced query changes
+  useEffect(() => {
+    if (debouncedQuery) {
+      const activeFilters = getActiveFilters(params.filters);
+      trackSearchPerformed(debouncedQuery, activeFilters, {
+        sortBy: params.sort,
+        page: params.page
+      });
+    }
+  }, [debouncedQuery, params.sort, params.page]);
 
   // Convert frontend filters to API parameters
   const apiParams = {
@@ -62,6 +74,14 @@ export function useSearchWithCache(params: SearchParams) {
     setSearchQuery(query);
   }, []);
 
+  // Track filter application
+  const trackFilter = useCallback((filterType: string, filterValue: string) => {
+    trackFilterApplied(filterType, filterValue, {
+      currentQuery: debouncedQuery,
+      totalFilters: getActiveFilters(params.filters).length
+    });
+  }, [debouncedQuery, params.filters]);
+
   return {
     data: data || { items: [], total: 0, page: 1, pageSize: 12 },
     isLoading,
@@ -69,6 +89,38 @@ export function useSearchWithCache(params: SearchParams) {
     refetch,
     searchQuery,
     updateSearchQuery,
-    debouncedQuery
+    debouncedQuery,
+    trackFilter
   };
+}
+
+/**
+ * Helper function to get active filters as string array
+ */
+function getActiveFilters(filters: SearchFilters): string[] {
+  const active: string[] = [];
+  
+  if (filters.locality.length > 0) {
+    active.push(...filters.locality.map(l => `locality:${l}`));
+  }
+  if (filters.budgetBand.length > 0) {
+    active.push(...filters.budgetBand.map(b => `budget:${b}`));
+  }
+  if (filters.teamSize) {
+    active.push(`teamSize:${filters.teamSize}`);
+  }
+  if (filters.meetingRooms) {
+    active.push('meetingRooms:true');
+  }
+  if (filters.privateOffice) {
+    active.push('privateOffice:true');
+  }
+  if (filters.verifiedOnly) {
+    active.push('verifiedOnly:true');
+  }
+  if (filters.amenities.length > 0) {
+    active.push(...filters.amenities.map(a => `amenity:${a}`));
+  }
+  
+  return active;
 }
