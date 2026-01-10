@@ -8,7 +8,7 @@ import { ConnectionStatus } from "@/components/ConnectionStatus";
 import { AdminRoute } from "@/components/AdminRoute";
 import Index from "./pages/Index";
 import Explore from "./pages/Explore";
-import SpaceDetail from "./pages/SpaceDetail";
+import PremiumSpaceDetail from "./pages/PremiumSpaceDetail";
 import HowItWorks from "./pages/HowItWorks";
 import Trust from "./pages/Trust";
 import Partners from "./pages/Partners";
@@ -49,7 +49,7 @@ const App = () => (
           <Route element={<Layout />}>
             <Route path="/" element={<Index />} />
             <Route path="/explore" element={<Explore />} />
-            <Route path="/spaces/:slug" element={<SpaceDetail />} />
+            <Route path="/spaces/:slug" element={<PremiumSpaceDetail />} />
             <Route path="/how-it-works" element={<HowItWorks />} />
             <Route path="/trust" element={<Trust />} />
             <Route path="/partners" element={<Partners />} />

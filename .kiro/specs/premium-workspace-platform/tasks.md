@@ -70,7 +70,7 @@ This implementation plan converts the approved design into actionable coding tas
   - Test cache invalidation scenarios
   - _Requirements: 5.1_
 
-- [-] 3. Build premium listing detail page
+- [x] 3. Build premium listing detail page
   - Create responsive 2-column layout (68% content, 32% sticky enquiry card)
   - Implement mobile single-column layout with bottom sticky CTA bar
   - Build scroll-spy navigation tabs (OVERVIEW, OFFERINGS & PRICING, LOCATION, AMENITIES)
@@ -103,7 +103,7 @@ This implementation plan converts the approved design into actionable coding tas
 - [ ] 4. Checkpoint - Test listing detail page functionality
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 5. Enhance partner portal with advanced listing builder
+- [-] 5. Enhance partner portal with advanced listing builder
   - Upgrade listing builder to 3-step wizard (Basic Info, Offerings Editor, Location)
   - Implement 5 offering types management (Private Offices, Dedicated Desks, Hot Desks, Meeting Rooms, Event Spaces)
   - Create advanced photo upload system with drag-and-drop, progress tracking, and thumbnail management
