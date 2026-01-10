@@ -4,16 +4,17 @@ import { Shield, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useAdminLogin } from "@/hooks/useAuth";
+import { useAuth } from "@/contexts/AuthContext";
+import { api } from "@/lib/api";
 import { toast } from "sonner";
 
 export function AdminLogin() {
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  
-  const loginMutation = useAdminLogin();
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,15 +24,22 @@ export function AdminLogin() {
       return;
     }
 
+    setIsLoading(true);
     try {
-      await loginMutation.mutateAsync({
+      const response = await api.auth.loginAdmin({
         email: email.trim(),
         password,
       });
+      
+      // Use the new auth context login method
+      login(response.accessToken, 'admin');
+      
       toast.success("Login successful!");
       navigate("/admin");
     } catch (error: any) {
       toast.error(error.message || "Login failed");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -53,7 +61,7 @@ export function AdminLogin() {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="admin@kosmixspaces.in"
               required
-              disabled={loginMutation.isPending}
+              disabled={isLoading}
             />
           </div>
 
@@ -67,7 +75,7 @@ export function AdminLogin() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Your password"
                 required
-                disabled={loginMutation.isPending}
+                disabled={isLoading}
               />
               <button
                 type="button"
@@ -79,8 +87,8 @@ export function AdminLogin() {
             </div>
           </div>
 
-          <Button type="submit" className="w-full" disabled={loginMutation.isPending}>
-            {loginMutation.isPending ? "Signing in..." : "Sign In"}
+          <Button type="submit" className="w-full" disabled={isLoading}>
+            {isLoading ? "Signing in..." : "Sign In"}
           </Button>
         </form>
 

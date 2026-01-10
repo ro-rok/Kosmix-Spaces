@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, Outlet, useLocation, Navigate } from "react-router-dom";
+import { Link, Outlet, useLocation } from "react-router-dom";
 import { 
   LayoutDashboard, 
   Building2, 
@@ -12,7 +12,7 @@ import {
   UserCheck
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useAdminMe, useLogout, getStoredToken, getStoredUserType } from "@/hooks/useAuth";
+import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -26,7 +26,7 @@ const navItems = [
 export function AdminLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
-  const logout = useLogout();
+  const { logout, user } = useAuth();
 
   return (
     <div className="min-h-screen bg-muted/30">
@@ -69,6 +69,11 @@ export function AdminLayout() {
             ))}
           </nav>
           <div className="border-t border-border p-4">
+            {user && (
+              <div className="mb-3 text-xs text-muted-foreground">
+                Logged in as: {user.email}
+              </div>
+            )}
             <Button variant="outline" size="sm" className="w-full" onClick={logout}>
               <LogOut className="h-4 w-4" />
               Logout

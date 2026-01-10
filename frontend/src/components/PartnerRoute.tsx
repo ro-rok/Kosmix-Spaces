@@ -1,5 +1,5 @@
 import { Navigate } from "react-router-dom";
-import { usePartnerMe, getStoredToken, getStoredUserType, clearAuthData } from "@/hooks/useAuth";
+import { useAuth } from "@/contexts/AuthContext";
 import { useEffect } from "react";
 
 interface PartnerRouteProps {
@@ -8,20 +8,18 @@ interface PartnerRouteProps {
 }
 
 export function PartnerRoute({ children, requireApproved = false }: PartnerRouteProps) {
-  const token = getStoredToken();
-  const userType = getStoredUserType();
-  const { data: partnerData, isLoading, error } = usePartnerMe();
+  const { user, isAuthenticated, isLoading, userRole, isSessionExpired } = useAuth();
 
-  // Clear auth data on authentication error
+  // Handle session expiry
   useEffect(() => {
-    if (error && token) {
-      console.log("Partner authentication failed, clearing auth data");
-      clearAuthData();
+    if (isSessionExpired) {
+      // Context will handle redirect to login
+      return;
     }
-  }, [error, token]);
+  }, [isSessionExpired]);
 
-  // If no token or wrong user type, redirect to login
-  if (!token || userType !== "partner") {
+  // If not authenticated or wrong user type, redirect to login
+  if (!isAuthenticated || userRole !== "partner") {
     return <Navigate to="/partner/login" replace />;
   }
 
@@ -37,13 +35,13 @@ export function PartnerRoute({ children, requireApproved = false }: PartnerRoute
     );
   }
 
-  // If error or no partner data, redirect to login
-  if (error || !partnerData) {
+  // If no user data after loading, redirect to login
+  if (!user) {
     return <Navigate to="/partner/login" replace />;
   }
 
   // If partner approval is required and partner is not approved
-  if (requireApproved && partnerData.status !== "ACTIVE") {
+  if (requireApproved && user.status !== "ACTIVE") {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center max-w-md mx-auto p-6">
@@ -59,7 +57,7 @@ export function PartnerRoute({ children, requireApproved = false }: PartnerRoute
             Your partner account is currently under review. You'll be able to create listings once approved by our team.
           </p>
           <p className="text-sm text-muted-foreground">
-            Status: <span className="font-medium">{partnerData.status}</span>
+            Status: <span className="font-medium">{user.status}</span>
           </p>
         </div>
       </div>

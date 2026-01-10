@@ -5,17 +5,20 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { usePartnerLogin, usePartnerRegister } from "@/hooks/useAuth";
+import { useAuth } from "@/contexts/AuthContext";
+import { api } from "@/lib/api";
 import { toast } from "sonner";
 
 export function PartnerLogin() {
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [activeTab, setActiveTab] = useState("login");
   
   // Login form
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [showLoginPassword, setShowLoginPassword] = useState(false);
+  const [isLoginLoading, setIsLoginLoading] = useState(false);
   
   // Register form
   const [registerData, setRegisterData] = useState({
@@ -26,9 +29,7 @@ export function PartnerLogin() {
     password: "",
   });
   const [showRegisterPassword, setShowRegisterPassword] = useState(false);
-  
-  const loginMutation = usePartnerLogin();
-  const registerMutation = usePartnerRegister();
+  const [isRegisterLoading, setIsRegisterLoading] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,15 +39,22 @@ export function PartnerLogin() {
       return;
     }
 
+    setIsLoginLoading(true);
     try {
-      await loginMutation.mutateAsync({
+      const response = await api.auth.loginPartner({
         email: loginEmail.trim(),
         password: loginPassword,
       });
+      
+      // Use the new auth context login method
+      login(response.accessToken, 'partner');
+      
       toast.success("Login successful!");
       navigate("/partner");
     } catch (error: any) {
       toast.error(error.message || "Login failed");
+    } finally {
+      setIsLoginLoading(false);
     }
   };
 
@@ -70,8 +78,9 @@ export function PartnerLogin() {
       return;
     }
 
+    setIsRegisterLoading(true);
     try {
-      await registerMutation.mutateAsync({
+      await api.auth.registerPartner({
         workspaceBrandName: workspaceBrandName.trim(),
         contactName: contactName.trim(),
         phone: phone.trim(),
@@ -83,6 +92,8 @@ export function PartnerLogin() {
       setLoginEmail(email);
     } catch (error: any) {
       toast.error(error.message || "Registration failed");
+    } finally {
+      setIsRegisterLoading(false);
     }
   };
 
@@ -111,7 +122,7 @@ export function PartnerLogin() {
                   onChange={(e) => setLoginEmail(e.target.value)}
                   placeholder="your@email.com"
                   required
-                  disabled={loginMutation.isPending}
+                  disabled={isLoginLoading}
                 />
               </div>
 
@@ -125,7 +136,7 @@ export function PartnerLogin() {
                     onChange={(e) => setLoginPassword(e.target.value)}
                     placeholder="Your password"
                     required
-                    disabled={loginMutation.isPending}
+                    disabled={isLoginLoading}
                   />
                   <button
                     type="button"
@@ -137,8 +148,8 @@ export function PartnerLogin() {
                 </div>
               </div>
 
-              <Button type="submit" className="w-full" disabled={loginMutation.isPending}>
-                {loginMutation.isPending ? "Signing in..." : "Sign In"}
+              <Button type="submit" className="w-full" disabled={isLoginLoading}>
+                {isLoginLoading ? "Signing in..." : "Sign In"}
               </Button>
             </form>
           </TabsContent>
@@ -153,7 +164,7 @@ export function PartnerLogin() {
                   onChange={(e) => setRegisterData(prev => ({ ...prev, workspaceBrandName: e.target.value }))}
                   placeholder="Your workspace name"
                   required
-                  disabled={registerMutation.isPending}
+                  disabled={isRegisterLoading}
                 />
               </div>
 
@@ -165,7 +176,7 @@ export function PartnerLogin() {
                   onChange={(e) => setRegisterData(prev => ({ ...prev, contactName: e.target.value }))}
                   placeholder="Your name"
                   required
-                  disabled={registerMutation.isPending}
+                  disabled={isRegisterLoading}
                 />
               </div>
 
@@ -178,7 +189,7 @@ export function PartnerLogin() {
                   onChange={(e) => setRegisterData(prev => ({ ...prev, phone: e.target.value }))}
                   placeholder="10-digit mobile number"
                   required
-                  disabled={registerMutation.isPending}
+                  disabled={isRegisterLoading}
                 />
               </div>
 
@@ -191,7 +202,7 @@ export function PartnerLogin() {
                   onChange={(e) => setRegisterData(prev => ({ ...prev, email: e.target.value }))}
                   placeholder="your@email.com"
                   required
-                  disabled={registerMutation.isPending}
+                  disabled={isRegisterLoading}
                 />
               </div>
 
@@ -205,7 +216,7 @@ export function PartnerLogin() {
                     onChange={(e) => setRegisterData(prev => ({ ...prev, password: e.target.value }))}
                     placeholder="At least 6 characters"
                     required
-                    disabled={registerMutation.isPending}
+                    disabled={isRegisterLoading}
                   />
                   <button
                     type="button"
@@ -217,8 +228,8 @@ export function PartnerLogin() {
                 </div>
               </div>
 
-              <Button type="submit" className="w-full" disabled={registerMutation.isPending}>
-                {registerMutation.isPending ? "Creating account..." : "Create Account"}
+              <Button type="submit" className="w-full" disabled={isRegisterLoading}>
+                {isRegisterLoading ? "Creating account..." : "Create Account"}
               </Button>
             </form>
           </TabsContent>

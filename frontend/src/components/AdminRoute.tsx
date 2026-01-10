@@ -1,5 +1,5 @@
 import { Navigate } from "react-router-dom";
-import { useAdminMe, getStoredToken, getStoredUserType, clearAuthData } from "@/hooks/useAuth";
+import { useAuth } from "@/contexts/AuthContext";
 import { useEffect } from "react";
 
 interface AdminRouteProps {
@@ -7,20 +7,18 @@ interface AdminRouteProps {
 }
 
 export function AdminRoute({ children }: AdminRouteProps) {
-  const token = getStoredToken();
-  const userType = getStoredUserType();
-  const { data: adminData, isLoading, error } = useAdminMe();
+  const { user, isAuthenticated, isLoading, userRole, isSessionExpired, refreshSession } = useAuth();
   
-  // Clear auth data on authentication error
+  // Handle session expiry
   useEffect(() => {
-    if (error && token) {
-      console.log("Admin authentication failed, clearing auth data");
-      clearAuthData();
+    if (isSessionExpired) {
+      // Context will handle redirect to login
+      return;
     }
-  }, [error, token]);
-  
-  // If no token or wrong user type, redirect to login
-  if (!token || userType !== "admin") {
+  }, [isSessionExpired]);
+
+  // If not authenticated or wrong user type, redirect to login
+  if (!isAuthenticated || userRole !== "admin") {
     return <Navigate to="/admin/login" replace />;
   }
   
@@ -36,8 +34,8 @@ export function AdminRoute({ children }: AdminRouteProps) {
     );
   }
   
-  // If error or no admin data, redirect to login
-  if (error || !adminData) {
+  // If no user data after loading, redirect to login
+  if (!user) {
     return <Navigate to="/admin/login" replace />;
   }
   

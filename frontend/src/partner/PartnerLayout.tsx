@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { Building2, FileText, Plus, Menu, X, LogOut, LayoutDashboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { usePartnerMe, useLogout } from "@/hooks/useAuth";
+import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -13,8 +13,7 @@ const navItems = [
 
 export function PartnerLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { data: partner, isLoading } = usePartnerMe();
-  const logout = useLogout();
+  const { user, logout, isLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -31,7 +30,7 @@ export function PartnerLayout() {
     );
   }
 
-  if (!partner) {
+  if (!user) {
     return null;
   }
 
@@ -45,7 +44,7 @@ export function PartnerLayout() {
         <div className="flex items-center gap-2">
           <Building2 className="h-5 w-5 text-primary" />
           <span className="font-display font-semibold text-sm truncate max-w-[120px]">
-            {partner.workspaceBrandName}
+            {user.workspaceBrandName || 'Partner'}
           </span>
         </div>
         <Button variant="ghost" size="icon" onClick={handleLogout}>
@@ -58,7 +57,7 @@ export function PartnerLayout() {
         <aside className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0 border-r border-border bg-card">
           <div className="flex h-14 items-center gap-2 border-b border-border px-6">
             <Building2 className="h-5 w-5 text-primary" />
-            <span className="font-display font-semibold truncate">{partner.workspaceBrandName}</span>
+            <span className="font-display font-semibold truncate">{user.workspaceBrandName || 'Partner Portal'}</span>
           </div>
           <nav className="flex-1 space-y-1 p-4">
             {navItems.map((item) => (
@@ -79,8 +78,13 @@ export function PartnerLayout() {
           </nav>
           <div className="border-t border-border p-4">
             <div className="mb-3 px-3 text-xs text-muted-foreground">
-              <p className="font-medium text-foreground">{partner.contactName || partner.email}</p>
-              <p className="truncate">{partner.email}</p>
+              <p className="font-medium text-foreground">{user.contactName || user.email}</p>
+              <p className="truncate">{user.email}</p>
+              {user.status && (
+                <p className="text-xs mt-1">
+                  Status: <span className="font-medium">{user.status}</span>
+                </p>
+              )}
             </div>
             <Button variant="outline" size="sm" className="w-full" onClick={handleLogout}>
               <LogOut className="h-4 w-4" />
@@ -98,7 +102,7 @@ export function PartnerLayout() {
                 <div className="flex items-center gap-2">
                   <Building2 className="h-5 w-5 text-primary" />
                   <span className="font-display font-semibold text-sm truncate">
-                    {partner.workspaceBrandName}
+                    {user.workspaceBrandName || 'Partner'}
                   </span>
                 </div>
                 <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(false)}>
@@ -125,8 +129,13 @@ export function PartnerLayout() {
               </nav>
               <div className="border-t border-border p-4">
                 <div className="mb-3 px-3 text-xs text-muted-foreground">
-                  <p className="font-medium text-foreground">{partner.contactName || partner.email}</p>
-                  <p className="truncate">{partner.email}</p>
+                  <p className="font-medium text-foreground">{user.contactName || user.email}</p>
+                  <p className="truncate">{user.email}</p>
+                  {user.status && (
+                    <p className="text-xs mt-1">
+                      Status: <span className="font-medium">{user.status}</span>
+                    </p>
+                  )}
                 </div>
                 <Button variant="outline" size="sm" className="w-full" onClick={handleLogout}>
                   <LogOut className="h-4 w-4" />
