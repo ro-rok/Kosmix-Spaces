@@ -185,7 +185,7 @@ This implementation plan converts the approved design into actionable coding tas
   - Test batch size and timing configuration
   - _Requirements: 6.3_
 
-- [ ] 9. Implement premium design system enhancements
+- [-] 9. Implement premium design system enhancements
   - Upgrade typography scale with modern font hierarchy
   - Implement premium spacing rhythm and section separation
   - Create premium card components with subtle borders and shadows
@@ -198,6 +198,7 @@ This implementation plan converts the approved design into actionable coding tas
   - Ensure listing sticky CTA bar on mobile is always visible and not covering content
   - Ensure partner wizard forms are usable on small screens (stepper becomes compact, sticky “Save Draft”)
   - Ensure admin tables degrade gracefully on mobile (horizontal scroll + stacked rows)
+  -Implemnet the backend as well with database for the task
   - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5, 8.6, 8.7, 8.8_
 
 - [ ]* 9.1 Write property tests for design system consistency
