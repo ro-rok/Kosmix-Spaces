@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
-import { BadgeCheck, Train, Zap, Phone, MessageCircle, Eye } from "lucide-react";
+import { BadgeCheck, Train, Zap, Phone, MessageCircle, Eye, MapPin, Users, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { ShortlistButton } from "@/components/ShortlistButton";
 import { Listing, budgetBandLabels, workspaceTypeLabels } from "@/types/models";
 import { buildWhatsAppLink, buildCallLink } from "@/lib/whatsapp";
@@ -8,139 +9,204 @@ import { cn } from "@/lib/utils";
 
 interface ListingCardProps {
   listing: Listing;
+  variant?: "default" | "premium";
 }
 
-export function ListingCard({ listing }: ListingCardProps) {
+export function ListingCard({ listing, variant = "premium" }: ListingCardProps) {
   const whatsappLink = buildWhatsAppLink({
     listingName: listing.displayName,
     locality: listing.locality,
   });
 
+  const isPremium = variant === "premium";
+
   return (
-    <div className="group overflow-hidden rounded-xl border border-border bg-card shadow-sm transition-all duration-300 hover:shadow-lg hover:border-primary/30">
+    <div className={cn(
+      "group overflow-hidden rounded-xl border bg-card shadow-sm transition-all duration-300",
+      isPremium 
+        ? "border-border/60 hover:shadow-xl hover:border-primary/40 hover:-translate-y-1" 
+        : "border-border hover:shadow-lg hover:border-primary/30"
+    )}>
       {/* Image */}
       <div className="relative aspect-[16/10] overflow-hidden bg-muted">
         <img
           src={listing.photos[0]}
           alt={listing.displayName}
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+          loading="lazy"
         />
         
-        {/* Badges */}
+        {/* Gradient Overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent" />
+        
+        {/* Top Badges */}
         <div className="absolute left-3 top-3 flex flex-wrap gap-2">
-          {listing.verificationStatus === "verified" && (
-            <span className="flex items-center gap-1 rounded-full bg-success px-2.5 py-1 text-xs font-medium text-success-foreground shadow-sm">
-              <BadgeCheck className="h-3 w-3" />
+          {listing.verificationStatus === "APPROVED_VERIFIED" && (
+            <Badge className="bg-emerald-500/90 text-white shadow-lg backdrop-blur-sm">
+              <BadgeCheck className="h-3 w-3 mr-1" />
               Verified
-            </span>
+            </Badge>
           )}
           {listing.nearMetro && (
-            <span className="flex items-center gap-1 rounded-full bg-call px-2.5 py-1 text-xs font-medium text-call-foreground shadow-sm">
-              <Train className="h-3 w-3" />
+            <Badge className="bg-blue-500/90 text-white shadow-lg backdrop-blur-sm">
+              <Train className="h-3 w-3 mr-1" />
               Near Metro
-            </span>
+            </Badge>
           )}
           {listing.powerBackup && (
-            <span className="flex items-center gap-1 rounded-full bg-accent px-2.5 py-1 text-xs font-medium text-accent-foreground shadow-sm">
-              <Zap className="h-3 w-3" />
+            <Badge className="bg-amber-500/90 text-white shadow-lg backdrop-blur-sm">
+              <Zap className="h-3 w-3 mr-1" />
               Power Backup
-            </span>
+            </Badge>
           )}
         </div>
 
-        {/* Save Button */}
+        {/* Top Right Actions */}
         <div className="absolute right-3 top-3 flex flex-col gap-2">
           <ShortlistButton slug={listing.slug} listingName={listing.displayName} />
-          <span
+          <Badge
             className={cn(
-              "rounded-full px-2.5 py-1 text-xs font-medium shadow-sm",
-              listing.availabilityStatus === "available" && "bg-success/90 text-success-foreground",
-              listing.availabilityStatus === "limited" && "bg-accent/90 text-accent-foreground",
-              listing.availabilityStatus === "waitlist" && "bg-muted text-muted-foreground"
+              "shadow-lg backdrop-blur-sm",
+              listing.availabilityStatus === "available" && "bg-emerald-500/90 text-white",
+              listing.availabilityStatus === "limited" && "bg-amber-500/90 text-white",
+              listing.availabilityStatus === "waitlist" && "bg-slate-500/90 text-white"
             )}
           >
             {listing.availabilityStatus === "available" && "Available"}
             {listing.availabilityStatus === "limited" && "Limited"}
             {listing.availabilityStatus === "waitlist" && "Waitlist"}
-          </span>
+          </Badge>
         </div>
 
         {/* Deal Tag */}
         {listing.dealTags.length > 0 && (
           <div className="absolute bottom-3 left-3">
-            <span className="rounded-md bg-primary px-2 py-1 text-xs font-medium text-primary-foreground shadow">
+            <Badge className="bg-primary/90 text-primary-foreground shadow-lg backdrop-blur-sm">
               {listing.dealTags[0]}
-            </span>
+            </Badge>
+          </div>
+        )}
+
+        {/* Premium Rating Badge */}
+        {isPremium && (
+          <div className="absolute bottom-3 right-3">
+            <Badge className="bg-black/60 text-white shadow-lg backdrop-blur-sm">
+              <Star className="h-3 w-3 mr-1 fill-current" />
+              4.8
+            </Badge>
           </div>
         )}
       </div>
 
       {/* Content */}
-      <div className="p-4">
+      <div className={cn("p-4", isPremium && "p-5")}>
         {/* Title & Location */}
-        <h3 className="font-display text-lg font-semibold text-foreground line-clamp-1">
-          {listing.displayName}
-        </h3>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {listing.locality}, {listing.city}
-        </p>
-
-        {/* Highlights */}
-        <div className="mt-3 flex flex-wrap gap-2">
-          {listing.highlights.slice(0, 3).map((highlight) => (
-            <span
-              key={highlight}
-              className="rounded-md bg-muted px-2 py-1 text-xs font-medium text-muted-foreground"
-            >
-              {highlight}
-            </span>
-          ))}
+        <div className="mb-3">
+          <h3 className={cn(
+            "font-display font-semibold text-foreground line-clamp-1",
+            isPremium ? "text-lg" : "text-base"
+          )}>
+            {listing.displayName}
+          </h3>
+          <div className="flex items-center gap-1 mt-1">
+            <MapPin className="h-3 w-3 text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">
+              {listing.locality}, {listing.city}
+            </p>
+          </div>
         </div>
 
-        {/* Budget */}
-        <div className="mt-4 flex items-center justify-between">
-          <div>
-            <p className="font-display text-lg font-bold text-primary">
-              {budgetBandLabels[listing.budgetBand]}
-            </p>
-            <p className="text-xs text-muted-foreground">On Enquiry</p>
-          </div>
-          <div className="text-right">
-            <p className="text-xs text-muted-foreground">
+        {/* Capacity & Workspace Types */}
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-1 text-sm text-muted-foreground">
+            <Users className="h-3 w-3" />
+            <span>
               {listing.seatCapacityMin === listing.seatCapacityMax
                 ? `${listing.seatCapacityMax} seats`
                 : `${listing.seatCapacityMin}-${listing.seatCapacityMax} seats`}
-            </p>
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {listing.workspaceTypes.slice(0, 2).map((type) => (
+              <Badge
+                key={type}
+                variant="outline"
+                className="text-xs px-2 py-0.5"
+              >
+                {workspaceTypeLabels[type]}
+              </Badge>
+            ))}
+            {listing.workspaceTypes.length > 2 && (
+              <Badge variant="outline" className="text-xs px-2 py-0.5">
+                +{listing.workspaceTypes.length - 2}
+              </Badge>
+            )}
           </div>
         </div>
 
-        {/* Space Types */}
-        <div className="mt-3 flex flex-wrap gap-1">
-          {listing.workspaceTypes.map((type) => (
-            <span
-              key={type}
-              className="rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground"
-            >
-              {workspaceTypeLabels[type]}
-            </span>
-          ))}
+        {/* Amenities/Highlights */}
+        {isPremium && listing.highlights.length > 0 && (
+          <div className="mb-3">
+            <div className="flex flex-wrap gap-1">
+              {listing.highlights.slice(0, 3).map((highlight) => (
+                <Badge
+                  key={highlight}
+                  variant="secondary"
+                  className="text-xs px-2 py-0.5"
+                >
+                  {highlight}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Pricing */}
+        <div className="mb-4">
+          <div className="flex items-baseline gap-2">
+            <p className={cn(
+              "font-display font-bold text-primary",
+              isPremium ? "text-lg" : "text-base"
+            )}>
+              {budgetBandLabels[listing.budgetBand]}
+            </p>
+            <p className="text-xs text-muted-foreground">per seat/month</p>
+          </div>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Final pricing on enquiry
+          </p>
         </div>
 
         {/* CTAs */}
-        <div className="mt-4 flex gap-2">
-          <Button variant="whatsapp" size="sm" className="flex-1" asChild>
+        <div className="flex gap-2">
+          <Button 
+            variant="whatsapp" 
+            size="sm" 
+            className="flex-1" 
+            asChild
+          >
             <a href={whatsappLink} target="_blank" rel="noopener noreferrer">
               <MessageCircle className="h-4 w-4" />
               WhatsApp
             </a>
           </Button>
-          <Button variant="call" size="sm" className="flex-1" asChild>
+          <Button 
+            variant="call" 
+            size="sm" 
+            className="flex-1" 
+            asChild
+          >
             <a href={buildCallLink()}>
               <Phone className="h-4 w-4" />
               Call
             </a>
           </Button>
-          <Button variant="outline" size="sm" asChild>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="px-3"
+            asChild
+          >
             <Link to={`/spaces/${listing.slug}`}>
               <Eye className="h-4 w-4" />
             </Link>

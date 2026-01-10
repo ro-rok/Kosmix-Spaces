@@ -1,80 +1,152 @@
 import { useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
-import { SlidersHorizontal, MessageCircle, X, Loader2 } from "lucide-react";
+import { Loader2, SlidersHorizontal, Grid3X3, List } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SearchBar } from "@/components/SearchBar";
 import { FilterDrawer } from "@/components/FilterDrawer";
 import { ListingCard } from "@/components/ListingCard";
+import { ListingGridSkeleton } from "@/components/Skeletons";
+import { SearchPagination } from "@/components/SearchPagination";
+import { AppliedFilters } from "@/components/AppliedFilters";
+import { SearchEmptyState } from "@/components/SearchEmptyState";
 import { StickyCTA } from "@/components/StickyCTA";
-import { WorkspaceType, BudgetBand } from "@/types/models";
-import { useListings, useLocalities } from "@/hooks/useApi";
-import { FilterState, SortOption, initialFilterState, hasActiveFilters } from "@/lib/filters";
-import { buildWhatsAppLink } from "@/lib/whatsapp";
+import { SearchFilters } from "@/types/models";
+import { useSearchWithCache } from "@/hooks/useSearchWithCache";
+import { useUrlSync } from "@/hooks/useUrlSync";
+import { cn } from "@/lib/utils";
+
+// Initial empty filters
+const initialFilters: SearchFilters = {
+  locality: [],
+  teamSize: '',
+  budgetBand: [],
+  meetingRooms: false,
+  privateOffice: false,
+  verifiedOnly: false,
+  amenities: [],
+};
 
 export default function Explore() {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const [filters, setFilters] = useState<FilterState>(() => {
-    const locality = searchParams.get("locality") || "";
-    const spaceType = (searchParams.get("type") as WorkspaceType) || "";
-    return { ...initialFilterState, locality, spaceType };
+  const {
+    parseFiltersFromUrl,
+    updateUrlWithFilters,
+    getCurrentQuery,
+    getCurrentSort,
+    getCurrentPage,
+  } = useUrlSync();
+
+  // Initialize state from URL
+  const [filters, setFilters] = useState<SearchFilters>(() => parseFiltersFromUrl());
+  const [sort, setSort] = useState<'recommended' | 'most-enquired' | 'budget-low'>(() => 
+    getCurrentSort() as 'recommended' | 'most-enquired' | 'budget-low'
+  );
+  const [page, setPage] = useState(() => getCurrentPage());
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+
+  // Search with caching and debouncing
+  const {
+    data: searchData,
+    isLoading,
+    error,
+    searchQuery,
+    updateSearchQuery,
+    debouncedQuery
+  } = useSearchWithCache({
+    query: getCurrentQuery(),
+    filters,
+    sort,
+    page,
+    pageSize: 12
   });
-  const [sort, setSort] = useState<SortOption>("best-match");
 
-  // Fetch data from API
-  const { data: localitiesData, isLoading: localitiesLoading } = useLocalities();
-  const { data: listingsData, isLoading: listingsLoading, error: listingsError } = useListings({
-    locality: filters.locality || undefined,
-    budgetBandId: filters.budgetBand || undefined,
-    teamSizeBand: filters.teamSize || undefined,
-    spaceType: filters.spaceType || undefined,
-    nearMetro: filters.nearMetro || undefined,
-    parking: filters.parking ? "required" : undefined,
-    powerBackup: filters.powerBackup || undefined,
-    gstInvoice: filters.gstInvoice || undefined,
-    sort: sort === "best-match" ? "best_match" : sort === "budget-low" ? "budget_low" : "recent_verified",
-  });
+  const { items: listings, total, pageSize } = searchData;
+  const totalPages = Math.ceil(total / pageSize);
 
-  const localities = localitiesData || [];
-  const listings = listingsData?.items || [];
-  const isLoading = localitiesLoading || listingsLoading;
-
-  // Sync URL params with filters
+  // Sync URL when filters, sort, or page changes
   useEffect(() => {
-    const locality = searchParams.get("locality") || "";
-    const spaceType = (searchParams.get("type") as WorkspaceType) || "";
-    if (locality !== filters.locality || spaceType !== filters.spaceType) {
-      setFilters((prev) => ({ ...prev, locality, spaceType }));
+    updateUrlWithFilters(filters, sort, page, debouncedQuery);
+  }, [filters, sort, page, debouncedQuery, updateUrlWithFilters]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    if (page !== 1) {
+      setPage(1);
     }
-  }, [searchParams]);
+  }, [filters, sort, debouncedQuery]);
 
-  const handleFilterChange = (newFilters: FilterState) => {
+  const handleFilterChange = (newFilters: SearchFilters) => {
     setFilters(newFilters);
-    // Update URL
-    const params = new URLSearchParams();
-    if (newFilters.locality) params.set("locality", newFilters.locality);
-    if (newFilters.spaceType) params.set("type", newFilters.spaceType);
-    setSearchParams(params);
   };
 
-  const clearFilters = () => {
-    setFilters(initialFilterState);
-    setSearchParams({});
+  const handleRemoveFilter = (filterType: keyof SearchFilters, value?: string) => {
+    const newFilters = { ...filters };
+    
+    if (filterType === 'locality' && value) {
+      newFilters.locality = newFilters.locality.filter(l => l !== value);
+    } else if (filterType === 'budgetBand' && value) {
+      newFilters.budgetBand = newFilters.budgetBand.filter(b => b !== value);
+    } else if (filterType === 'amenities' && value) {
+      newFilters.amenities = newFilters.amenities.filter(a => a !== value);
+    } else if (filterType === 'teamSize') {
+      newFilters.teamSize = '';
+    } else if (filterType === 'meetingRooms') {
+      newFilters.meetingRooms = false;
+    } else if (filterType === 'privateOffice') {
+      newFilters.privateOffice = false;
+    } else if (filterType === 'verifiedOnly') {
+      newFilters.verifiedOnly = false;
+    }
+    
+    setFilters(newFilters);
   };
 
-  const handleSearch = (localityId: string) => {
-    handleFilterChange({ ...filters, locality: localityId });
+  const clearAllFilters = () => {
+    setFilters(initialFilters);
+    updateSearchQuery('');
   };
 
-  const selectedLocality = localities.find((l) => l.id === filters.locality);
+  const handleSuggestedSearch = (localityId: string) => {
+    setFilters({
+      ...initialFilters,
+      locality: [localityId]
+    });
+  };
 
-  if (listingsError) {
+  const handleLocalitySelect = (localityId: string) => {
+    setFilters({
+      ...filters,
+      locality: [localityId]
+    });
+  };
+
+  const handleSortChange = (newSort: string) => {
+    setSort(newSort as 'recommended' | 'most-enquired' | 'budget-low');
+  };
+
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+    // Scroll to top when page changes
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Count active filters
+  const activeFilterCount = [
+    ...filters.locality,
+    ...filters.budgetBand,
+    filters.teamSize,
+    ...filters.amenities,
+    filters.meetingRooms,
+    filters.privateOffice,
+    filters.verifiedOnly
+  ].filter(Boolean).length;
+
+  if (error) {
     return (
       <div className="container py-8">
         <div className="text-center">
           <h2 className="text-xl font-semibold text-destructive">Unable to load listings</h2>
           <p className="text-muted-foreground mt-2">
-            {listingsError instanceof Error && listingsError.message.includes('Network error') 
+            {error instanceof Error && error.message.includes('Network error') 
               ? 'Please check if the backend server is running'
               : 'Please try again later'
             }
@@ -90,93 +162,69 @@ export default function Explore() {
   return (
     <div className="pb-20 md:pb-0">
       {/* Header */}
-      <div className="border-b border-border bg-background sticky top-16 z-40">
+      <div className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-16 z-40">
         <div className="container py-4">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             {/* Search */}
             <div className="flex-1 max-w-md">
               <SearchBar
                 variant="compact"
-                initialValue={selectedLocality?.name || ""}
-                onSearch={handleSearch}
+                initialValue={searchQuery}
+                onSearch={updateSearchQuery}
+                onLocalitySelect={handleLocalitySelect}
               />
             </div>
 
-            {/* Sort & Filter */}
+            {/* Controls */}
             <div className="flex items-center gap-2">
-              <Select value={sort} onValueChange={(v) => setSort(v as SortOption)}>
-                <SelectTrigger className="w-[160px]">
+              {/* View Mode Toggle */}
+              <div className="hidden sm:flex border border-border rounded-lg p-1">
+                <Button
+                  variant={viewMode === 'grid' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('grid')}
+                  className="h-8 w-8 p-0"
+                >
+                  <Grid3X3 className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant={viewMode === 'list' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('list')}
+                  className="h-8 w-8 p-0"
+                >
+                  <List className="h-4 w-4" />
+                </Button>
+              </div>
+
+              {/* Sort */}
+              <Select value={sort} onValueChange={handleSortChange}>
+                <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="Sort by" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="best-match">Best Match</SelectItem>
+                  <SelectItem value="recommended">Recommended</SelectItem>
+                  <SelectItem value="most-enquired">Most Enquired</SelectItem>
                   <SelectItem value="budget-low">Budget: Low → High</SelectItem>
-                  <SelectItem value="recently-verified">Recently Verified</SelectItem>
                 </SelectContent>
               </Select>
 
+              {/* Filter */}
               <FilterDrawer
                 filters={filters}
                 onChange={handleFilterChange}
-                onClear={clearFilters}
+                onClear={clearAllFilters}
               />
             </div>
           </div>
 
-          {/* Active Filters Tags */}
-          {hasActiveFilters(filters) && (
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <span className="text-sm text-muted-foreground">Filters:</span>
-              {filters.locality && (
-                <FilterTag
-                  label={selectedLocality?.name || filters.locality}
-                  onRemove={() => handleFilterChange({ ...filters, locality: "" })}
-                />
-              )}
-              {filters.spaceType && (
-                <FilterTag
-                  label={filters.spaceType.replace("-", " ")}
-                  onRemove={() => handleFilterChange({ ...filters, spaceType: "" })}
-                />
-              )}
-              {filters.budgetBand && (
-                <FilterTag
-                  label={filters.budgetBand}
-                  onRemove={() => handleFilterChange({ ...filters, budgetBand: "" })}
-                />
-              )}
-              {filters.nearMetro && (
-                <FilterTag
-                  label="Near Metro"
-                  onRemove={() => handleFilterChange({ ...filters, nearMetro: false })}
-                />
-              )}
-              {filters.parking && (
-                <FilterTag
-                  label="Parking"
-                  onRemove={() => handleFilterChange({ ...filters, parking: false })}
-                />
-              )}
-              {filters.powerBackup && (
-                <FilterTag
-                  label="Power Backup"
-                  onRemove={() => handleFilterChange({ ...filters, powerBackup: false })}
-                />
-              )}
-              {filters.gstInvoice && (
-                <FilterTag
-                  label="GST Invoice"
-                  onRemove={() => handleFilterChange({ ...filters, gstInvoice: false })}
-                />
-              )}
-              <button
-                onClick={clearFilters}
-                className="text-sm text-primary hover:underline"
-              >
-                Clear all
-              </button>
-            </div>
-          )}
+          {/* Applied Filters */}
+          <AppliedFilters
+            filters={filters}
+            onRemoveFilter={handleRemoveFilter}
+            onClearAll={clearAllFilters}
+            className="mt-3"
+          />
         </div>
       </div>
 
@@ -184,104 +232,89 @@ export default function Explore() {
       <div className="container py-8">
         {/* Results Header */}
         <div className="mb-6">
-          <h1 className="font-display text-2xl font-bold text-foreground">
-            {selectedLocality
-              ? `Workspaces in ${selectedLocality.name}`
-              : "All Workspaces in Delhi"}
-          </h1>
-          <p className="mt-1 text-muted-foreground">
-            {isLoading ? (
-              <span className="flex items-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Loading...
-              </span>
-            ) : (
-              `${listings.length} ${listings.length === 1 ? "space" : "spaces"} found`
-            )}
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="font-display text-2xl font-bold text-foreground">
+                {filters.locality.length > 0 
+                  ? `Workspaces in ${filters.locality.length === 1 ? filters.locality[0] : `${filters.locality.length} areas`}`
+                  : searchQuery
+                  ? `Search results for "${searchQuery}"`
+                  : "All Workspaces in Delhi"
+                }
+              </h1>
+              <div className="flex items-center gap-4 mt-1">
+                <p className="text-muted-foreground">
+                  {isLoading ? (
+                    <span className="flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Searching...
+                    </span>
+                  ) : (
+                    `${total.toLocaleString()} ${total === 1 ? "space" : "spaces"} found`
+                  )}
+                </p>
+                {activeFilterCount > 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    {activeFilterCount} filter{activeFilterCount !== 1 ? 's' : ''} applied
+                  </p>
+                )}
+              </div>
+            </div>
+            
+            {/* Sort indicator */}
+            <div className="hidden md:block text-sm text-muted-foreground">
+              Sorted by: {sort === 'recommended' ? 'Recommended' : 
+                        sort === 'most-enquired' ? 'Most Enquired' : 
+                        'Budget: Low → High'}
+            </div>
+          </div>
         </div>
 
+        {/* Content */}
         {isLoading ? (
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="animate-pulse">
-                <div className="bg-muted rounded-lg h-48 mb-4"></div>
-                <div className="bg-muted rounded h-4 mb-2"></div>
-                <div className="bg-muted rounded h-4 w-3/4"></div>
-              </div>
-            ))}
-          </div>
+          <ListingGridSkeleton count={12} />
         ) : listings.length > 0 ? (
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {listings.map((listing) => (
-              <ListingCard key={listing.slug} listing={listing} />
-            ))}
-          </div>
-        ) : !isLoading ? (
-          <EmptyState onClear={clearFilters} filters={filters} />
+          <>
+            {/* Listings Grid */}
+            <div className={cn(
+              "grid gap-6",
+              viewMode === 'grid' 
+                ? "sm:grid-cols-2 lg:grid-cols-3" 
+                : "grid-cols-1 max-w-4xl"
+            )}>
+              {listings.map((listing) => (
+                <ListingCard 
+                  key={listing.slug} 
+                  listing={listing} 
+                  variant="premium"
+                />
+              ))}
+            </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <SearchPagination
+                currentPage={page}
+                totalPages={totalPages}
+                totalItems={total}
+                pageSize={pageSize}
+                onPageChange={handlePageChange}
+                className="mt-12"
+              />
+            )}
+          </>
         ) : (
-          <div className="text-center py-8">
-            <p className="text-muted-foreground">No listings available</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              The backend may not have any listings yet, or there might be a connection issue.
-            </p>
-          </div>
+          <SearchEmptyState
+            filters={filters}
+            searchQuery={searchQuery}
+            onClearFilters={clearAllFilters}
+            onSuggestedSearch={handleSuggestedSearch}
+          />
         )}
       </div>
 
       {/* Mobile Sticky CTA */}
       <StickyCTA />
-    </div>
-  );
-}
-
-function FilterTag({ label, onRemove }: { label: string; onRemove: () => void }) {
-  return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary">
-      {label}
-      <button onClick={onRemove} className="ml-1 hover:text-primary/70">
-        <X className="h-3 w-3" />
-      </button>
-    </span>
-  );
-}
-
-function EmptyState({
-  onClear,
-  filters,
-}: {
-  onClear: () => void;
-  filters: FilterState;
-}) {
-  const whatsappLink = buildWhatsAppLink({
-    locality: filters.locality,
-    budgetBand: filters.budgetBand,
-    teamSize: filters.teamSize,
-    spaceType: filters.spaceType,
-  });
-
-  return (
-    <div className="py-16 text-center">
-      <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
-        <SlidersHorizontal className="h-8 w-8 text-muted-foreground" />
-      </div>
-      <h3 className="font-display text-xl font-semibold text-foreground">
-        No spaces match your filters
-      </h3>
-      <p className="mt-2 text-muted-foreground">
-        Try adjusting your filters or tell us what you're looking for
-      </p>
-      <div className="mt-6 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
-        <Button variant="outline" onClick={onClear}>
-          Clear All Filters
-        </Button>
-        <Button variant="whatsapp" asChild>
-          <a href={whatsappLink} target="_blank" rel="noopener noreferrer">
-            <MessageCircle className="h-4 w-4" />
-            WhatsApp Your Requirements
-          </a>
-        </Button>
-      </div>
     </div>
   );
 }

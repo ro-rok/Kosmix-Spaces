@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/lib/api";
+import { api, setAuthToken } from "@/lib/api";
 import { useState, useEffect } from "react";
+import { PartnerStatus, LeadStatus, VisitStatus } from "@/types/models";
 
 // Auth storage helpers
 const TOKEN_KEY = "kosmix_auth_token";
@@ -17,11 +18,19 @@ export function getStoredUserType(): "partner" | "admin" | null {
 export function setAuthData(token: string, userType: "partner" | "admin") {
   localStorage.setItem(TOKEN_KEY, token);
   localStorage.setItem(USER_TYPE_KEY, userType);
+  setAuthToken(token); // Update API client token
 }
 
 export function clearAuthData() {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(USER_TYPE_KEY);
+  setAuthToken(null); // Clear API client token
+}
+
+// Initialize auth token on module load
+const storedToken = getStoredToken();
+if (storedToken) {
+  setAuthToken(storedToken);
 }
 
 // Partner authentication hooks
@@ -49,7 +58,7 @@ export function usePartnerMe() {
   
   return useQuery({
     queryKey: ["partner", "me"],
-    queryFn: () => api.auth.getPartnerMe(token!),
+    queryFn: () => api.auth.getPartnerMe(),
     enabled: !!token && userType === "partner",
     retry: false,
     staleTime: 1000 * 60 * 5, // 5 minutes
@@ -75,7 +84,7 @@ export function useAdminMe() {
   
   return useQuery({
     queryKey: ["admin", "me"],
-    queryFn: () => api.auth.getAdminMe(token!),
+    queryFn: () => api.auth.getAdminMe(),
     enabled: !!token && userType === "admin",
     retry: false,
     staleTime: 1000 * 60 * 5, // 5 minutes
@@ -94,7 +103,7 @@ export function useAdminPartners(params: {
   
   return useQuery({
     queryKey: ["admin", "partners", params],
-    queryFn: () => api.admin.getPartners(token!, params),
+    queryFn: () => api.admin.getPartners(params),
     enabled: !!token && userType === "admin",
     staleTime: 1000 * 60 * 2, // 2 minutes
   });
@@ -102,13 +111,12 @@ export function useAdminPartners(params: {
 
 export function useUpdatePartnerStatus() {
   const queryClient = useQueryClient();
-  const token = getStoredToken();
   
   return useMutation({
     mutationFn: ({ partnerId, data }: {
       partnerId: string;
-      data: { status: string; notes?: string };
-    }) => api.admin.updatePartnerStatus(token!, partnerId, data),
+      data: { status: PartnerStatus; notes?: string };
+    }) => api.admin.updatePartnerStatus(partnerId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "partners"] });
     },
@@ -126,7 +134,7 @@ export function useAdminListings(params: {
   
   return useQuery({
     queryKey: ["admin", "listings", params],
-    queryFn: () => api.admin.getListings(token!, params),
+    queryFn: () => api.admin.getListings(params),
     enabled: !!token && userType === "admin",
     staleTime: 1000 * 60 * 2, // 2 minutes
   });
@@ -138,7 +146,7 @@ export function useAdminListing(listingId: string) {
   
   return useQuery({
     queryKey: ["admin", "listing", listingId],
-    queryFn: () => api.admin.getListing(token!, listingId),
+    queryFn: () => api.admin.getListing(listingId),
     enabled: !!token && userType === "admin" && !!listingId,
     staleTime: 1000 * 60 * 2, // 2 minutes
   });
@@ -146,11 +154,10 @@ export function useAdminListing(listingId: string) {
 
 export function useApproveListing() {
   const queryClient = useQueryClient();
-  const token = getStoredToken();
   
   return useMutation({
     mutationFn: ({ listingId, notes }: { listingId: string; notes?: string }) => 
-      api.admin.approveListing(token!, listingId, notes),
+      api.admin.approveListing(listingId, notes),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "listings"] });
       queryClient.invalidateQueries({ queryKey: ["admin", "listing"] });
@@ -160,11 +167,10 @@ export function useApproveListing() {
 
 export function useNeedsInfoListing() {
   const queryClient = useQueryClient();
-  const token = getStoredToken();
   
   return useMutation({
     mutationFn: ({ listingId, notes }: { listingId: string; notes: string }) => 
-      api.admin.needsInfoListing(token!, listingId, notes),
+      api.admin.needsInfoListing(listingId, notes),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "listings"] });
       queryClient.invalidateQueries({ queryKey: ["admin", "listing"] });
@@ -174,11 +180,10 @@ export function useNeedsInfoListing() {
 
 export function useRejectListing() {
   const queryClient = useQueryClient();
-  const token = getStoredToken();
   
   return useMutation({
     mutationFn: ({ listingId, reason }: { listingId: string; reason: string }) => 
-      api.admin.rejectListing(token!, listingId, reason),
+      api.admin.rejectListing(listingId, reason),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "listings"] });
       queryClient.invalidateQueries({ queryKey: ["admin", "listing"] });
@@ -198,7 +203,7 @@ export function usePartnerListings(params: {
     queryKey: ["partner", "listings", params],
     queryFn: async () => {
       console.log("Fetching partner listings with token:", !!token);
-      const result = await api.partner.getListings(token!, params);
+      const result = await api.partner.getListings(params);
       console.log("Partner listings result:", result);
       return result;
     },
@@ -213,7 +218,7 @@ export function usePartnerListing(listingId: string) {
   
   return useQuery({
     queryKey: ["partner", "listing", listingId],
-    queryFn: () => api.partner.getListing(token!, listingId),
+    queryFn: () => api.partner.getListing(listingId),
     enabled: !!token && userType === "partner" && !!listingId,
     staleTime: 1000 * 60 * 2, // 2 minutes
   });
@@ -221,10 +226,9 @@ export function usePartnerListing(listingId: string) {
 
 export function useCreatePartnerListing() {
   const queryClient = useQueryClient();
-  const token = getStoredToken();
   
   return useMutation({
-    mutationFn: (data: any) => api.partner.createListing(token!, data),
+    mutationFn: (data: any) => api.partner.createListing(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["partner", "listings"] });
     },
@@ -233,11 +237,37 @@ export function useCreatePartnerListing() {
 
 export function useUpdatePartnerListing() {
   const queryClient = useQueryClient();
-  const token = getStoredToken();
   
   return useMutation({
     mutationFn: ({ listingId, data }: { listingId: string; data: any }) => 
-      api.partner.updateListing(token!, listingId, data),
+      api.partner.updateListing(listingId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["partner", "listings"] });
+      queryClient.invalidateQueries({ queryKey: ["partner", "listing"] });
+    },
+  });
+}
+
+// Partner photo management hooks
+export function useUploadPhoto() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: ({ listingId, file }: { listingId: string; file: File }) => 
+      api.partner.uploadPhoto(listingId, file),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["partner", "listings"] });
+      queryClient.invalidateQueries({ queryKey: ["partner", "listing"] });
+    },
+  });
+}
+
+export function useDeletePhoto() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: ({ listingId, publicId }: { listingId: string; publicId: string }) => 
+      api.partner.deletePhoto(listingId, publicId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["partner", "listings"] });
       queryClient.invalidateQueries({ queryKey: ["partner", "listing"] });

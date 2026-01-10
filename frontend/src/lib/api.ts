@@ -2,22 +2,49 @@ import { Listing } from "@/types/models";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
-class ApiError extends Error {
-  constructor(public status: number, message: string) {
+// Enhanced API Error class with structured error information
+export class ApiError extends Error {
+  constructor(
+    public status: number, 
+    message: string, 
+    public code?: string,
+    public details?: any
+  ) {
     super(message);
     this.name = "ApiError";
   }
 }
 
+// Auth token management
+let authToken: string | null = null;
+
+export function setAuthToken(token: string | null) {
+  authToken = token;
+}
+
+export function getAuthToken(): string | null {
+  return authToken || localStorage.getItem("kosmix_auth_token");
+}
+
+// Enhanced API client with automatic auth injection and error normalization
 async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const url = `${API_BASE_URL}/api${endpoint}`;
   
-  const requestOptions = {
+  // Prepare headers with automatic auth injection
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...options.headers as Record<string, string>,
+  };
+
+  // Auto-inject Bearer token for authenticated requests
+  const token = getAuthToken();
+  if (token && !headers.Authorization) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+  
+  const requestOptions: RequestInit = {
     ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
+    headers,
   };
   
   try {
@@ -34,15 +61,42 @@ async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promi
         errorData
       });
       
-      // For validation errors, include detailed information
-      let errorMessage = errorData.error?.message || `HTTP ${response.status}: ${response.statusText}`;
+      // Normalize error response structure
+      const error = errorData.error || errorData;
+      let errorMessage = error?.message || `HTTP ${response.status}: ${response.statusText}`;
+      let errorCode = error?.code;
+      let errorDetails = error?.details;
       
-      if (response.status === 422 && errorData.error?.details?.errors) {
-        console.error("Validation errors:", errorData.error.details.errors);
-        errorMessage = `Validation failed: ${errorData.error.details.errors.map(e => `${e.loc?.join('.')} - ${e.msg}`).join(', ')}`;
+      // Handle validation errors (422)
+      if (response.status === 422 && error?.details?.errors) {
+        console.error("Validation errors:", error.details.errors);
+        errorMessage = `Validation failed: ${error.details.errors.map((e: any) => `${e.loc?.join('.')} - ${e.msg}`).join(', ')}`;
+        errorCode = "VALIDATION_ERROR";
+        errorDetails = error.details.errors;
       }
       
-      throw new ApiError(response.status, errorMessage);
+      // Handle authentication errors (401)
+      if (response.status === 401) {
+        errorCode = "UNAUTHORIZED";
+        errorMessage = "Authentication required or session expired";
+        // Clear invalid token
+        localStorage.removeItem("kosmix_auth_token");
+        setAuthToken(null);
+      }
+      
+      // Handle authorization errors (403)
+      if (response.status === 403) {
+        errorCode = "FORBIDDEN";
+        errorMessage = "Access denied - insufficient permissions";
+      }
+      
+      // Handle not found errors (404)
+      if (response.status === 404) {
+        errorCode = "NOT_FOUND";
+        errorMessage = "Resource not found";
+      }
+      
+      throw new ApiError(response.status, errorMessage, errorCode, errorDetails);
     }
 
     return response.json();
@@ -53,7 +107,8 @@ async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promi
     // Network or other errors
     throw new ApiError(
       0,
-      `Network error: ${error instanceof Error ? error.message : 'Unknown error'}`
+      `Network error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      "NETWORK_ERROR"
     );
   }
 }
@@ -82,22 +137,22 @@ function mapBackendListing(backendListing: any): Listing {
     amenities: backendListing.amenities,
     meetingRoomsAddon: backendListing.meetingRooms?.addonOnly || false,
     dealTags: backendListing.dealTags,
-    verificationStatus: backendListing.isVerified ? "verified" : "pending",
+    verificationStatus: backendListing.verificationStatus || "PENDING_REVIEW",
     highlights: [], // Not provided by backend, could be derived from amenities
     overview: backendListing.overview,
     createdAt: backendListing.createdAt,
   };
 }
 
-// Public API endpoints
+// Enhanced API client with comprehensive endpoint mapping
 export const api = {
   // Health check
   healthCheck: () => 
     apiRequest<{ status: string; message: string }>("/health"),
 
-  // Authentication
+  // Authentication endpoints
   auth: {
-    // Partner auth
+    // Partner authentication
     registerPartner: (data: {
       workspaceBrandName: string;
       contactName: string;
@@ -123,42 +178,189 @@ export const api = {
         body: JSON.stringify(data),
       }),
 
-    getPartnerMe: (token: string) =>
+    logoutPartner: () =>
+      apiRequest<{ ok: boolean }>("/partner/auth/logout", {
+        method: "POST",
+      }),
+
+    getPartnerMe: () =>
       apiRequest<{
         partnerId: string;
         workspaceBrandName: string;
         contactName: string;
         phone: string;
         email: string;
-        status: string;
-      }>("/partner/auth/me", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }),
+        status: PartnerStatus;
+      }>("/partner/auth/me"),
 
-    // Admin auth
+    // Admin authentication
     loginAdmin: (data: { email: string; password: string }) =>
       apiRequest<{ accessToken: string; tokenType: string }>("/admin/auth/login", {
         method: "POST",
         body: JSON.stringify(data),
       }),
 
-    getAdminMe: (token: string) =>
+    getAdminMe: () =>
       apiRequest<{
         adminId: string;
         email: string;
         role: string;
-      }>("/admin/auth/me", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+      }>("/admin/auth/me"),
+  },
+
+  // Public endpoints
+  public: {
+    // Localities
+    getLocalities: () => 
+      apiRequest<Array<{ id: string; name: string; city: string; popular: boolean }>>("/public/localities"),
+
+    // Listings
+    getListings: (params: {
+      locality?: string;
+      budgetBandId?: string;
+      teamSizeBand?: string;
+      spaceType?: string;
+      nearMetro?: boolean;
+      parking?: string;
+      powerBackup?: boolean;
+      gstInvoice?: boolean;
+      sort?: "best_match" | "budget_low" | "recent_verified";
+      page?: number;
+      pageSize?: number;
+    } = {}) => {
+      const searchParams = new URLSearchParams();
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          searchParams.append(key, String(value));
+        }
+      });
+      
+      return apiRequest<{
+        items: any[];
+        total: number;
+        page: number;
+        pageSize: number;
+      }>(`/public/listings?${searchParams}`).then(response => ({
+        ...response,
+        items: response.items.map(mapBackendListing)
+      }));
+    },
+
+    getListingBySlug: (slug: string) =>
+      apiRequest<any>(`/public/listings/${slug}`).then(mapBackendListing),
+
+    // Leads (Enquiries)
+    createLead: (lead: {
+      name: string;
+      phone: string;
+      email?: string;
+      company?: string;
+      preferredLocalities: string[];
+      teamSizeBand: string;
+      budgetBandId: string;
+      spaceType: string;
+      moveInTimeframe?: string;
+      meetingRoomsNeeded?: boolean;
+      gstRequired?: boolean;
+      parkingNeeded?: boolean;
+      powerBackupRequired?: boolean;
+      nearMetroPreferred?: boolean;
+      notes?: string;
+      source?: string;
+      listingSlug?: string;
+    }) =>
+      apiRequest<{
+        leadId: string;
+        message: string;
+        whatsappDeepLink: string;
+      }>("/public/leads", {
+        method: "POST",
+        body: JSON.stringify(lead),
+      }),
+
+    // Site visits
+    createSiteVisit: (visit: {
+      name: string;
+      phone: string;
+      email?: string;
+      listingIds: string[];
+      preferredSlots: Array<{
+        date: string;
+        timeSlot: string;
+      }>;
+      visitorCount: number;
+    }) =>
+      apiRequest<{
+        visitRequestId: string;
+        message: string;
+      }>("/public/site-visits", {
+        method: "POST",
+        body: JSON.stringify(visit),
+      }),
+  },
+
+  // Partner endpoints
+  partner: {
+    // Listings management
+    getListings: (params: {
+      page?: number;
+      pageSize?: number;
+    } = {}) => {
+      const searchParams = new URLSearchParams();
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          searchParams.append(key, String(value));
+        }
+      });
+      
+      return apiRequest<Array<any>>(`/partner/listings?${searchParams}`);
+    },
+
+    getListing: (listingId: string) =>
+      apiRequest<any>(`/partner/listings/${listingId}`),
+
+    createListing: (data: any) =>
+      apiRequest<any>("/partner/listings", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+
+    updateListing: (listingId: string, data: any) =>
+      apiRequest<any>(`/partner/listings/${listingId}`, {
+        method: "PUT",
+        body: JSON.stringify(data),
+      }),
+
+    // Photo management
+    uploadPhoto: (listingId: string, file: File) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      return apiRequest<Array<{
+        url: string;
+        publicId: string;
+        width: number;
+        height: number;
+        bytes: number;
+        format: string;
+        tag?: string;
+      }>>(`/partner/listings/${listingId}/photos`, {
+        method: "POST",
+        headers: {}, // Remove Content-Type to let browser set it for FormData
+        body: formData,
+      });
+    },
+
+    deletePhoto: (listingId: string, publicId: string) =>
+      apiRequest<{ ok: boolean }>(`/partner/listings/${listingId}/photos/${publicId}`, {
+        method: "DELETE",
       }),
   },
 
   // Admin endpoints
   admin: {
-    getPartners: (token: string, params: {
+    // Partner management
+    getPartners: (params: {
       status?: string;
       search?: string;
       page?: number;
@@ -178,20 +380,26 @@ export const api = {
           contactName: string;
           phone: string;
           email: string;
-          status: string;
+          status: PartnerStatus;
         }>;
         total: number;
         page: number;
         pageSize: number;
-      }>(`/admin/partners?${searchParams}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      }>(`/admin/partners?${searchParams}`);
     },
 
-    updatePartnerStatus: (token: string, partnerId: string, data: {
-      status: string;
+    getPartner: (partnerId: string) =>
+      apiRequest<{
+        partnerId: string;
+        workspaceBrandName: string;
+        contactName: string;
+        phone: string;
+        email: string;
+        status: PartnerStatus;
+      }>(`/admin/partners/${partnerId}`),
+
+    updatePartnerStatus: (partnerId: string, data: {
+      status: PartnerStatus;
       notes?: string;
     }) =>
       apiRequest<{
@@ -200,17 +408,19 @@ export const api = {
         contactName: string;
         phone: string;
         email: string;
-        status: string;
+        status: PartnerStatus;
       }>(`/admin/partners/${partnerId}/status`, {
         method: "PATCH",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify(data),
       }),
 
-    // Admin Listings
-    getListings: (token: string, params: {
+    deletePartner: (partnerId: string) =>
+      apiRequest<{ message: string }>(`/admin/partners/${partnerId}`, {
+        method: "DELETE",
+      }),
+
+    // Listing moderation
+    getListings: (params: {
       status?: string;
       page?: number;
       pageSize?: number;
@@ -222,99 +432,47 @@ export const api = {
         }
       });
       
-      return apiRequest<Array<{
-        listingId: string;
-        slug?: string;
-        partnerId: string;
-        displayName: string;
-        brandHidden: boolean;
-        locality: string;
-        city: string;
-        workspaceTypes: string[];
-        photos: Array<{
-          url: string;
-          publicId: string;
-          width: number;
-          height: number;
-          bytes: number;
-          format: string;
-          tag?: string;
-        }>;
-        seatCapacityMin: number;
-        seatCapacityMax: number;
-        availabilityStatus: string;
-        budgetBandId: string;
-        budgetDisplayText: string;
-        pricingMode: string;
-        nearMetro: boolean;
-        metroNote?: string;
-        parking: string;
-        powerBackup: boolean;
-        gstInvoiceAvailable: boolean;
-        accessHours: string;
-        weekendAccess: boolean;
-        amenities: string[];
-        meetingRooms?: {
-          count: number;
-          addonOnly: boolean;
-        };
-        internetSpeedMbps?: number;
-        dealTags: string[];
-        dealDetails?: string;
-        dealEligibility?: string;
-        overview: string;
-        houseRules?: string;
-        verificationStatus: string;
-        adminNotes?: string;
-        createdAt: string;
-        updatedAt: string;
-        publishedAt?: string;
-        verificationChecks?: any;
-      }>>(`/admin/listings?${searchParams}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      return apiRequest<Array<any>>(`/admin/listings?${searchParams}`);
     },
 
-    getListing: (token: string, listingId: string) =>
-      apiRequest<any>(`/admin/listings/${listingId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+    getListing: (listingId: string) =>
+      apiRequest<any>(`/admin/listings/${listingId}`),
+
+    updateVerification: (listingId: string, data: {
+      checks: {
+        photosQuality?: boolean;
+        contactVerified?: boolean;
+        locationAccurate?: boolean;
+      };
+      notes?: string;
+    }) =>
+      apiRequest<{ ok: boolean }>(`/admin/listings/${listingId}/verification`, {
+        method: "PATCH",
+        body: JSON.stringify(data),
       }),
 
-    approveListing: (token: string, listingId: string, notes?: string) =>
+    approveListing: (listingId: string, notes?: string) =>
       apiRequest<{ ok: boolean; message: string }>(`/admin/listings/${listingId}/approve`, {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({ notes }),
       }),
 
-    needsInfoListing: (token: string, listingId: string, notes: string) =>
+    needsInfoListing: (listingId: string, notes: string) =>
       apiRequest<{ ok: boolean; message: string }>(`/admin/listings/${listingId}/needs-info`, {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({ notes }),
       }),
 
-    rejectListing: (token: string, listingId: string, reason: string) =>
+    rejectListing: (listingId: string, reason: string) =>
       apiRequest<{ ok: boolean; message: string }>(`/admin/listings/${listingId}/reject`, {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({ reason }),
       }),
-  },
 
-  // Partner endpoints
-  partner: {
-    getListings: (token: string, params: {
+    // Lead management
+    getLeads: (params: {
+      status?: LeadStatus;
+      locality?: string;
       page?: number;
       pageSize?: number;
     } = {}) => {
@@ -325,174 +483,96 @@ export const api = {
         }
       });
       
-      return apiRequest<Array<{
-        listingId: string;
-        slug?: string;
-        partnerId: string;
-        displayName: string;
-        brandHidden: boolean;
-        locality: string;
-        city: string;
-        workspaceTypes: string[];
-        photos: Array<{
-          url: string;
-          publicId: string;
-          width: number;
-          height: number;
-          bytes: number;
-          format: string;
-          tag?: string;
-        }>;
-        seatCapacityMin: number;
-        seatCapacityMax: number;
-        availabilityStatus: string;
-        budgetBandId: string;
-        budgetDisplayText: string;
-        pricingMode: string;
-        nearMetro: boolean;
-        metroNote?: string;
-        parking: string;
-        powerBackup: boolean;
-        gstInvoiceAvailable: boolean;
-        accessHours: string;
-        weekendAccess: boolean;
-        amenities: string[];
-        meetingRooms?: {
-          count: number;
-          addonOnly: boolean;
-        };
-        internetSpeedMbps?: number;
-        dealTags: string[];
-        dealDetails?: string;
-        dealEligibility?: string;
-        overview: string;
-        houseRules?: string;
-        verificationStatus: string;
-        adminNotes?: string;
-        createdAt: string;
-        updatedAt: string;
-        publishedAt?: string;
-      }>>(`/partner/listings?${searchParams}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+      return apiRequest<Array<any>>(`/admin/leads?${searchParams}`);
+    },
+
+    updateLead: (leadId: string, data: {
+      status?: LeadStatus;
+      assignedTo?: string;
+      priority?: 'LOW' | 'MEDIUM' | 'HIGH';
+    }) =>
+      apiRequest<any>(`/admin/leads/${leadId}`, {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      }),
+
+    // Site visit management
+    getSiteVisits: (params: {
+      status?: VisitStatus;
+      leadId?: string;
+      page?: number;
+      pageSize?: number;
+    } = {}) => {
+      const searchParams = new URLSearchParams();
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          searchParams.append(key, String(value));
+        }
+      });
+      
+      return apiRequest<Array<any>>(`/admin/site-visits?${searchParams}`);
+    },
+
+    updateSiteVisit: (visitId: string, data: {
+      status?: VisitStatus;
+      confirmedSlot?: {
+        date: string;
+        timeSlot: string;
+      };
+      opsOwner?: string;
+      partnerNotes?: string;
+      customerNotes?: string;
+    }) =>
+      apiRequest<any>(`/admin/site-visits/${visitId}`, {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      }),
+  },
+
+  // Analytics endpoints (placeholder - backend doesn't have these yet)
+  analytics: {
+    // TODO: These endpoints don't exist in backend yet
+    // Will need to be implemented backend-side or use mock data
+    
+    trackEvent: (event: {
+      eventName: string;
+      listingId?: string;
+      listingSlug?: string;
+      metadata?: Record<string, any>;
+    }) => {
+      // TODO: Implement when backend analytics endpoints are available
+      console.log('Analytics event tracked (mock):', event);
+      return Promise.resolve({ ok: true });
+    },
+
+    getAdminAnalytics: () => {
+      // TODO: Implement when GET /analytics/admin is available
+      console.log('Admin analytics requested (mock)');
+      return Promise.resolve({
+        totalSearches: 0,
+        totalEnquiries: 0,
+        partnerSignups: 0,
+        listingViews: 0,
+        topLocalities: [],
+        topListings: []
       });
     },
 
-    getListing: (token: string, listingId: string) =>
-      apiRequest<any>(`/partner/listings/${listingId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }),
-
-    createListing: (token: string, data: any) =>
-      apiRequest<any>("/partner/listings", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(data),
-      }),
-
-    updateListing: (token: string, listingId: string, data: any) =>
-      apiRequest<any>(`/partner/listings/${listingId}`, {
-        method: "PUT",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(data),
-      }),
+    getPartnerAnalytics: (partnerId: string) => {
+      // TODO: Implement when GET /analytics/partner/:id is available
+      console.log('Partner analytics requested (mock):', partnerId);
+      return Promise.resolve({
+        views: 0,
+        enquiries: 0,
+        conversionRate: 0
+      });
+    },
   },
 
-  // Localities
-  getLocalities: () => 
-    apiRequest<Array<{ id: string; name: string; city: string; popular: boolean }>>("/public/localities"),
-
-  // Listings
-  getListings: (params: {
-    locality?: string;
-    budgetBandId?: string;
-    teamSizeBand?: string;
-    spaceType?: string;
-    nearMetro?: boolean;
-    parking?: string;
-    powerBackup?: boolean;
-    gstInvoice?: boolean;
-    sort?: "best_match" | "budget_low" | "recent_verified";
-    page?: number;
-    pageSize?: number;
-  } = {}) => {
-    const searchParams = new URLSearchParams();
-    Object.entries(params).forEach(([key, value]) => {
-      if (value !== undefined && value !== null) {
-        searchParams.append(key, String(value));
-      }
-    });
-    
-    return apiRequest<{
-      items: any[];
-      total: number;
-      page: number;
-      pageSize: number;
-    }>(`/public/listings?${searchParams}`).then(response => ({
-      ...response,
-      items: response.items.map(mapBackendListing)
-    }));
-  },
-
-  getListingDetail: (slug: string) =>
-    apiRequest<any>(`/public/listings/${slug}`).then(mapBackendListing),
-
-  // Leads
-  createLead: (lead: {
-    name: string;
-    phone: string;
-    email?: string;
-    company?: string;
-    preferredLocalities: string[];
-    teamSizeBand: string;
-    budgetBandId: string;
-    spaceType: string;
-    moveInTimeframe: string;
-    meetingRoomsNeeded: boolean;
-    gstRequired: boolean;
-    parkingNeeded: boolean;
-    powerBackupRequired: boolean;
-    nearMetroPreferred: boolean;
-    notes?: string;
-    source: string;
-    listingSlug?: string;
-  }) =>
-    apiRequest<{
-      leadId: string;
-      message: string;
-      whatsappDeepLink: string;
-    }>("/public/leads", {
-      method: "POST",
-      body: JSON.stringify(lead),
-    }),
-
-  // Site visits
-  createSiteVisit: (visit: {
-    name: string;
-    phone: string;
-    email?: string;
-    listingIds: string[];
-    preferredSlots: Array<{
-      date: string;
-      timeSlot: string;
-    }>;
-    visitorCount: number;
-  }) =>
-    apiRequest<{
-      visitRequestId: string;
-      message: string;
-    }>("/public/site-visits", {
-      method: "POST",
-      body: JSON.stringify(visit),
-    }),
+  // Legacy compatibility - keep existing methods for backward compatibility
+  getLocalities: () => api.public.getLocalities(),
+  getListings: (params: any) => api.public.getListings(params),
+  getListingDetail: (slug: string) => api.public.getListingBySlug(slug),
+  createLead: (lead: any) => api.public.createLead(lead),
+  createSiteVisit: (visit: any) => api.public.createSiteVisit(visit),
 };
-
-export { ApiError };
