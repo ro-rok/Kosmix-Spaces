@@ -1,5 +1,6 @@
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { createMemoryEfficientComponent } from "@/lib/performance";
 
 // Enhanced skeleton with shimmer effect
 interface PremiumSkeletonProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -10,7 +11,7 @@ export function PremiumSkeleton({ className, variant = "default", ...props }: Pr
   return (
     <Skeleton
       className={cn(
-        variant === "shimmer" && "shimmer bg-gradient-to-r from-muted/50 via-muted/80 to-muted/50",
+        variant === "shimmer" && "shimmer bg-gradient-to-r from-muted/50 via-muted/80 to-muted/50 bg-[length:200%_100%] animate-[shimmer_2s_infinite]",
         className
       )}
       {...props}
@@ -18,40 +19,44 @@ export function PremiumSkeleton({ className, variant = "default", ...props }: Pr
   );
 }
 
-export function ListingCardSkeleton({ className }: { className?: string }) {
-  return (
-    <div className={cn("card-premium overflow-hidden", className)}>
-      <PremiumSkeleton className="aspect-[16/10] w-full" variant="shimmer" />
-      <div className="p-5 space-y-4">
-        <div className="space-y-2">
-          <PremiumSkeleton className="h-6 w-3/4" />
-          <PremiumSkeleton className="h-4 w-1/2" />
-        </div>
-        <div className="flex justify-between items-center">
-          <PremiumSkeleton className="h-4 w-20" />
+// Memory-efficient skeleton components
+export const ListingCardSkeleton = createMemoryEfficientComponent(
+  ({ className }: { className?: string }) => {
+    return (
+      <div className={cn("card-premium overflow-hidden", className)}>
+        <PremiumSkeleton className="aspect-[16/10] w-full" variant="shimmer" />
+        <div className="p-5 space-y-4">
+          <div className="space-y-2">
+            <PremiumSkeleton className="h-6 w-3/4" />
+            <PremiumSkeleton className="h-4 w-1/2" />
+          </div>
+          <div className="flex justify-between items-center">
+            <PremiumSkeleton className="h-4 w-20" />
+            <div className="flex gap-1">
+              <PremiumSkeleton className="h-6 w-16 rounded-full" />
+              <PremiumSkeleton className="h-6 w-12 rounded-full" />
+            </div>
+          </div>
           <div className="flex gap-1">
-            <PremiumSkeleton className="h-6 w-16 rounded-full" />
-            <PremiumSkeleton className="h-6 w-12 rounded-full" />
+            <PremiumSkeleton className="h-5 w-14 rounded-full" />
+            <PremiumSkeleton className="h-5 w-18 rounded-full" />
+            <PremiumSkeleton className="h-5 w-16 rounded-full" />
+          </div>
+          <div className="space-y-1">
+            <PremiumSkeleton className="h-5 w-24" />
+            <PremiumSkeleton className="h-3 w-32" />
+          </div>
+          <div className="flex gap-2">
+            <PremiumSkeleton className="h-9 flex-1 rounded-lg" />
+            <PremiumSkeleton className="h-9 flex-1 rounded-lg" />
+            <PremiumSkeleton className="h-9 w-9 rounded-lg" />
           </div>
         </div>
-        <div className="flex gap-1">
-          <PremiumSkeleton className="h-5 w-14 rounded-full" />
-          <PremiumSkeleton className="h-5 w-18 rounded-full" />
-          <PremiumSkeleton className="h-5 w-16 rounded-full" />
-        </div>
-        <div className="space-y-1">
-          <PremiumSkeleton className="h-5 w-24" />
-          <PremiumSkeleton className="h-3 w-32" />
-        </div>
-        <div className="flex gap-2">
-          <PremiumSkeleton className="h-9 flex-1 rounded-lg" />
-          <PremiumSkeleton className="h-9 flex-1 rounded-lg" />
-          <PremiumSkeleton className="h-9 w-9 rounded-lg" />
-        </div>
       </div>
-    </div>
-  );
-}
+    );
+  },
+  (prevProps, nextProps) => prevProps.className === nextProps.className
+);
 
 export function ListingGridSkeleton({ count = 6, className }: { count?: number; className?: string }) {
   return (

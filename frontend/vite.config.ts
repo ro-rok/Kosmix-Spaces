@@ -14,4 +14,62 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    // Optimize bundle splitting for better performance
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Vendor chunks
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          'ui-vendor': ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-select'],
+          'query-vendor': ['@tanstack/react-query'],
+          
+          // Feature-based chunks
+          'admin-pages': [
+            './src/admin/pages/AdminDashboard',
+            './src/admin/pages/AdminListings',
+            './src/admin/pages/AdminPartners',
+            './src/admin/pages/AdminLeads',
+            './src/admin/pages/AdminVisits',
+            './src/admin/pages/AdminAnalytics'
+          ],
+          'partner-pages': [
+            './src/partner/pages/PartnerDashboard',
+            './src/partner/pages/PartnerListings',
+            './src/partner/pages/SubmitListing',
+            './src/partner/pages/PartnerAnalytics'
+          ],
+          
+          // Utility chunks
+          'utils': ['./src/lib/utils', './src/lib/api', './src/lib/analytics'],
+          'performance': ['./src/lib/performance', './src/lib/image-compression']
+        }
+      }
+    },
+    // Optimize chunk size warnings
+    chunkSizeWarningLimit: 1000,
+    // Enable source maps in development
+    sourcemap: mode === 'development',
+    // Minify in production
+    minify: mode === 'production' ? 'esbuild' : false,
+    // Target modern browsers for better performance
+    target: 'es2020'
+  },
+  // Optimize dependencies
+  optimizeDeps: {
+    include: [
+      'react',
+      'react-dom',
+      'react-router-dom',
+      '@tanstack/react-query',
+      'sonner',
+      'lucide-react'
+    ],
+    exclude: ['@vite/client', '@vite/env']
+  },
+  // Performance optimizations
+  esbuild: {
+    // Remove console logs in production
+    drop: mode === 'production' ? ['console', 'debugger'] : [],
+  }
 }));

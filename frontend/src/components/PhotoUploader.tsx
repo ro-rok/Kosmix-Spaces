@@ -11,6 +11,7 @@ import {
   getOptimalCompressionSettings,
   type CompressionResult 
 } from "@/lib/image-compression";
+import { OptimizedUploader } from "@/lib/performance";
 
 interface PhotoFile {
   file: File;
@@ -30,6 +31,7 @@ interface PhotoUploaderProps {
   acceptedTypes?: string[];
   disabled?: boolean;
   className?: string;
+  offeringType?: string; // For offering-specific photo buckets
 }
 
 export function PhotoUploader({
@@ -38,20 +40,35 @@ export function PhotoUploader({
   maxFileSize = 10 * 1024 * 1024, // 10MB
   acceptedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'],
   disabled = false,
-  className
+  className,
+  offeringType
 }: PhotoUploaderProps) {
   const [photos, setPhotos] = useState<PhotoFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isCompressing, setIsCompressing] = useState(false);
+  
+  // Initialize optimized uploader with performance settings
+  const [uploader] = useState(() => new OptimizedUploader({
+    maxConcurrent: 3,
+    retryAttempts: 3,
+    retryDelay: 1000
+  }));
 
   const validateFile = (file: File): string | null => {
-    if (!acceptedTypes.includes(file.type)) {
-      return `${file.name} is not a supported image format`;
+    // Enhanced file type validation with whitelist enforcement
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (!allowedTypes.includes(file.type.toLowerCase())) {
+      return `${file.name} is not a supported image format. Only JPG, PNG, and WebP are allowed.`;
     }
     
     if (file.size > maxFileSize) {
       return `${file.name} is too large (max ${Math.round(maxFileSize / 1024 / 1024)}MB)`;
+    }
+    
+    // Check file count per offering bucket if specified
+    if (offeringType && photos.length >= maxFiles) {
+      return `Maximum ${maxFiles} photos allowed for ${offeringType}`;
     }
     
     return null;
@@ -199,37 +216,47 @@ export function PhotoUploader({
     setIsUploading(true);
     
     try {
-      // Simulate progress for each file
-      const files = filesToUpload.map(p => p.file);
+      // Use optimized uploader for non-blocking UI and progress tracking
+      const uploadPromises = filesToUpload.map((photo, index) => {
+        const photoIndex = photos.findIndex(p => p.file === photo.file);
+        
+        return uploader.uploadFile(
+          photo.file,
+          (file) => onUpload([file]),
+          // Progress callback
+          (progress) => {
+            setPhotos(prev => prev.map((p, idx) => 
+              idx === photoIndex ? { ...p, progress } : p
+            ));
+          },
+          // Success callback
+          (result) => {
+            setPhotos(prev => prev.map((p, idx) => 
+              idx === photoIndex ? { ...p, progress: 100, uploaded: true } : p
+            ));
+          },
+          // Error callback
+          (error) => {
+            setPhotos(prev => prev.map((p, idx) => 
+              idx === photoIndex ? { ...p, error: error.message || 'Upload failed' } : p
+            ));
+          }
+        );
+      });
       
-      // Update progress for UI feedback
-      for (let i = 0; i < filesToUpload.length; i++) {
-        const photoIndex = photos.findIndex(p => p.file === filesToUpload[i].file);
-        if (photoIndex !== -1) {
-          setPhotos(prev => prev.map((p, idx) => 
-            idx === photoIndex ? { ...p, progress: 50 } : p
-          ));
-        }
+      await Promise.allSettled(uploadPromises);
+      
+      const successCount = photos.filter(p => p.uploaded).length;
+      const errorCount = photos.filter(p => p.error).length;
+      
+      if (successCount > 0) {
+        toast.success(`${successCount} photo(s) uploaded successfully`);
+      }
+      if (errorCount > 0) {
+        toast.error(`${errorCount} photo(s) failed to upload`);
       }
       
-      await onUpload(files);
-      
-      // Mark as uploaded
-      setPhotos(prev => prev.map(p => 
-        filesToUpload.some(f => f.file === p.file) 
-          ? { ...p, progress: 100, uploaded: true }
-          : p
-      ));
-      
-      toast.success(`${files.length} photo(s) uploaded successfully`);
     } catch (error: any) {
-      // Mark failed uploads
-      setPhotos(prev => prev.map(p => 
-        filesToUpload.some(f => f.file === p.file) 
-          ? { ...p, error: error.message || 'Upload failed' }
-          : p
-      ));
-      
       toast.error(`Upload failed: ${error.message}`);
     } finally {
       setIsUploading(false);

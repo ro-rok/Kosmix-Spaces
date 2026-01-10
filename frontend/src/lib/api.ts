@@ -1,4 +1,5 @@
 import { Listing, PartnerStatus, LeadStatus, VisitStatus } from "@/types/models";
+import { performanceCache } from "@/lib/performance";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
@@ -26,8 +27,21 @@ export function getAuthToken(): string | null {
   return authToken || localStorage.getItem("kosmix_auth_token");
 }
 
-// Enhanced API client with automatic auth injection and error normalization
-async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+// Enhanced API client with automatic auth injection, error normalization, and caching
+async function apiRequest<T>(
+  endpoint: string, 
+  options: RequestInit = {},
+  cacheKey?: string,
+  cacheTTL?: number
+): Promise<T> {
+  // Check cache first for GET requests
+  if (cacheKey && (!options.method || options.method === 'GET')) {
+    const cached = performanceCache.get<T>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+  }
+
   const url = `${API_BASE_URL}/api${endpoint}`;
   
   // Prepare headers with automatic auth injection
@@ -99,7 +113,14 @@ async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promi
       throw new ApiError(response.status, errorMessage, errorCode, errorDetails);
     }
 
-    return response.json();
+    const data = await response.json();
+    
+    // Cache successful GET responses
+    if (cacheKey && (!options.method || options.method === 'GET')) {
+      performanceCache.set(cacheKey, data);
+    }
+    
+    return data;
   } catch (error) {
     if (error instanceof ApiError) {
       throw error;
@@ -148,7 +169,7 @@ function mapBackendListing(backendListing: any): Listing {
 export const api = {
   // Health check
   healthCheck: () => 
-    apiRequest<{ status: string; message: string }>("/health"),
+    apiRequest<{ status: string; message: string }>("/health", {}, "health-check", 30000),
 
   // Authentication endpoints
   auth: {
@@ -191,7 +212,7 @@ export const api = {
         phone: string;
         email: string;
         status: PartnerStatus;
-      }>("/partner/auth/me"),
+      }>("/partner/auth/me", {}, "partner-me", 60000),
 
     // Admin authentication
     loginAdmin: (data: { email: string; password: string }) =>
@@ -205,16 +226,16 @@ export const api = {
         adminId: string;
         email: string;
         role: string;
-      }>("/admin/auth/me"),
+      }>("/admin/auth/me", {}, "admin-me", 60000),
   },
 
   // Public endpoints
   public: {
-    // Localities
+    // Localities - cache for 10 minutes
     getLocalities: () => 
-      apiRequest<Array<{ id: string; name: string; city: string; popular: boolean }>>("/public/localities"),
+      apiRequest<Array<{ id: string; name: string; city: string; popular: boolean }>>("/public/localities", {}, "localities", 600000),
 
-    // Listings
+    // Listings - cache based on params
     getListings: (params: {
       locality?: string;
       budgetBandId?: string;
@@ -235,19 +256,21 @@ export const api = {
         }
       });
       
+      const cacheKey = `listings-${searchParams.toString()}`;
+      
       return apiRequest<{
         items: any[];
         total: number;
         page: number;
         pageSize: number;
-      }>(`/public/listings?${searchParams}`).then(response => ({
+      }>(`/public/listings?${searchParams}`, {}, cacheKey, 300000).then(response => ({
         ...response,
         items: response.items.map(mapBackendListing)
       }));
     },
 
     getListingBySlug: (slug: string) =>
-      apiRequest<any>(`/public/listings/${slug}`).then(mapBackendListing),
+      apiRequest<any>(`/public/listings/${slug}`, {}, `listing-${slug}`, 300000).then(mapBackendListing),
 
     // Leads (Enquiries)
     createLead: (lead: {

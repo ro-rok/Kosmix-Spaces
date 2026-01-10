@@ -9,6 +9,7 @@ from app.core.config import get_settings
 from app.core.errors import AppError
 from app.db.mongodb import connect_to_mongo, close_mongo_connection
 from app.db.indexes import create_indexes
+from app.middleware.error_tracking import ErrorTrackingMiddleware, SecurityHeadersMiddleware
 
 # Import routers
 from app.routers import (
@@ -24,7 +25,8 @@ from app.routers import (
     leads, 
     visits, 
     analytics,
-    design_system
+    design_system,
+    performance
 )
 
 settings = get_settings()
@@ -36,8 +38,29 @@ async def lifespan(app: FastAPI):
     # Startup
     await connect_to_mongo()
     await create_indexes()
+    
+    # Initialize performance monitoring
+    from app.services.performance_service import cleanup_cache_task, DatabaseOptimizer
+    import asyncio
+    
+    # Start background cache cleanup task
+    cleanup_task = asyncio.create_task(cleanup_cache_task())
+    
+    # Initialize database optimization
+    try:
+        from app.db.mongodb import get_database
+        db = await get_database()
+        optimizer = DatabaseOptimizer(db)
+        await optimizer.create_indexes()
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.warning(f"Failed to initialize database optimization: {e}")
+    
     yield
+    
     # Shutdown
+    cleanup_task.cancel()
     await close_mongo_connection()
 
 
@@ -57,19 +80,27 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Add custom middleware
+app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(ErrorTrackingMiddleware)
+
 # Exception handlers
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    """Handle Pydantic validation errors."""
-    # Convert errors to JSON-serializable format
+    """Handle Pydantic validation errors with enhanced formatting."""
+    # Convert errors to JSON-serializable format with better structure
     errors = []
     for error in exc.errors():
+        # Extract field path
+        field_path = ".".join(str(loc) for loc in error.get("loc", []))
+        
+        # Create structured error
         error_dict = {
+            "field": field_path,
             "type": error.get("type"),
-            "loc": error.get("loc"),
-            "msg": error.get("msg"),
+            "message": error.get("msg"),
             "input": str(error.get("input")) if error.get("input") is not None else None,
-            "url": error.get("url")
+            "context": error.get("ctx", {})
         }
         errors.append(error_dict)
     
@@ -80,7 +111,8 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
                 "code": "VALIDATION_ERROR",
                 "message": "Request validation failed",
                 "details": {
-                    "errors": errors
+                    "errors": errors,
+                    "error_count": len(errors)
                 }
             }
         }
@@ -98,14 +130,29 @@ async def app_error_handler(request: Request, exc: AppError):
 
 @app.exception_handler(Exception)
 async def general_exception_handler(request: Request, exc: Exception):
-    """Handle general exceptions."""
+    """Handle general exceptions with enhanced logging and error details."""
+    import traceback
+    import logging
+    
+    # Log the full exception for debugging
+    logger = logging.getLogger(__name__)
+    logger.error(f"Unhandled exception: {exc}", exc_info=True)
+    
+    # Don't expose internal details in production
+    error_details = {}
+    if settings.debug:
+        error_details = {
+            "exception_type": type(exc).__name__,
+            "traceback": traceback.format_exc()
+        }
+    
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={
             "error": {
                 "code": "INTERNAL_ERROR",
-                "message": "An internal error occurred",
-                "details": {}
+                "message": "An internal error occurred. Please try again later.",
+                "details": error_details
             }
         }
     )
@@ -137,6 +184,9 @@ app.include_router(analytics.router, prefix="/api/analytics", tags=["Analytics"]
 
 # Design system routes
 app.include_router(design_system.router, prefix="/api/design-system", tags=["Design System"])
+
+# Performance monitoring routes
+app.include_router(performance.router, prefix="/api/performance", tags=["Performance"])
 
 
 @app.get("/")
