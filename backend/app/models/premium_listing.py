@@ -20,7 +20,7 @@ BudgetBand = Literal["₹", "₹₹", "₹₹₹"]
 
 
 class OfferingPhoto(BaseModel):
-    """Photo specific to an offering."""
+    """Photo specific to an offering with compression metadata."""
     url: str
     publicId: str
     width: int
@@ -29,6 +29,15 @@ class OfferingPhoto(BaseModel):
     format: str
     offeringType: OfferingType
     order: int = 0  # For photo ordering within offering
+    
+    # Compression metadata
+    compressionRatio: Optional[int] = 0  # Percentage compression achieved
+    originalSize: Optional[int] = None  # Original file size in bytes
+    variants: Optional[Dict[str, str]] = {}  # Different size variants (thumbnail, mobile, etc.)
+    
+    # Upload metadata
+    uploadedAt: datetime = Field(default_factory=datetime.utcnow)
+    tags: List[str] = []  # Cloudinary tags for organization
 
 
 class PremiumOffering(BaseModel):
@@ -63,9 +72,27 @@ class LocationData(BaseModel):
     # Internal exact address (never exposed in public APIs)
     exactAddress: Optional[str] = None  # Internal only
     
-    # Safe location metadata
+    # Access and hours
+    accessHours: Optional[str] = "9 AM - 9 PM"
+    customAccessHours: Optional[str] = None
+    weekendAccess: bool = False
+    twentyFourSevenAccess: bool = False
+    
+    # Transportation
     nearMetro: bool = False
     metroNote: Optional[str] = None  # Safe description, no exact address
+    metroDetails: Optional[str] = None
+    parking: Optional[str] = "NONE"
+    parkingNotes: Optional[str] = None
+    
+    # Infrastructure
+    powerBackup: bool = False
+    internetSpeedMbps: Optional[int] = None
+    wifiDetails: Optional[str] = None
+    
+    # Additional information
+    houseRules: Optional[str] = None
+    specialInstructions: Optional[str] = None
     
     @validator('approximateCoordinates')
     def round_coordinates(cls, v):
@@ -218,6 +245,8 @@ class PremiumListingCreate(BaseModel):
     metroNote: Optional[str] = None
     amenities: List[str] = []
     highlights: List[str] = []
+    accessHours: Optional[str] = "9 AM - 9 PM"
+    weekendAccess: bool = False
 
 
 class PremiumListingUpdate(BaseModel):
@@ -232,6 +261,20 @@ class PremiumListingUpdate(BaseModel):
     amenities: Optional[List[str]] = None
     highlights: Optional[List[str]] = None
     offerings: Optional[Dict[OfferingType, PremiumOffering]] = None
+    accessHours: Optional[str] = None
+    weekendAccess: Optional[bool] = None
+    # Location fields
+    approximateCoordinates: Optional[Dict[str, float]] = None
+    customAccessHours: Optional[str] = None
+    twentyFourSevenAccess: Optional[bool] = None
+    metroDetails: Optional[str] = None
+    parking: Optional[str] = None
+    parkingNotes: Optional[str] = None
+    powerBackup: Optional[bool] = None
+    internetSpeedMbps: Optional[int] = None
+    wifiDetails: Optional[str] = None
+    houseRules: Optional[str] = None
+    specialInstructions: Optional[str] = None
 
 
 class OfferingUpdateRequest(BaseModel):

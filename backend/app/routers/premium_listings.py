@@ -1,5 +1,7 @@
 """Premium listing management routes."""
 from typing import List, Optional
+from datetime import datetime
+from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from app.core.security import require_partner
 from app.models.premium_listing import (
@@ -16,6 +18,7 @@ from app.services.premium_listing_service import (
     update_premium_listing,
     update_offering,
     add_offering_photo,
+    add_hero_photo,
     remove_offering_photo,
     reorder_offering_photos,
     validate_listing_for_submission,
@@ -24,7 +27,14 @@ from app.services.premium_listing_service import (
     increment_listing_view,
     listing_to_public_response
 )
-from app.services.cloudinary_service import upload_image, delete_image
+from app.services.cloudinary_service import (
+    upload_image, 
+    delete_image, 
+    upload_offering_photo,
+    upload_hero_photo,
+    validate_image_file,
+    get_compression_stats
+)
 from app.core.errors import ValidationError, NotFoundError
 
 router = APIRouter()
@@ -124,28 +134,27 @@ async def upload_offering_photo(
     listing_id: str,
     offering_type: OfferingType,
     file: UploadFile = File(...),
+    enable_compression: bool = True,
     current_user: dict = Depends(require_partner)
 ):
-    """Upload photo for specific offering."""
+    """Upload photo for specific offering with advanced compression."""
     partner_id = current_user["partnerId"]
     
-    # Validate file type
-    if not file.content_type or not file.content_type.startswith('image/'):
-        raise ValidationError("File must be an image")
-    
-    # Validate file size (max 10MB)
-    if file.size and file.size > 10 * 1024 * 1024:
-        raise ValidationError("File size must be less than 10MB")
+    # Enhanced file validation
+    is_valid, error_message = validate_image_file(file)
+    if not is_valid:
+        raise ValidationError(error_message)
     
     try:
-        # Upload to Cloudinary
-        upload_result = await upload_image(
+        # Upload with offering-specific compression
+        upload_result = await upload_offering_photo(
             file=file,
-            folder=f"listings/{listing_id}/{offering_type}",
-            tags=[listing_id, offering_type, "premium-listing"]
+            listing_id=listing_id,
+            offering_type=offering_type,
+            tags=["premium-listing", f"partner:{partner_id}"]
         )
         
-        # Add photo to listing
+        # Add photo to listing with compression metadata
         photo = await add_offering_photo(
             listing_id=listing_id,
             partner_id=partner_id,
@@ -157,6 +166,81 @@ async def upload_offering_photo(
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Photo upload failed: {str(e)}")
+
+
+@router.post("/listings/{listing_id}/hero-photos", response_model=PhotoUploadResponse)
+async def upload_hero_photo(
+    listing_id: str,
+    file: UploadFile = File(...),
+    current_user: dict = Depends(require_partner)
+):
+    """Upload hero photo with highest quality compression."""
+    partner_id = current_user["partnerId"]
+    
+    # Enhanced file validation
+    is_valid, error_message = validate_image_file(file)
+    if not is_valid:
+        raise ValidationError(error_message)
+    
+    try:
+        # Upload with hero-specific compression (higher quality)
+        upload_result = await upload_hero_photo(
+            file=file,
+            listing_id=listing_id,
+            tags=["premium-listing", f"partner:{partner_id}", "hero"]
+        )
+        
+        # Add hero photo to listing
+        photo = await add_hero_photo(
+            listing_id=listing_id,
+            partner_id=partner_id,
+            photo_data=upload_result
+        )
+        
+        return PhotoUploadResponse(**photo)
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Hero photo upload failed: {str(e)}")
+
+
+@router.get("/listings/{listing_id}/compression-stats")
+async def get_listing_compression_stats(
+    listing_id: str,
+    current_user: dict = Depends(require_partner)
+):
+    """Get compression statistics for all photos in a listing."""
+    partner_id = current_user["partnerId"]
+    
+    try:
+        # Get listing to verify ownership
+        listing = await get_premium_listing(listing_id, partner_id)
+        if not listing:
+            raise HTTPException(status_code=404, detail="Listing not found")
+        
+        # Collect all photo public IDs
+        public_ids = []
+        
+        # Hero photos
+        for photo in listing.get("heroPhotos", []):
+            if isinstance(photo, dict) and "publicId" in photo:
+                public_ids.append(photo["publicId"])
+        
+        # Offering photos
+        for offering_type, offering in listing.get("offerings", {}).items():
+            for photo in offering.get("photos", []):
+                if isinstance(photo, dict) and "publicId" in photo:
+                    public_ids.append(photo["publicId"])
+        
+        # Get compression stats
+        stats = await get_compression_stats(public_ids)
+        
+        return {
+            "listing_id": listing_id,
+            "stats": stats
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get compression stats: {str(e)}")
 
 
 @router.delete("/listings/{listing_id}/offerings/{offering_type}/photos/{public_id}")
@@ -190,21 +274,74 @@ async def delete_offering_photo(
     return {"ok": True}
 
 
-@router.put("/listings/{listing_id}/offerings/{offering_type}/photos/reorder")
-async def reorder_photos(
+@router.put("/listings/{listing_id}/basic-info")
+async def update_listing_basic_info(
     listing_id: str,
-    offering_type: OfferingType,
-    photo_order: List[str],
+    basic_info: dict,
     current_user: dict = Depends(require_partner)
 ):
-    """Reorder photos within an offering."""
+    """Update listing basic information (step 1 of wizard)."""
     partner_id = current_user["partnerId"]
     
-    listing = await reorder_offering_photos(
+    # Extract basic info fields
+    update_data = {
+        "displayName": basic_info.get("displayName"),
+        "overview": basic_info.get("overview"),
+        "locality": basic_info.get("locality"),
+        "city": basic_info.get("city"),
+        "amenities": basic_info.get("amenities"),
+        "accessHours": basic_info.get("accessHours"),
+        "weekendAccess": basic_info.get("weekendAccess")
+    }
+    
+    # Remove None values
+    update_data = {k: v for k, v in update_data.items() if v is not None}
+    
+    listing = await update_premium_listing(
         listing_id=listing_id,
         partner_id=partner_id,
-        offering_type=offering_type,
-        photo_order=photo_order
+        update_data=update_data
+    )
+    
+    return listing_to_public_response(listing)
+
+
+@router.put("/listings/{listing_id}/location")
+async def update_listing_location(
+    listing_id: str,
+    location_data: dict,
+    current_user: dict = Depends(require_partner)
+):
+    """Update listing location information (step 3 of wizard)."""
+    partner_id = current_user["partnerId"]
+    
+    # Extract location fields
+    update_data = {
+        "locality": location_data.get("locality"),
+        "city": location_data.get("city"),
+        "approximateCoordinates": location_data.get("approximateCoordinates"),
+        "accessHours": location_data.get("accessHours"),
+        "customAccessHours": location_data.get("customAccessHours"),
+        "weekendAccess": location_data.get("weekendAccess"),
+        "twentyFourSevenAccess": location_data.get("twentyFourSevenAccess"),
+        "nearMetro": location_data.get("nearMetro"),
+        "metroDetails": location_data.get("metroDetails"),
+        "parking": location_data.get("parking"),
+        "parkingNotes": location_data.get("parkingNotes"),
+        "powerBackup": location_data.get("powerBackup"),
+        "internetSpeedMbps": location_data.get("internetSpeedMbps"),
+        "wifiDetails": location_data.get("wifiDetails"),
+        "houseRules": location_data.get("houseRules"),
+        "specialInstructions": location_data.get("specialInstructions")
+    }
+    
+    # Remove None values
+    update_data = {k: v for k, v in update_data.items() if v is not None}
+    
+    listing = await update_premium_listing(
+        listing_id=listing_id,
+        partner_id=partner_id,
+        update_data=update_data
     )
     
     return listing_to_public_response(listing)
@@ -258,3 +395,129 @@ async def get_public_listing_by_slug(slug: str):
     await increment_listing_view(str(listing["_id"]))
     
     return listing_to_public_response(listing)
+
+
+# Additional endpoints for listing builder
+@router.put("/listings/{listing_id}/basic-info")
+async def update_listing_basic_info(
+    listing_id: str,
+    basic_info: dict,
+    current_user: dict = Depends(require_partner)
+):
+    """Update listing basic information (step 1 of wizard)."""
+    partner_id = current_user["partnerId"]
+    
+    # Extract basic info fields
+    update_data = {
+        "displayName": basic_info.get("displayName"),
+        "overview": basic_info.get("overview"),
+        "locality": basic_info.get("locality"),
+        "city": basic_info.get("city"),
+        "amenities": basic_info.get("amenities"),
+        "accessHours": basic_info.get("accessHours"),
+        "weekendAccess": basic_info.get("weekendAccess")
+    }
+    
+    # Remove None values
+    update_data = {k: v for k, v in update_data.items() if v is not None}
+    
+    listing = await update_premium_listing(
+        listing_id=listing_id,
+        partner_id=partner_id,
+        update_data=update_data
+    )
+    
+    return listing_to_public_response(listing)
+
+
+@router.put("/listings/{listing_id}/location")
+async def update_listing_location(
+    listing_id: str,
+    location_data: dict,
+    current_user: dict = Depends(require_partner)
+):
+    """Update listing location information (step 3 of wizard)."""
+    partner_id = current_user["partnerId"]
+    
+    # Extract location fields
+    update_data = {
+        "locality": location_data.get("locality"),
+        "city": location_data.get("city"),
+        "approximateCoordinates": location_data.get("approximateCoordinates"),
+        "accessHours": location_data.get("accessHours"),
+        "customAccessHours": location_data.get("customAccessHours"),
+        "weekendAccess": location_data.get("weekendAccess"),
+        "twentyFourSevenAccess": location_data.get("twentyFourSevenAccess"),
+        "nearMetro": location_data.get("nearMetro"),
+        "metroDetails": location_data.get("metroDetails"),
+        "parking": location_data.get("parking"),
+        "parkingNotes": location_data.get("parkingNotes"),
+        "powerBackup": location_data.get("powerBackup"),
+        "internetSpeedMbps": location_data.get("internetSpeedMbps"),
+        "wifiDetails": location_data.get("wifiDetails"),
+        "houseRules": location_data.get("houseRules"),
+        "specialInstructions": location_data.get("specialInstructions")
+    }
+    
+    # Remove None values
+    update_data = {k: v for k, v in update_data.items() if v is not None}
+    
+    listing = await update_premium_listing(
+        listing_id=listing_id,
+        partner_id=partner_id,
+        update_data=update_data
+    )
+    
+    return listing_to_public_response(listing)
+
+
+@router.put("/listings/{listing_id}/offerings/{offering_type}/photos/reorder")
+async def reorder_photos(
+    listing_id: str,
+    offering_type: OfferingType,
+    photo_order: List[str],
+    current_user: dict = Depends(require_partner)
+):
+    """Reorder photos within an offering."""
+    partner_id = current_user["partnerId"]
+    
+    listing = await reorder_offering_photos(
+        listing_id=listing_id,
+        partner_id=partner_id,
+        offering_type=offering_type,
+        photo_order=photo_order
+    )
+    
+    return listing_to_public_response(listing)
+
+
+@router.post("/listings/{listing_id}/save-draft")
+async def save_listing_draft(
+    listing_id: str,
+    current_user: dict = Depends(require_partner)
+):
+    """Save listing as draft."""
+    partner_id = current_user["partnerId"]
+    
+    # Get listing to verify ownership
+    listing = await get_premium_listing(listing_id, partner_id)
+    
+    # Update status to draft if not already
+    if listing.get("verificationStatus") != "DRAFT":
+        from app.db.mongodb import get_database
+        from datetime import datetime
+        db = get_database()
+        await db.premium_listings.update_one(
+            {"_id": ObjectId(listing_id)},
+            {
+                "$set": {
+                    "verificationStatus": "DRAFT",
+                    "updatedAt": datetime.utcnow()
+                }
+            }
+        )
+    
+    return {
+        "ok": True,
+        "message": "Draft saved successfully"
+    }

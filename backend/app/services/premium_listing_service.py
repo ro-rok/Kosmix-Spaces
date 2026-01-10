@@ -39,7 +39,9 @@ async def create_premium_listing(partner_id: str, listing_data: dict) -> dict:
         city=listing_data.get("city", "Delhi"),
         exactAddress=listing_data.get("exactAddress"),  # Internal only
         nearMetro=listing_data.get("nearMetro", False),
-        metroNote=listing_data.get("metroNote")
+        metroNote=listing_data.get("metroNote"),
+        accessHours=listing_data.get("accessHours", "9 AM - 9 PM"),
+        weekendAccess=listing_data.get("weekendAccess", False)
     )
     
     # Initialize all offering types
@@ -128,7 +130,12 @@ async def update_premium_listing(listing_id: str, partner_id: str, update_data: 
         update_doc["overview"] = update_data["overview"]
     
     # Handle location updates
-    location_fields = ["locality", "city", "exactAddress", "nearMetro", "metroNote"]
+    location_fields = [
+        "locality", "city", "exactAddress", "nearMetro", "metroNote", "metroDetails",
+        "accessHours", "customAccessHours", "weekendAccess", "twentyFourSevenAccess",
+        "parking", "parkingNotes", "powerBackup", "internetSpeedMbps", "wifiDetails",
+        "houseRules", "specialInstructions", "approximateCoordinates"
+    ]
     location_updated = False
     
     for field in location_fields:
@@ -197,7 +204,7 @@ async def add_offering_photo(listing_id: str, partner_id: str, offering_type: Of
     # Verify listing exists and belongs to partner
     listing = await get_premium_listing(listing_id, partner_id)
     
-    # Create photo document
+    # Create photo document with compression metadata
     photo = OfferingPhoto(
         url=photo_data["url"],
         publicId=photo_data["publicId"],
@@ -206,7 +213,11 @@ async def add_offering_photo(listing_id: str, partner_id: str, offering_type: Of
         bytes=photo_data["bytes"],
         format=photo_data["format"],
         offeringType=offering_type,
-        order=len(listing["offerings"][offering_type]["photos"])
+        order=len(listing["offerings"][offering_type]["photos"]),
+        # Add compression metadata if available
+        compressionRatio=photo_data.get("compression", {}).get("total_compression_ratio", 0),
+        originalSize=photo_data.get("compression", {}).get("original_size"),
+        variants=photo_data.get("variants", {})
     )
     
     # Add photo to offering
@@ -214,6 +225,41 @@ async def add_offering_photo(listing_id: str, partner_id: str, offering_type: Of
         {"_id": ObjectId(listing_id)},
         {
             "$push": {f"offerings.{offering_type}.photos": photo.model_dump()},
+            "$set": {"updatedAt": datetime.utcnow()}
+        }
+    )
+    
+    return photo.model_dump()
+
+
+async def add_hero_photo(listing_id: str, partner_id: str, photo_data: dict) -> dict:
+    """Add hero photo to listing."""
+    db = get_database()
+    
+    # Verify listing exists and belongs to partner
+    listing = await get_premium_listing(listing_id, partner_id)
+    
+    # Create hero photo document with compression metadata
+    photo = OfferingPhoto(
+        url=photo_data["url"],
+        publicId=photo_data["publicId"],
+        width=photo_data["width"],
+        height=photo_data["height"],
+        bytes=photo_data["bytes"],
+        format=photo_data["format"],
+        offeringType="hero",  # Special type for hero photos
+        order=len(listing.get("heroPhotos", [])),
+        # Add compression metadata if available
+        compressionRatio=photo_data.get("compression", {}).get("total_compression_ratio", 0),
+        originalSize=photo_data.get("compression", {}).get("original_size"),
+        variants=photo_data.get("variants", {})
+    )
+    
+    # Add photo to hero photos array
+    await db.premium_listings.update_one(
+        {"_id": ObjectId(listing_id)},
+        {
+            "$push": {"heroPhotos": photo.model_dump()},
             "$set": {"updatedAt": datetime.utcnow()}
         }
     )
@@ -407,6 +453,17 @@ def listing_to_public_response(listing: dict) -> dict:
         "city": listing["location"]["city"],
         "nearMetro": listing["location"]["nearMetro"],
         "metroNote": listing["location"]["metroNote"],
+        "metroDetails": listing["location"].get("metroDetails"),
+        "accessHours": listing["location"].get("accessHours", "9 AM - 9 PM"),
+        "weekendAccess": listing["location"].get("weekendAccess", False),
+        "twentyFourSevenAccess": listing["location"].get("twentyFourSevenAccess", False),
+        "parking": listing["location"].get("parking", "NONE"),
+        "parkingNotes": listing["location"].get("parkingNotes"),
+        "powerBackup": listing["location"].get("powerBackup", False),
+        "internetSpeedMbps": listing["location"].get("internetSpeedMbps"),
+        "wifiDetails": listing["location"].get("wifiDetails"),
+        "houseRules": listing["location"].get("houseRules"),
+        "specialInstructions": listing["location"].get("specialInstructions"),
         "amenities": listing["amenities"],
         "highlights": listing["highlights"],
         "offerings": {},
@@ -414,6 +471,8 @@ def listing_to_public_response(listing: dict) -> dict:
         "verificationStatus": listing["verificationStatus"],
         "isPublished": listing["isPublished"],
         "viewCount": listing["viewCount"],
+        "status": listing.get("verificationStatus", "DRAFT").lower(),  # For frontend compatibility
+        "adminNotes": listing.get("adminNotes"),  # Include admin notes for partners
         "createdAt": listing["createdAt"].isoformat() if listing.get("createdAt") else None,
         "updatedAt": listing["updatedAt"].isoformat() if listing.get("updatedAt") else None
     }

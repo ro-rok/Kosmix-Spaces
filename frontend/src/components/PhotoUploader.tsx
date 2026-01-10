@@ -1,16 +1,25 @@
 import { useState, useCallback } from "react";
-import { Upload, X, Image as ImageIcon, AlertCircle } from "lucide-react";
+import { Upload, X, Image as ImageIcon, AlertCircle, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { 
+  compressImages, 
+  shouldCompressImage, 
+  getOptimalCompressionSettings,
+  type CompressionResult 
+} from "@/lib/image-compression";
 
 interface PhotoFile {
   file: File;
+  originalFile?: File;
   preview: string;
   progress: number;
   uploaded: boolean;
+  compressed: boolean;
+  compressionRatio?: number;
   error?: string;
 }
 
@@ -34,6 +43,7 @@ export function PhotoUploader({
   const [photos, setPhotos] = useState<PhotoFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isCompressing, setIsCompressing] = useState(false);
 
   const validateFile = (file: File): string | null => {
     if (!acceptedTypes.includes(file.type)) {
@@ -47,7 +57,7 @@ export function PhotoUploader({
     return null;
   };
 
-  const addFiles = useCallback((files: FileList | File[]) => {
+  const addFiles = useCallback(async (files: FileList | File[]) => {
     const fileArray = Array.from(files);
     const validFiles: File[] = [];
     
@@ -68,14 +78,75 @@ export function PhotoUploader({
     
     if (validFiles.length === 0) return;
     
-    const newPhotos: PhotoFile[] = validFiles.map(file => ({
+    // Check which files need compression
+    const filesToCompress = validFiles.filter(shouldCompressImage);
+    const filesToKeep = validFiles.filter(file => !shouldCompressImage(file));
+    
+    // Add files that don't need compression immediately
+    const immediatePhotos: PhotoFile[] = filesToKeep.map(file => ({
       file,
       preview: URL.createObjectURL(file),
       progress: 0,
-      uploaded: false
+      uploaded: false,
+      compressed: false
     }));
     
-    setPhotos(prev => [...prev, ...newPhotos]);
+    setPhotos(prev => [...prev, ...immediatePhotos]);
+    
+    // Compress files that need it
+    if (filesToCompress.length > 0) {
+      setIsCompressing(true);
+      toast.info(`Compressing ${filesToCompress.length} image(s)...`);
+      
+      try {
+        const compressionResults = await compressImages(
+          filesToCompress.map(file => ({
+            file,
+            options: getOptimalCompressionSettings(file)
+          })).map(({ file, options }) => file),
+          getOptimalCompressionSettings(filesToCompress[0]) // Use first file's settings as default
+        );
+        
+        const compressedPhotos: PhotoFile[] = compressionResults.map((result, index) => ({
+          file: result.file,
+          originalFile: filesToCompress[index],
+          preview: URL.createObjectURL(result.file),
+          progress: 0,
+          uploaded: false,
+          compressed: result.compressionRatio > 0,
+          compressionRatio: result.compressionRatio
+        }));
+        
+        setPhotos(prev => [...prev, ...compressedPhotos]);
+        
+        const totalSavings = compressionResults.reduce(
+          (total, result) => total + (result.originalSize - result.compressedSize), 
+          0
+        );
+        
+        if (totalSavings > 0) {
+          toast.success(
+            `Images compressed! Saved ${Math.round(totalSavings / 1024)}KB total`
+          );
+        }
+      } catch (error) {
+        console.error('Compression failed:', error);
+        toast.error('Image compression failed, using original files');
+        
+        // Add original files if compression fails
+        const fallbackPhotos: PhotoFile[] = filesToCompress.map(file => ({
+          file,
+          preview: URL.createObjectURL(file),
+          progress: 0,
+          uploaded: false,
+          compressed: false
+        }));
+        
+        setPhotos(prev => [...prev, ...fallbackPhotos]);
+      } finally {
+        setIsCompressing(false);
+      }
+    }
   }, [photos.length, maxFiles, maxFileSize, acceptedTypes]);
 
   const removePhoto = (index: number) => {
@@ -104,7 +175,7 @@ export function PhotoUploader({
     e.preventDefault();
     setIsDragging(false);
     
-    if (disabled) return;
+    if (disabled || isCompressing) return;
     
     const files = e.dataTransfer.files;
     if (files.length > 0) {
@@ -187,9 +258,9 @@ export function PhotoUploader({
         onDrop={handleDrop}
         className={cn(
           "border-2 border-dashed rounded-lg p-6 text-center transition-colors",
-          isDragging && !disabled && "border-primary bg-primary/5",
-          disabled && "opacity-50 cursor-not-allowed",
-          !disabled && "cursor-pointer hover:border-primary/50 hover:bg-muted/50"
+          isDragging && !disabled && !isCompressing && "border-primary bg-primary/5",
+          (disabled || isCompressing) && "opacity-50 cursor-not-allowed",
+          !disabled && !isCompressing && "cursor-pointer hover:border-primary/50 hover:bg-muted/50"
         )}
       >
         <input
@@ -197,23 +268,37 @@ export function PhotoUploader({
           multiple
           accept={acceptedTypes.join(',')}
           onChange={handleFileSelect}
-          disabled={disabled}
+          disabled={disabled || isCompressing}
           className="hidden"
           id="photo-upload"
         />
         
         <label htmlFor="photo-upload" className={cn(
           "flex flex-col items-center gap-2",
-          disabled ? "cursor-not-allowed" : "cursor-pointer"
+          (disabled || isCompressing) ? "cursor-not-allowed" : "cursor-pointer"
         )}>
-          <Upload className="h-8 w-8 text-muted-foreground" />
+          {isCompressing ? (
+            <Zap className="h-8 w-8 text-primary animate-pulse" />
+          ) : (
+            <Upload className="h-8 w-8 text-muted-foreground" />
+          )}
           <div>
             <p className="font-medium">
-              {isDragging ? 'Drop photos here' : 'Upload photos'}
+              {isCompressing 
+                ? 'Compressing images...' 
+                : isDragging 
+                  ? 'Drop photos here' 
+                  : 'Upload photos'
+              }
             </p>
             <p className="text-sm text-muted-foreground">
               Drag & drop or click to select • Max {maxFiles} files • 
               {Math.round(maxFileSize / 1024 / 1024)}MB each
+              {!isCompressing && (
+                <span className="block text-xs mt-1 text-primary">
+                  ⚡ Images will be automatically compressed for faster uploads
+                </span>
+              )}
             </p>
           </div>
         </label>
@@ -232,6 +317,12 @@ export function PhotoUploader({
               )}
               {failedUploads > 0 && (
                 <Badge variant="destructive">{failedUploads} failed</Badge>
+              )}
+              {photos.filter(p => p.compressed).length > 0 && (
+                <Badge variant="outline" className="flex items-center gap-1">
+                  <Zap className="h-3 w-3" />
+                  {photos.filter(p => p.compressed).length} compressed
+                </Badge>
               )}
             </div>
             
@@ -282,6 +373,16 @@ export function PhotoUploader({
                       <Badge variant="secondary">Pending</Badge>
                     )}
                   </div>
+                  
+                  {/* Compression badge */}
+                  {photo.compressed && photo.compressionRatio && photo.compressionRatio > 0 && (
+                    <div className="absolute bottom-2 left-2">
+                      <Badge variant="outline" className="text-xs bg-background/80 backdrop-blur-sm">
+                        <Zap className="h-3 w-3 mr-1" />
+                        -{photo.compressionRatio}%
+                      </Badge>
+                    </div>
+                  )}
                   
                   {/* Remove button */}
                   <button

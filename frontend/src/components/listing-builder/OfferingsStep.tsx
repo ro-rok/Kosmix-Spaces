@@ -164,9 +164,25 @@ export function OfferingsStep({
       setUploadingPhotos(prev => ({ ...prev, [uploadKey]: true }));
 
       try {
+        // Import compression utilities
+        const { compressImage, shouldCompressImage, getOptimalCompressionSettings } = await import('@/lib/image-compression');
+        
+        let fileToUpload = file;
+        
+        // Compress if needed
+        if (shouldCompressImage(file)) {
+          toast.info(`Compressing ${file.name}...`);
+          const compressionResult = await compressImage(file, getOptimalCompressionSettings(file));
+          fileToUpload = compressionResult.file;
+          
+          if (compressionResult.compressionRatio > 0) {
+            toast.success(`${file.name} compressed by ${compressionResult.compressionRatio}%`);
+          }
+        }
+
         const result = await uploadPhotoMutation.mutateAsync({
           listingId,
-          file
+          file: fileToUpload
         });
 
         // Add photo URL to offering with tag metadata
@@ -432,7 +448,10 @@ export function OfferingsStep({
                     )}
                   >
                     <Upload className="h-5 w-5" />
-                    {isUploading ? 'Uploading...' : 'Upload Photos'}
+                    {isUploading ? 'Uploading & Compressing...' : 'Upload Photos'}
+                    <span className="text-xs text-muted-foreground ml-2">
+                      ⚡ Auto-compressed
+                    </span>
                   </Label>
                 </div>
               )}
