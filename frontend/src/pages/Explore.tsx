@@ -162,11 +162,11 @@ export default function Explore() {
   return (
     <div className="pb-20 md:pb-0">
       {/* Header */}
-      <div className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-16 z-40">
-        <div className="container py-4">
+      <div className="border-b border-border/60 glass sticky-top-safe z-40">
+        <div className="container section-spacing py-4">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             {/* Search */}
-            <div className="flex-1 max-w-md">
+            <div className="flex-1 max-w-md animate-slide-up">
               <SearchBar
                 variant="compact"
                 initialValue={searchQuery}
@@ -176,14 +176,14 @@ export default function Explore() {
             </div>
 
             {/* Controls */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 animate-slide-up" style={{ animationDelay: '0.1s' }}>
               {/* View Mode Toggle */}
-              <div className="hidden sm:flex border border-border rounded-lg p-1">
+              <div className="hidden sm:flex border border-border/60 rounded-lg p-1 glass">
                 <Button
                   variant={viewMode === 'grid' ? 'default' : 'ghost'}
                   size="sm"
                   onClick={() => setViewMode('grid')}
-                  className="h-8 w-8 p-0"
+                  className="h-8 w-8 p-0 btn-premium"
                 >
                   <Grid3X3 className="h-4 w-4" />
                 </Button>
@@ -191,7 +191,7 @@ export default function Explore() {
                   variant={viewMode === 'list' ? 'default' : 'ghost'}
                   size="sm"
                   onClick={() => setViewMode('list')}
-                  className="h-8 w-8 p-0"
+                  className="h-8 w-8 p-0 btn-premium"
                 >
                   <List className="h-4 w-4" />
                 </Button>
@@ -199,10 +199,10 @@ export default function Explore() {
 
               {/* Sort */}
               <Select value={sort} onValueChange={handleSortChange}>
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className="w-[180px] btn-premium">
                   <SelectValue placeholder="Sort by" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="glass">
                   <SelectItem value="recommended">Recommended</SelectItem>
                   <SelectItem value="most-enquired">Most Enquired</SelectItem>
                   <SelectItem value="budget-low">Budget: Low → High</SelectItem>
@@ -223,15 +223,16 @@ export default function Explore() {
             filters={filters}
             onRemoveFilter={handleRemoveFilter}
             onClearAll={clearAllFilters}
-            className="mt-3"
+            className="mt-3 animate-slide-up"
+            style={{ animationDelay: '0.2s' }}
           />
         </div>
       </div>
 
       {/* Results */}
-      <div className="container py-8">
+      <div className="container section-spacing">
         {/* Results Header */}
-        <div className="mb-6">
+        <div className="mb-6 animate-fade-in">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="font-display text-2xl font-bold text-foreground">
@@ -243,7 +244,7 @@ export default function Explore() {
                 }
               </h1>
               <div className="flex items-center gap-4 mt-1">
-                <p className="text-muted-foreground">
+                <p className="text-muted-premium">
                   {isLoading ? (
                     <span className="flex items-center gap-2">
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -254,7 +255,7 @@ export default function Explore() {
                   )}
                 </p>
                 {activeFilterCount > 0 && (
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-muted-premium">
                     {activeFilterCount} filter{activeFilterCount !== 1 ? 's' : ''} applied
                   </p>
                 )}
@@ -262,7 +263,7 @@ export default function Explore() {
             </div>
             
             {/* Sort indicator */}
-            <div className="hidden md:block text-sm text-muted-foreground">
+            <div className="hidden md:block text-sm text-muted-premium">
               Sorted by: {sort === 'recommended' ? 'Recommended' : 
                         sort === 'most-enquired' ? 'Most Enquired' : 
                         'Budget: Low → High'}
@@ -277,17 +278,22 @@ export default function Explore() {
           <>
             {/* Listings Grid */}
             <div className={cn(
-              "grid gap-6",
+              "grid gap-6 animate-fade-in",
               viewMode === 'grid' 
                 ? "sm:grid-cols-2 lg:grid-cols-3" 
                 : "grid-cols-1 max-w-4xl"
             )}>
-              {listings.map((listing) => (
-                <ListingCard 
-                  key={listing.slug} 
-                  listing={listing} 
-                  variant="premium"
-                />
+              {listings.map((listing, index) => (
+                <div 
+                  key={listing.slug}
+                  className="animate-slide-up"
+                  style={{ animationDelay: `${index * 0.05}s` }}
+                >
+                  <ListingCard 
+                    listing={listing} 
+                    variant="premium"
+                  />
+                </div>
               ))}
             </div>
 
@@ -299,7 +305,7 @@ export default function Explore() {
                 totalItems={total}
                 pageSize={pageSize}
                 onPageChange={handlePageChange}
-                className="mt-12"
+                className="mt-12 animate-slide-up"
               />
             )}
           </>
@@ -309,6 +315,7 @@ export default function Explore() {
             searchQuery={searchQuery}
             onClearFilters={clearAllFilters}
             onSuggestedSearch={handleSuggestedSearch}
+            className="animate-slide-up"
           />
         )}
       </div>

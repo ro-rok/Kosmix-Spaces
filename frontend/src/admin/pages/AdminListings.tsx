@@ -143,16 +143,16 @@ export function AdminListings() {
 
   return (
     <div className="space-y-6">
-      <div>
+      <div className="animate-fade-in">
         <h1 className="font-display text-2xl font-bold text-foreground">Listings Management</h1>
-        <p className="text-muted-foreground">Manage and verify workspace listings</p>
+        <p className="text-muted-premium">Manage and verify workspace listings</p>
       </div>
 
       {/* Filters */}
-      <Card>
+      <div className="card-premium animate-slide-up">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Filter className="h-5 w-5" />
+          <CardTitle className="flex items-center gap-2 font-display">
+            <Filter className="h-5 w-5 text-primary" />
             Filters
           </CardTitle>
         </CardHeader>
@@ -165,16 +165,16 @@ export function AdminListings() {
                   placeholder="Search by name or locality..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9"
+                  className="pl-9 btn-premium"
                 />
               </div>
             </div>
             <div className="w-full sm:w-48">
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger>
+                <SelectTrigger className="btn-premium">
                   <SelectValue placeholder="Filter by status" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="glass">
                   {statusOptions.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
                       {option.label}
@@ -185,144 +185,219 @@ export function AdminListings() {
             </div>
           </div>
         </CardContent>
-      </Card>
+      </div>
 
-      {/* Listings Table */}
-      <Card>
+      {/* Listings */}
+      <div className="card-premium animate-slide-up" style={{ animationDelay: '0.1s' }}>
         <CardHeader>
-          <CardTitle>
+          <CardTitle className="font-display">
             Workspace Listings ({filteredListings.length})
           </CardTitle>
         </CardHeader>
         <CardContent>
           {filteredListings.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
+            <div className="text-center py-8 text-muted-premium">
               <FileText className="h-8 w-8 mx-auto mb-2" />
               <p>No listings found</p>
             </div>
           ) : (
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Listing</TableHead>
-                    <TableHead>Location</TableHead>
-                    <TableHead>Capacity</TableHead>
-                    <TableHead>Budget</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Created</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredListings.map((listing) => (
-                    <TableRow key={listing.listingId}>
-                      <TableCell>
-                        <div className="space-y-1">
-                          <div className="font-medium">{listing.displayName}</div>
-                          <div className="flex flex-wrap gap-1">
-                            {listing.workspaceTypes.map((type) => (
-                              <Badge key={type} variant="secondary" className="text-xs">
-                                {type.replace('_', ' ')}
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-1">
-                          <div className="font-medium">{listing.locality}</div>
-                          <div className="text-sm text-muted-foreground">{listing.city}</div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-sm">
-                          {listing.seatCapacityMin}-{listing.seatCapacityMax} seats
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-sm">{listing.budgetDisplayText}</div>
-                      </TableCell>
-                      <TableCell>
-                        <StatusBadge status={listing.verificationStatus} />
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-sm text-muted-foreground">
-                          {new Date(listing.createdAt).toLocaleDateString()}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem asChild>
-                              <Link to={`/admin/listings/${listing.listingId}`}>
-                                <Eye className="h-4 w-4" />
-                                View Details
-                              </Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            {listing.verificationStatus === "PENDING_REVIEW" && (
-                              <>
-                                <DropdownMenuItem
-                                  onClick={() => handleApprove(listing.listingId, listing.displayName)}
-                                  disabled={approveMutation.isPending}
-                                >
-                                  <CheckCircle className="h-4 w-4 text-green-600" />
-                                  Approve
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => handleNeedsInfo(listing.listingId, listing.displayName)}
-                                  disabled={needsInfoMutation.isPending}
-                                >
-                                  <AlertCircle className="h-4 w-4 text-yellow-600" />
-                                  Needs Info
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => handleReject(listing.listingId, listing.displayName)}
-                                  disabled={rejectMutation.isPending}
-                                  className="text-destructive"
-                                >
-                                  <XCircle className="h-4 w-4" />
-                                  Reject
-                                </DropdownMenuItem>
-                              </>
-                            )}
-                            {listing.verificationStatus === "NEEDS_INFO" && (
-                              <>
-                                <DropdownMenuItem
-                                  onClick={() => handleApprove(listing.listingId, listing.displayName)}
-                                  disabled={approveMutation.isPending}
-                                >
-                                  <CheckCircle className="h-4 w-4 text-green-600" />
-                                  Approve
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => handleReject(listing.listingId, listing.displayName)}
-                                  disabled={rejectMutation.isPending}
-                                  className="text-destructive"
-                                >
-                                  <XCircle className="h-4 w-4" />
-                                  Reject
-                                </DropdownMenuItem>
-                              </>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
+            <>
+              {/* Mobile Card View */}
+              <div className="block lg:hidden space-y-4">
+                {filteredListings.map((listing, index) => (
+                  <div key={listing.listingId} className="card-premium p-4 space-y-3 animate-fade-in" style={{ animationDelay: `${index * 0.05}s` }}>
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <h4 className="font-display font-semibold">{listing.displayName}</h4>
+                        <p className="text-sm text-muted-premium">{listing.locality}, {listing.city}</p>
+                      </div>
+                      <StatusBadge status={listing.verificationStatus} />
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <p className="text-muted-premium font-medium">Capacity</p>
+                        <p className="font-medium">{listing.seatCapacityMin}-{listing.seatCapacityMax} seats</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-premium font-medium">Budget</p>
+                        <p className="font-medium">{listing.budgetDisplayText}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex flex-wrap gap-1">
+                      {listing.workspaceTypes.map((type) => (
+                        <Badge key={type} variant="secondary" className="text-xs">
+                          {type.replace('_', ' ')}
+                        </Badge>
+                      ))}
+                    </div>
+                    
+                    <div className="pt-2 border-t border-border/50">
+                      <p className="text-xs text-muted-premium">
+                        Created: {new Date(listing.createdAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                    
+                    <div className="flex gap-2">
+                      <Button asChild variant="outline" size="sm" className="flex-1 btn-premium">
+                        <Link to={`/admin/listings/${listing.listingId}`}>
+                          <Eye className="h-4 w-4" />
+                          View
+                        </Link>
+                      </Button>
+                      
+                      {listing.verificationStatus === "PENDING_REVIEW" && (
+                        <>
+                          <Button
+                            onClick={() => handleApprove(listing.listingId, listing.displayName)}
+                            disabled={approveMutation.isPending}
+                            size="sm"
+                            variant="success"
+                            className="btn-premium"
+                          >
+                            <CheckCircle className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            onClick={() => handleNeedsInfo(listing.listingId, listing.displayName)}
+                            disabled={needsInfoMutation.isPending}
+                            size="sm"
+                            variant="outline"
+                            className="btn-premium"
+                          >
+                            <AlertCircle className="h-4 w-4" />
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Desktop Table View */}
+              <div className="hidden lg:block rounded-md border border-border/60 overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/30">
+                      <TableHead className="font-display font-semibold">Listing</TableHead>
+                      <TableHead className="font-display font-semibold">Location</TableHead>
+                      <TableHead className="font-display font-semibold">Capacity</TableHead>
+                      <TableHead className="font-display font-semibold">Budget</TableHead>
+                      <TableHead className="font-display font-semibold">Status</TableHead>
+                      <TableHead className="font-display font-semibold">Created</TableHead>
+                      <TableHead className="text-right font-display font-semibold">Actions</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredListings.map((listing, index) => (
+                      <TableRow key={listing.listingId} className="hover:bg-muted/30 transition-colors animate-fade-in" style={{ animationDelay: `${index * 0.02}s` }}>
+                        <TableCell>
+                          <div className="space-y-1">
+                            <div className="font-medium font-display">{listing.displayName}</div>
+                            <div className="flex flex-wrap gap-1">
+                              {listing.workspaceTypes.map((type) => (
+                                <Badge key={type} variant="secondary" className="text-xs">
+                                  {type.replace('_', ' ')}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="space-y-1">
+                            <div className="font-medium">{listing.locality}</div>
+                            <div className="text-sm text-muted-premium">{listing.city}</div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm">
+                            {listing.seatCapacityMin}-{listing.seatCapacityMax} seats
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm font-medium">{listing.budgetDisplayText}</div>
+                        </TableCell>
+                        <TableCell>
+                          <StatusBadge status={listing.verificationStatus} />
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm text-muted-premium">
+                            {new Date(listing.createdAt).toLocaleDateString()}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" className="h-8 w-8 p-0 btn-premium">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="glass">
+                              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                              <DropdownMenuItem asChild>
+                                <Link to={`/admin/listings/${listing.listingId}`}>
+                                  <Eye className="h-4 w-4" />
+                                  View Details
+                                </Link>
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              {listing.verificationStatus === "PENDING_REVIEW" && (
+                                <>
+                                  <DropdownMenuItem
+                                    onClick={() => handleApprove(listing.listingId, listing.displayName)}
+                                    disabled={approveMutation.isPending}
+                                  >
+                                    <CheckCircle className="h-4 w-4 text-green-600" />
+                                    Approve
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => handleNeedsInfo(listing.listingId, listing.displayName)}
+                                    disabled={needsInfoMutation.isPending}
+                                  >
+                                    <AlertCircle className="h-4 w-4 text-yellow-600" />
+                                    Needs Info
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => handleReject(listing.listingId, listing.displayName)}
+                                    disabled={rejectMutation.isPending}
+                                    className="text-destructive"
+                                  >
+                                    <XCircle className="h-4 w-4" />
+                                    Reject
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+                              {listing.verificationStatus === "NEEDS_INFO" && (
+                                <>
+                                  <DropdownMenuItem
+                                    onClick={() => handleApprove(listing.listingId, listing.displayName)}
+                                    disabled={approveMutation.isPending}
+                                  >
+                                    <CheckCircle className="h-4 w-4 text-green-600" />
+                                    Approve
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => handleReject(listing.listingId, listing.displayName)}
+                                    disabled={rejectMutation.isPending}
+                                    className="text-destructive"
+                                  >
+                                    <XCircle className="h-4 w-4" />
+                                    Reject
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
           )}
         </CardContent>
-      </Card>
+      </div>
     </div>
   );
 }

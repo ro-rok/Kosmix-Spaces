@@ -67,22 +67,22 @@ export function FilterDrawer({ filters, onChange, onClear }: FilterDrawerProps) 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <Button variant="outline" className="gap-2">
+        <Button variant="outline" className="gap-2 btn-premium">
           <Filter className="h-4 w-4" />
-          Filters
+          <span className="hidden sm:inline">Filters</span>
           {activeCount > 0 && (
-            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground animate-scale-in">
               {activeCount}
             </span>
           )}
         </Button>
       </SheetTrigger>
-      <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
+      <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto glass">
         <SheetHeader>
           <div className="flex items-center justify-between">
-            <SheetTitle className="font-display">Filters</SheetTitle>
+            <SheetTitle className="font-display text-xl">Filters</SheetTitle>
             {hasActiveFilters && (
-              <Button variant="ghost" size="sm" onClick={onClear}>
+              <Button variant="ghost" size="sm" onClick={onClear} className="btn-premium">
                 Clear all
               </Button>
             )}
@@ -91,9 +91,9 @@ export function FilterDrawer({ filters, onChange, onClear }: FilterDrawerProps) 
 
         <div className="mt-6 space-y-6">
           {/* Locality Multi-Select */}
-          <div className="space-y-3">
+          <div className="space-y-3 animate-slide-up" style={{ animationDelay: '0.1s' }}>
             <Label className="text-sm font-medium flex items-center gap-2">
-              <MapPin className="h-4 w-4" />
+              <MapPin className="h-4 w-4 text-primary" />
               Localities
             </Label>
             <MultiSelectFilter
@@ -107,9 +107,9 @@ export function FilterDrawer({ filters, onChange, onClear }: FilterDrawerProps) 
           </div>
 
           {/* Budget Band Multi-Select */}
-          <div className="space-y-3">
+          <div className="space-y-3 animate-slide-up" style={{ animationDelay: '0.2s' }}>
             <Label className="text-sm font-medium flex items-center gap-2">
-              <DollarSign className="h-4 w-4" />
+              <DollarSign className="h-4 w-4 text-primary" />
               Budget Range
             </Label>
             <MultiSelectFilter
@@ -123,19 +123,19 @@ export function FilterDrawer({ filters, onChange, onClear }: FilterDrawerProps) 
           </div>
 
           {/* Team Size */}
-          <div className="space-y-3">
+          <div className="space-y-3 animate-slide-up" style={{ animationDelay: '0.3s' }}>
             <Label className="text-sm font-medium flex items-center gap-2">
-              <Users className="h-4 w-4" />
+              <Users className="h-4 w-4 text-primary" />
               Team Size
             </Label>
             <Select
               value={filters.teamSize}
               onValueChange={(value) => updateFilter("teamSize", value)}
             >
-              <SelectTrigger>
+              <SelectTrigger className="btn-premium">
                 <SelectValue placeholder="Any size" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="glass">
                 <SelectItem value="">Any size</SelectItem>
                 {teamSizeBands.map((band) => (
                   <SelectItem key={band.value} value={band.value}>
@@ -147,8 +147,11 @@ export function FilterDrawer({ filters, onChange, onClear }: FilterDrawerProps) 
           </div>
 
           {/* Amenities Multi-Select */}
-          <div className="space-y-3">
-            <Label className="text-sm font-medium">Amenities</Label>
+          <div className="space-y-3 animate-slide-up" style={{ animationDelay: '0.4s' }}>
+            <Label className="text-sm font-medium flex items-center gap-2">
+              <Zap className="h-4 w-4 text-primary" />
+              Amenities
+            </Label>
             <MultiSelectFilter
               options={commonAmenities}
               value={filters.amenities}
@@ -161,8 +164,8 @@ export function FilterDrawer({ filters, onChange, onClear }: FilterDrawerProps) 
           </div>
 
           {/* Quick Filters */}
-          <div className="space-y-4 rounded-lg bg-muted/50 p-4">
-            <h4 className="text-sm font-medium">Quick Filters</h4>
+          <div className="space-y-4 card-premium p-4 animate-slide-up" style={{ animationDelay: '0.5s' }}>
+            <h4 className="text-sm font-medium font-display">Quick Filters</h4>
             
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -194,7 +197,7 @@ export function FilterDrawer({ filters, onChange, onClear }: FilterDrawerProps) 
 
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Zap className="h-4 w-4 text-muted-foreground" />
+                <FileText className="h-4 w-4 text-muted-foreground" />
                 <Label htmlFor="verifiedOnly" className="text-sm">
                   Verified Only
                 </Label>
@@ -209,9 +212,10 @@ export function FilterDrawer({ filters, onChange, onClear }: FilterDrawerProps) 
 
           {/* Apply Button */}
           <Button
-            className="w-full"
+            className="w-full btn-premium animate-slide-up"
             size="lg"
             onClick={() => setOpen(false)}
+            style={{ animationDelay: '0.6s' }}
           >
             Apply Filters ({activeCount} active)
           </Button>

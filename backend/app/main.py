@@ -23,7 +23,8 @@ from app.routers import (
     admin_partners, 
     leads, 
     visits, 
-    analytics
+    analytics,
+    design_system
 )
 
 settings = get_settings()
@@ -133,6 +134,9 @@ app.include_router(visits.router, prefix="/api/admin", tags=["Admin Visits"])
 
 # Analytics routes
 app.include_router(analytics.router, prefix="/api/analytics", tags=["Analytics"])
+
+# Design system routes
+app.include_router(design_system.router, prefix="/api/design-system", tags=["Design System"])
 
 
 @app.get("/")

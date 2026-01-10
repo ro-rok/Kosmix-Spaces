@@ -10,32 +10,42 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "bg-primary text-primary-foreground shadow-md hover:bg-primary/90 hover:shadow-lg active:scale-[0.98]",
+          "bg-primary text-primary-foreground shadow-md hover:bg-primary/90 hover:shadow-lg active:scale-[0.98] hover:-translate-y-0.5",
         destructive:
-          "bg-destructive text-destructive-foreground shadow-md hover:bg-destructive/90",
+          "bg-destructive text-destructive-foreground shadow-md hover:bg-destructive/90 hover:shadow-lg active:scale-[0.98]",
         outline:
-          "border-2 border-input bg-background hover:bg-accent hover:text-accent-foreground",
+          "border-2 border-input bg-background hover:bg-accent hover:text-accent-foreground hover:border-primary/50 active:scale-[0.98]",
         secondary:
-          "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80",
-        ghost: "hover:bg-accent hover:text-accent-foreground",
-        link: "text-primary underline-offset-4 hover:underline",
+          "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80 hover:shadow-md active:scale-[0.98]",
+        ghost: 
+          "hover:bg-accent hover:text-accent-foreground active:scale-[0.98]",
+        link: 
+          "text-primary underline-offset-4 hover:underline",
         whatsapp:
-          "bg-whatsapp text-whatsapp-foreground shadow-md hover:bg-whatsapp/90 hover:shadow-lg active:scale-[0.98]",
+          "bg-whatsapp text-whatsapp-foreground shadow-md hover:bg-whatsapp/90 hover:shadow-lg active:scale-[0.98] hover:-translate-y-0.5",
         call:
-          "bg-call text-call-foreground shadow-md hover:bg-call/90 hover:shadow-lg active:scale-[0.98]",
+          "bg-call text-call-foreground shadow-md hover:bg-call/90 hover:shadow-lg active:scale-[0.98] hover:-translate-y-0.5",
         hero:
-          "bg-gradient-hero text-primary-foreground shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]",
+          "bg-gradient-hero text-primary-foreground shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] hover:-translate-y-1",
         "hero-outline":
-          "border-2 border-primary-foreground/30 bg-primary-foreground/10 text-primary-foreground backdrop-blur-sm hover:bg-primary-foreground/20 hover:border-primary-foreground/50",
+          "border-2 border-primary-foreground/30 bg-primary-foreground/10 text-primary-foreground backdrop-blur-sm hover:bg-primary-foreground/20 hover:border-primary-foreground/50 active:scale-[0.98]",
         cta:
-          "bg-gradient-cta text-whatsapp-foreground shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]",
+          "bg-gradient-cta text-whatsapp-foreground shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] hover:-translate-y-1",
+        premium:
+          "bg-gradient-premium text-primary-foreground shadow-premium hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] hover:-translate-y-1",
+        glass:
+          "glass border-2 border-border/60 hover:border-primary/50 hover:bg-background/90 active:scale-[0.98]",
+        success:
+          "bg-success text-success-foreground shadow-md hover:bg-success/90 hover:shadow-lg active:scale-[0.98] hover:-translate-y-0.5",
       },
       size: {
         default: "h-10 px-4 py-2",
-        sm: "h-9 rounded-md px-3",
+        sm: "h-9 rounded-md px-3 text-xs",
         lg: "h-12 rounded-lg px-6 text-base",
         xl: "h-14 rounded-xl px-8 text-lg",
         icon: "h-10 w-10",
+        "icon-sm": "h-8 w-8",
+        "icon-lg": "h-12 w-12",
       },
     },
     defaultVariants: {

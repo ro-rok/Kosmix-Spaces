@@ -67,3 +67,29 @@ async def create_indexes():
     await db.analytics_events.create_index([("partnerId", 1), ("eventName", 1), ("timestamp", -1)])
     await db.analytics_events.create_index([("locality", 1), ("eventName", 1), ("timestamp", -1)])
     await db.analytics_events.create_index([("timestamp", -1), ("eventName", 1)])  # For time-based queries
+
+    # Design system indexes
+    await db.design_system_config.create_index("environment", unique=True)
+    await db.design_system_config.create_index("version")
+    await db.design_system_config.create_index("updatedAt")
+    
+    # User design preferences indexes
+    await db.user_design_preferences.create_index([("userId", 1), ("userType", 1)], unique=True)
+    await db.user_design_preferences.create_index("userType")
+    await db.user_design_preferences.create_index("lastDevice")
+    await db.user_design_preferences.create_index("updatedAt")
+    await db.user_design_preferences.create_index("preferences.theme")
+    await db.user_design_preferences.create_index("preferences.animationLevel")
+    await db.user_design_preferences.create_index("preferences.highContrast")
+    await db.user_design_preferences.create_index("preferences.reduceMotion")
+    
+    # Design system analytics indexes
+    await db.design_system_analytics.create_index("timestamp")
+    await db.design_system_analytics.create_index([("timestamp", -1)])  # For cleanup queries
+    await db.design_system_analytics.create_index("cssLoadTime")
+    await db.design_system_analytics.create_index("renderTime")
+    await db.design_system_analytics.create_index("accessibilityScore")
+    
+    # Design system metrics indexes
+    await db.design_system_metrics.create_index("type", unique=True)
+    await db.design_system_metrics.create_index("lastUpdated")
