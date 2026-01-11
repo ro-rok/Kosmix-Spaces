@@ -1,7 +1,6 @@
 /**
  * Comprehensive analytics client for tracking user events
  * Implements privacy-compliant event batching with structured data
- * TODO: Replace mock implementation when backend analytics endpoints are available
  */
 
 import { api } from './api';
@@ -157,11 +156,31 @@ class AnalyticsClient {
    */
   async getAdminAnalytics(): Promise<AnalyticsSummary> {
     try {
-      // TODO: Replace with real API call when GET /analytics/admin is available
-      return await this.getMockAdminAnalytics();
+      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+      
+      const response = await fetch(`${API_BASE_URL}/api/analytics/admin`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('kosmix_auth_token') || ''}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      return await response.json();
     } catch (error) {
       console.error('Failed to fetch admin analytics:', error);
-      throw error;
+      // Return empty analytics instead of mock data
+      return {
+        totalViews: 0,
+        totalEnquiries: 0,
+        totalSearches: 0,
+        partnerSignups: 0,
+        conversionRate: 0,
+        topListings: [],
+        topLocalities: []
+      };
     }
   }
 
@@ -170,11 +189,28 @@ class AnalyticsClient {
    */
   async getPartnerAnalytics(partnerId: string): Promise<PartnerAnalytics> {
     try {
-      // TODO: Replace with real API call when GET /analytics/partner/:id is available
-      return await this.getMockPartnerAnalytics(partnerId);
+      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+      
+      const response = await fetch(`${API_BASE_URL}/api/analytics/partner/${partnerId}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('kosmix_auth_token') || ''}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      return await response.json();
     } catch (error) {
       console.error('Failed to fetch partner analytics:', error);
-      throw error;
+      // Return empty analytics instead of mock data
+      return {
+        views: 0,
+        enquiries: 0,
+        conversionRate: 0,
+        topListings: []
+      };
     }
   }
 
@@ -198,8 +234,11 @@ class AnalyticsClient {
         metadata: event.metadata
       }));
 
+      // Use the same API base URL as other API calls
+      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+      
       // Send to backend
-      const response = await fetch('/api/analytics/events', {
+      const response = await fetch(`${API_BASE_URL}/api/analytics/events`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -216,102 +255,6 @@ class AnalyticsClient {
     } catch (error) {
       console.error('❌ Failed to send events to backend:', error);
       throw error;
-    }
-  }
-
-  /**
-   * Get admin analytics data from backend
-   */
-  private async getMockAdminAnalytics(): Promise<AnalyticsSummary> {
-    try {
-      const response = await fetch('/api/analytics/admin', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('kosmix_auth_token') || ''}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      return await response.json();
-    } catch (error) {
-      console.error('Failed to fetch admin analytics from backend:', error);
-      // Fallback to mock data
-      return {
-        totalViews: 1250,
-        totalEnquiries: 89,
-        totalSearches: 2340,
-        partnerSignups: 23,
-        conversionRate: 7.1,
-        topListings: [
-          {
-            listingId: 'listing_1',
-            displayName: 'Premium Office Space, Connaught Place',
-            views: 234,
-            enquiries: 18
-          },
-          {
-            listingId: 'listing_2',
-            displayName: 'Modern Coworking, Gurgaon',
-            views: 189,
-            enquiries: 12
-          }
-        ],
-        topLocalities: [
-          {
-            locality: 'Connaught Place',
-            searches: 456,
-            views: 789
-          },
-          {
-            locality: 'Gurgaon',
-            searches: 234,
-            views: 567
-          }
-        ]
-      };
-    }
-  }
-
-  /**
-   * Get partner analytics data from backend
-   */
-  private async getMockPartnerAnalytics(partnerId: string): Promise<PartnerAnalytics> {
-    try {
-      const response = await fetch(`/api/analytics/partner/${partnerId}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('kosmix_auth_token') || ''}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      return await response.json();
-    } catch (error) {
-      console.error('Failed to fetch partner analytics from backend:', error);
-      // Fallback to mock data
-      return {
-        views: 456,
-        enquiries: 23,
-        conversionRate: 5.0,
-        topListings: [
-          {
-            listingId: 'listing_1',
-            displayName: 'Premium Office Space',
-            views: 234,
-            enquiries: 15
-          },
-          {
-            listingId: 'listing_2',
-            displayName: 'Modern Meeting Rooms',
-            views: 222,
-            enquiries: 8
-          }
-        ]
-      };
     }
   }
 

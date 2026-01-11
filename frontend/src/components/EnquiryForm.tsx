@@ -75,7 +75,7 @@ export function EnquiryForm({ listingSlug, listingName, locality, source = "cont
   
   const { data: localitiesData } = useLocalities();
   const createLead = useCreateLead();
-  const localities = localitiesData || [];
+  const localities = localitiesData?.localities || localitiesData?.flat || [];
 
   const validateForm = (): boolean => {
     const newErrors: Partial<Record<keyof FormData, string>> = {};

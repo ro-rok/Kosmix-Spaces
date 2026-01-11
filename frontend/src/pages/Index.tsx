@@ -28,12 +28,12 @@ export default function Index() {
 
   // Fetch data from API
   const { data: localitiesData } = useLocalities();
+  const localities = localitiesData?.localities || localitiesData?.flat || [];
   const { data: featuredListingsData } = useListings({
     sort: "recent_verified",
     pageSize: 6,
   });
 
-  const localities = localitiesData?.localities || [];
   const localitiesByCity = localitiesData?.by_city || {};
   const popularLocalities = localities.filter(l => l.popular);
   const featuredListings = featuredListingsData?.items || [];

@@ -22,61 +22,50 @@ router = APIRouter()
 @router.get("/localities")
 async def get_localities():
     """Get list of known localities with enhanced data grouped by city."""
-    # Enhanced locality data for premium platform grouped by city
-    localities_by_city = {
-        "Delhi": [
-            {"id": "connaught-place", "name": "Connaught Place", "popular": True, "metroConnected": True},
-            {"id": "saket", "name": "Saket", "popular": True, "metroConnected": True},
-            {"id": "nehru-place", "name": "Nehru Place", "popular": True, "metroConnected": True},
-            {"id": "okhla", "name": "Okhla", "popular": True, "metroConnected": False},
-            {"id": "dwarka", "name": "Dwarka", "popular": True, "metroConnected": True},
-            {"id": "karol-bagh", "name": "Karol Bagh", "popular": True, "metroConnected": True},
-            {"id": "greater-kailash", "name": "Greater Kailash", "popular": True, "metroConnected": False},
-            {"id": "hauz-khas", "name": "Hauz Khas", "popular": True, "metroConnected": True},
-            {"id": "janakpuri", "name": "Janakpuri", "popular": False, "metroConnected": True},
-            {"id": "vasant-kunj", "name": "Vasant Kunj", "popular": False, "metroConnected": False},
-            {"id": "lajpat-nagar", "name": "Lajpat Nagar", "popular": False, "metroConnected": True},
-            {"id": "pitampura", "name": "Pitampura", "popular": False, "metroConnected": True},
-            {"id": "rohini", "name": "Rohini", "popular": False, "metroConnected": True},
-            {"id": "south-extension", "name": "South Extension", "popular": False, "metroConnected": True},
-            {"id": "green-park", "name": "Green Park", "popular": False, "metroConnected": True},
-        ],
-        "Gurugram": [
-            {"id": "cyber-city", "name": "Cyber City", "popular": True, "metroConnected": True},
-            {"id": "golf-course-road", "name": "Golf Course Road", "popular": True, "metroConnected": False},
-            {"id": "mg-road-gurugram", "name": "MG Road", "popular": True, "metroConnected": True},
-            {"id": "udyog-vihar", "name": "Udyog Vihar", "popular": True, "metroConnected": False},
-            {"id": "dlf-phase-1", "name": "DLF Phase 1", "popular": True, "metroConnected": False},
-            {"id": "sohna-road", "name": "Sohna Road", "popular": False, "metroConnected": False},
-            {"id": "sector-32", "name": "Sector 32", "popular": False, "metroConnected": False},
-            {"id": "dlf-phase-2", "name": "DLF Phase 2", "popular": False, "metroConnected": False},
-            {"id": "dlf-phase-3", "name": "DLF Phase 3", "popular": False, "metroConnected": False},
-        ],
-        "Noida": [
-            {"id": "sector-62", "name": "Sector 62", "popular": True, "metroConnected": True},
-            {"id": "sector-63", "name": "Sector 63", "popular": True, "metroConnected": True},
-            {"id": "sector-18", "name": "Sector 18", "popular": True, "metroConnected": True},
-            {"id": "film-city", "name": "Film City", "popular": True, "metroConnected": False},
-            {"id": "city-center", "name": "City Center", "popular": True, "metroConnected": True},
-            {"id": "sector-16", "name": "Sector 16", "popular": False, "metroConnected": True},
-            {"id": "sector-135", "name": "Sector 135", "popular": False, "metroConnected": True},
-            {"id": "botanical-garden", "name": "Botanical Garden", "popular": False, "metroConnected": True},
-            {"id": "wave-city", "name": "Wave City", "popular": False, "metroConnected": False},
-        ]
-    }
+    from app.services.location_service import LocationService
+    from app.models.location import LocalityStatus
     
-    # Also provide flat list for backward compatibility
+    db = get_database()
+    location_service = LocationService(db)
+    
+    # Initialize default data if needed
+    await location_service.initialize_default_data()
+    
+    # Get approved localities
+    response = await location_service.get_localities_by_city(status=LocalityStatus.APPROVED)
+    
+    # Convert to legacy format for backward compatibility
+    localities_by_city = {}
     flat_localities = []
-    for city, localities in localities_by_city.items():
+    
+    for city_id, localities in response.by_city.items():
+        # Find city name
+        city_name = city_id.title()
+        for city in response.cities:
+            if city.id == city_id:
+                city_name = city.name
+                break
+        
+        localities_by_city[city_name] = []
+        
         for locality in localities:
+            legacy_locality = {
+                "id": locality.id,
+                "name": locality.name,
+                "popular": locality.popular,
+                "metroConnected": locality.metroConnected
+            }
+            localities_by_city[city_name].append(legacy_locality)
+            
+            # Add to flat list with city
             flat_localities.append({
-                **locality,
-                "city": city
+                **legacy_locality,
+                "city": city_name
             })
     
     return {
         "by_city": localities_by_city,
-        "flat": flat_localities
+        "localities": flat_localities  # Alternative key for backward compatibility
     }
 
 
@@ -120,6 +109,7 @@ async def get_enhanced_listings(
     query_filter = {
         "isPublished": True,
         "verificationStatus": "APPROVED_VERIFIED"
+        # Removed the requirement for enabled offerings - approved listings should be visible
     }
     
     # Text search
@@ -184,40 +174,15 @@ async def get_enhanced_listings(
     # Execute query with pagination
     skip = (page - 1) * pageSize
     
-    # Try premium listings first
+    # Query premium listings only
     cursor = db.premium_listings.find(query_filter).sort(sort_criteria).skip(skip).limit(pageSize)
     listings = await cursor.to_list(length=pageSize)
     
     # Get total count
     total = await db.premium_listings.count_documents(query_filter)
     
-    # If no premium listings found, fallback to legacy listings
-    if not listings and total == 0:
-        # Fallback to legacy listings collection
-        legacy_filter = {
-            "verificationStatus": "APPROVED_VERIFIED"
-        }
-        
-        # Map some basic filters to legacy format
-        if locality:
-            legacy_filter["locality"] = locality
-        if nearMetro:
-            legacy_filter["nearMetro"] = True
-        if powerBackup:
-            legacy_filter["powerBackup"] = True
-        if gstInvoice:
-            legacy_filter["gstInvoiceAvailable"] = True
-            
-        cursor = db.listings.find(legacy_filter).sort([("updatedAt", -1)]).skip(skip).limit(pageSize)
-        listings = await cursor.to_list(length=pageSize)
-        total = await db.listings.count_documents(legacy_filter)
-        
-        # Convert legacy listings to public format
-        from app.services.listing_service import listing_to_public_card
-        items = [listing_to_public_card(listing) for listing in listings]
-    else:
-        # Convert premium listings to public format
-        items = [listing_to_public_response(listing) for listing in listings]
+    # Convert premium listings to public format
+    items = [listing_to_public_response(listing) for listing in listings]
     
     return {
         "items": items,
@@ -228,29 +193,25 @@ async def get_enhanced_listings(
     }
 
 
-@router.get("/listings/{slug}")
+@router.get("/listings/{slug:path}")
 async def get_enhanced_listing_detail(slug: str):
     """Get enhanced listing detail by slug with analytics tracking."""
-    # Try to find premium listing first
+    # Find premium listing by slug
     listing = await find_listing_by_slug(slug)
     
     if not listing:
         raise NotFoundError("Listing", slug)
     
-    # Check if it's a premium listing
-    if "slugData" in listing:
-        # Premium listing
-        if not listing.get("isPublished") or listing.get("verificationStatus") != "APPROVED_VERIFIED":
-            raise NotFoundError("Listing", slug)
-        
-        # Increment view count
-        await increment_listing_view(str(listing["_id"]))
-        
-        return listing_to_public_response(listing)
-    else:
-        # Legacy listing - use existing logic
-        from app.services.listing_service import listing_to_public_detail
-        return listing_to_public_detail(listing)
+    # Check if it's published and verified
+    if not listing.get("isPublished") or listing.get("verificationStatus") != "APPROVED_VERIFIED":
+        raise NotFoundError("Listing", slug)
+    
+    # Note: Removed the check for enabled offerings - approved listings should be accessible
+    
+    # Increment view count
+    await increment_listing_view(str(listing["_id"]))
+    
+    return listing_to_public_response(listing)
 
 
 @router.post("/leads", response_model=LeadCreateResponse)

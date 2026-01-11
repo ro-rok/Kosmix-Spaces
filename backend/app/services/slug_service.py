@@ -108,15 +108,15 @@ async def ensure_unique_slug(partner_name: str, locality: str, listing_name: str
 
 
 async def find_listing_by_slug(slug: str) -> Optional[dict]:
-    """Find listing by slug."""
+    """Find listing by slug (premium listings only)."""
     db = get_database()
     
-    # Try exact match first
-    listing = await db.premium_listings.find_one({"slugData.slug": slug})
+    # Normalize slug - add /listing/ prefix if not present
+    if not slug.startswith('/listing/'):
+        slug = f"/listing/{slug}"
     
-    if not listing:
-        # Try legacy slug format for backward compatibility
-        listing = await db.listings.find_one({"slug": slug})
+    # Find premium listing by slug
+    listing = await db.premium_listings.find_one({"slugData.slug": slug})
     
     return listing
 

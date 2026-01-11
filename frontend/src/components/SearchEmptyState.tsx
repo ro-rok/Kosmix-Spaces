@@ -28,8 +28,15 @@ export function SearchEmptyState({
   onSuggestedSearch,
   className
 }: SearchEmptyStateProps) {
-  // Check if any filters are active
+  // Check if any filters are active (excluding default Delhi NCR)
+  const isDefaultDelhiNCR = filters.city.length === 3 && 
+    filters.city.includes('Delhi') && 
+    filters.city.includes('Noida') && 
+    filters.city.includes('Gurugram');
+    
   const hasActiveFilters = [
+    // Only include city filters if they're different from default Delhi NCR
+    ...(isDefaultDelhiNCR ? [] : filters.city),
     ...filters.locality,
     ...filters.budgetBand,
     filters.teamSize,
@@ -41,6 +48,7 @@ export function SearchEmptyState({
 
   // Build WhatsApp link with current search context
   const whatsappLink = buildWhatsAppLink({
+    city: isDefaultDelhiNCR ? 'Delhi NCR' : filters.city.join(', '),
     locality: filters.locality.join(', '),
     budgetBand: filters.budgetBand.join(', '),
     teamSize: filters.teamSize,

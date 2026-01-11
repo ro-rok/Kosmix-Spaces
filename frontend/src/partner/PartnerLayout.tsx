@@ -9,7 +9,6 @@ const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/partner" },
   { icon: FileText, label: "My Listings", href: "/partner/listings" },
   { icon: Plus, label: "Submit New", href: "/partner/listings/new" },
-  { icon: BarChart3, label: "Analytics", href: "/partner/analytics" },
 ];
 
 export function PartnerLayout() {

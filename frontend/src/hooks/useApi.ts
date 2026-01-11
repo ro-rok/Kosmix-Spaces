@@ -5,19 +5,7 @@ import { api, ApiError } from "@/lib/api";
 export function useLocalities() {
   return useQuery({
     queryKey: ["localities"],
-    queryFn: async () => {
-      const response = await api.getLocalities();
-      // Return flat array for backward compatibility, but also provide structured data
-      return {
-        ...response,
-        // For backward compatibility, default to flat array
-        localities: response.flat || [],
-        // Structured data by city
-        by_city: response.by_city || {},
-        // Flat array
-        flat: response.flat || []
-      };
-    },
+    queryFn: () => api.getLocalities(),
     staleTime: 1000 * 60 * 60, // 1 hour
     retry: (failureCount, error) => {
       // Don't retry on 4xx errors, but retry on network errors
@@ -36,7 +24,7 @@ export function useLocalities() {
           flat: data
         };
       }
-      // New structured format
+      // New structured format - API returns { by_city, flat }
       return {
         localities: data.flat || [],
         by_city: data.by_city || {},
@@ -62,12 +50,18 @@ export function useListings(params: Parameters<typeof api.getListings>[0] = {}) 
 }
 
 export function useListingDetail(slug: string) {
+  console.log("DEBUG: useListingDetail called with slug:", slug);
+  
   return useQuery({
     queryKey: ["listing", slug],
-    queryFn: () => api.getListingDetail(slug),
-    enabled: !!slug,
+    queryFn: () => {
+      console.log("DEBUG: Making API call for slug:", slug);
+      return api.getListingDetail(slug);
+    },
+    enabled: !!slug && slug !== "/", // Don't call API for empty or root slug
     staleTime: 1000 * 60 * 10, // 10 minutes
     retry: (failureCount, error) => {
+      console.log("DEBUG: API call failed:", error);
       if (error instanceof ApiError && error.status >= 400 && error.status < 500) {
         return false;
       }

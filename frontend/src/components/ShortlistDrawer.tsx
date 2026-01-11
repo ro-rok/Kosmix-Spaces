@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { X, Share2, Trash2, Heart, MessageCircle, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { getShortlist, clearShortlist, removeFromShortlist, generateShareUrl } from "@/lib/shortlist";
 import { buildWhatsAppLink } from "@/lib/whatsapp";
 import { toast } from "sonner";
@@ -27,6 +27,9 @@ export function ShortlistDrawer({ trigger }: ShortlistDrawerProps) {
       <SheetContent className="w-full sm:max-w-md">
         <SheetHeader>
           <SheetTitle className="font-display">Your Shortlist</SheetTitle>
+          <SheetDescription>
+            Save and manage your favorite workspace listings.
+          </SheetDescription>
         </SheetHeader>
 
         <div className="mt-6 space-y-4">

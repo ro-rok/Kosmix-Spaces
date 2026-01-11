@@ -67,33 +67,35 @@ async def create_design_system_metrics(db):
     print("✅ Created default design system metrics")
 
 
+from app.db.indexes import safe_create_index
+
 async def create_design_system_indexes(db):
     """Create indexes for design system collections."""
     # Design system config indexes
-    await db.design_system_config.create_index("environment", unique=True)
-    await db.design_system_config.create_index("version")
-    await db.design_system_config.create_index("updatedAt")
+    await safe_create_index(db.design_system_config, "environment", unique=True)
+    await safe_create_index(db.design_system_config, "version")
+    await safe_create_index(db.design_system_config, "updatedAt")
     
     # User preferences indexes
-    await db.user_design_preferences.create_index([("userId", 1), ("userType", 1)], unique=True)
-    await db.user_design_preferences.create_index("userType")
-    await db.user_design_preferences.create_index("lastDevice")
-    await db.user_design_preferences.create_index("updatedAt")
-    await db.user_design_preferences.create_index("preferences.theme")
-    await db.user_design_preferences.create_index("preferences.animationLevel")
-    await db.user_design_preferences.create_index("preferences.highContrast")
-    await db.user_design_preferences.create_index("preferences.reduceMotion")
+    await safe_create_index(db.user_design_preferences, [("userId", 1), ("userType", 1)], unique=True)
+    await safe_create_index(db.user_design_preferences, "userType")
+    await safe_create_index(db.user_design_preferences, "lastDevice")
+    await safe_create_index(db.user_design_preferences, "updatedAt")
+    await safe_create_index(db.user_design_preferences, "preferences.theme")
+    await safe_create_index(db.user_design_preferences, "preferences.animationLevel")
+    await safe_create_index(db.user_design_preferences, "preferences.highContrast")
+    await safe_create_index(db.user_design_preferences, "preferences.reduceMotion")
     
     # Analytics indexes
-    await db.design_system_analytics.create_index("timestamp")
-    await db.design_system_analytics.create_index([("timestamp", -1)])
-    await db.design_system_analytics.create_index("cssLoadTime")
-    await db.design_system_analytics.create_index("renderTime")
-    await db.design_system_analytics.create_index("accessibilityScore")
+    await safe_create_index(db.design_system_analytics, "timestamp")
+    await safe_create_index(db.design_system_analytics, [("timestamp", -1)])
+    await safe_create_index(db.design_system_analytics, "cssLoadTime")
+    await safe_create_index(db.design_system_analytics, "renderTime")
+    await safe_create_index(db.design_system_analytics, "accessibilityScore")
     
     # Metrics indexes
-    await db.design_system_metrics.create_index("type", unique=True)
-    await db.design_system_metrics.create_index("lastUpdated")
+    await safe_create_index(db.design_system_metrics, "type", unique=True)
+    await safe_create_index(db.design_system_metrics, "lastUpdated")
     
     print("✅ Created design system indexes")
 

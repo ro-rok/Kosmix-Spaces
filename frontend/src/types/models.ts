@@ -14,6 +14,7 @@ export type OfferingType = "private-offices" | "dedicated-desks" | "hot-desks" |
 
 // Search filters interface for enhanced search
 export interface SearchFilters {
+  city: string[]; // New city filter
   locality: string[];
   teamSize: string;
   budgetBand: string[];
@@ -50,28 +51,37 @@ export interface Listing {
   slug: string;
   displayName: string;
   locality: string;
-  localityId: string;
+  localityId?: string;
   city: string;
-  workspaceTypes: WorkspaceType[];
-  photos: string[];
-  seatCapacityMin: number;
-  seatCapacityMax: number;
-  availabilityStatus: AvailabilityStatus;
-  budgetBand: BudgetBand;
-  pricingMode: "on-enquiry";
+  workspaceTypes?: WorkspaceType[];
+  photos?: string[];
+  heroPhotos?: (PhotoData | string)[];
+  seatCapacityMin?: number;
+  seatCapacityMax?: number;
+  availabilityStatus?: AvailabilityStatus;
+  budgetBand?: BudgetBand;
+  pricingMode?: "on-enquiry";
   nearMetro: boolean;
   metroNote?: string;
-  parking: boolean;
+  parking?: boolean;
   powerBackup: boolean;
-  gstInvoiceAvailable: boolean;
+  gstInvoiceAvailable?: boolean;
   accessHours: string;
   amenities: string[];
-  meetingRoomsAddon: boolean;
-  dealTags: string[];
+  meetingRoomsAddon?: boolean;
+  dealTags?: string[];
   verificationStatus: VerificationStatus;
   highlights: string[];
   overview: string;
   createdAt: string;
+  // Premium listing fields
+  offerings?: Record<string, any>;
+  viewCount?: number;
+  enquiryCount?: number;
+  isPublished?: boolean;
+  status?: string;
+  adminNotes?: string;
+  updatedAt?: string;
 }
 
 // Photo data structure

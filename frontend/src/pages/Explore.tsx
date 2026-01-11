@@ -13,10 +13,12 @@ import { StickyCTA } from "@/components/StickyCTA";
 import { SearchFilters } from "@/types/models";
 import { useSearchWithCache } from "@/hooks/useSearchWithCache";
 import { useUrlSync } from "@/hooks/useUrlSync";
+import { trackSearchPerformed, trackFilterApplied } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
 
 // Initial empty filters
 const initialFilters: SearchFilters = {
+  city: [], // Default to Delhi NCR (will be set based on URL or default)
   locality: [],
   teamSize: '',
   budgetBand: [],
@@ -36,7 +38,17 @@ export default function Explore() {
   } = useUrlSync();
 
   // Initialize state from URL
-  const [filters, setFilters] = useState<SearchFilters>(() => parseFiltersFromUrl());
+  const [filters, setFilters] = useState<SearchFilters>(() => {
+    const urlFilters = parseFiltersFromUrl();
+    // If no city is specified, default to Delhi NCR
+    if (urlFilters.city.length === 0) {
+      return {
+        ...urlFilters,
+        city: ['Delhi', 'Noida', 'Gurugram'] // Default Delhi NCR
+      };
+    }
+    return urlFilters;
+  });
   const [sort, setSort] = useState<'recommended' | 'most-enquired' | 'budget-low'>(() => 
     getCurrentSort() as 'recommended' | 'most-enquired' | 'budget-low'
   );
@@ -67,6 +79,28 @@ export default function Explore() {
     updateUrlWithFilters(filters, sort, page, debouncedQuery);
   }, [filters, sort, page, debouncedQuery, updateUrlWithFilters]);
 
+  // Track search when query changes
+  useEffect(() => {
+    if (debouncedQuery) {
+      const appliedFilters = [
+        ...filters.city,
+        ...filters.locality,
+        ...filters.budgetBand,
+        ...filters.amenities,
+        filters.teamSize,
+        filters.meetingRooms ? 'meeting-rooms' : '',
+        filters.privateOffice ? 'private-office' : '',
+        filters.verifiedOnly ? 'verified-only' : ''
+      ].filter(Boolean);
+      
+      trackSearchPerformed(debouncedQuery, appliedFilters, {
+        filtersCount: appliedFilters.length,
+        sort,
+        page
+      });
+    }
+  }, [debouncedQuery, filters, sort, page]);
+
   // Reset page when filters change
   useEffect(() => {
     if (page !== 1) {
@@ -75,33 +109,94 @@ export default function Explore() {
   }, [filters, sort, debouncedQuery]);
 
   const handleFilterChange = (newFilters: SearchFilters) => {
+    // Track filter changes
+    const oldFilters = filters;
+    const newFilterKeys = Object.keys(newFilters) as (keyof SearchFilters)[];
+    
+    // Track each filter that was added or changed
+    newFilterKeys.forEach(key => {
+      const oldValue = oldFilters[key];
+      const newValue = newFilters[key];
+      
+      // Handle array filters (city, locality, budgetBand, amenities)
+      if (Array.isArray(newValue) && Array.isArray(oldValue)) {
+        const addedItems = newValue.filter(item => !oldValue.includes(item));
+        const removedItems = oldValue.filter(item => !newValue.includes(item));
+        
+        addedItems.forEach(item => {
+          trackFilterApplied(key, item, { action: 'added' });
+        });
+        
+        removedItems.forEach(item => {
+          trackFilterApplied(key, item, { action: 'removed' });
+        });
+      }
+      // Handle boolean filters (meetingRooms, privateOffice, verifiedOnly)
+      else if (typeof newValue === 'boolean' && newValue !== oldValue) {
+        trackFilterApplied(key, newValue.toString(), { 
+          action: newValue ? 'enabled' : 'disabled' 
+        });
+      }
+      // Handle string filters (teamSize)
+      else if (typeof newValue === 'string' && newValue !== oldValue) {
+        if (newValue) {
+          trackFilterApplied(key, newValue, { action: 'set' });
+        } else if (oldValue) {
+          trackFilterApplied(key, oldValue, { action: 'cleared' });
+        }
+      }
+    });
+    
     setFilters(newFilters);
   };
 
   const handleRemoveFilter = (filterType: keyof SearchFilters, value?: string) => {
     const newFilters = { ...filters };
     
-    if (filterType === 'locality' && value) {
+    if (filterType === 'city' && value) {
+      newFilters.city = newFilters.city.filter(c => c !== value);
+      // If no cities left, default back to Delhi NCR
+      if (newFilters.city.length === 0) {
+        newFilters.city = ['Delhi', 'Noida', 'Gurugram'];
+      }
+      trackFilterApplied(filterType, value, { action: 'removed' });
+    } else if (filterType === 'locality' && value) {
       newFilters.locality = newFilters.locality.filter(l => l !== value);
+      trackFilterApplied(filterType, value, { action: 'removed' });
     } else if (filterType === 'budgetBand' && value) {
       newFilters.budgetBand = newFilters.budgetBand.filter(b => b !== value);
+      trackFilterApplied(filterType, value, { action: 'removed' });
     } else if (filterType === 'amenities' && value) {
       newFilters.amenities = newFilters.amenities.filter(a => a !== value);
+      trackFilterApplied(filterType, value, { action: 'removed' });
     } else if (filterType === 'teamSize') {
+      const oldValue = newFilters.teamSize;
       newFilters.teamSize = '';
+      if (oldValue) {
+        trackFilterApplied(filterType, oldValue, { action: 'cleared' });
+      }
     } else if (filterType === 'meetingRooms') {
       newFilters.meetingRooms = false;
+      trackFilterApplied(filterType, 'false', { action: 'disabled' });
     } else if (filterType === 'privateOffice') {
       newFilters.privateOffice = false;
+      trackFilterApplied(filterType, 'false', { action: 'disabled' });
     } else if (filterType === 'verifiedOnly') {
       newFilters.verifiedOnly = false;
+      trackFilterApplied(filterType, 'false', { action: 'disabled' });
     }
     
     setFilters(newFilters);
   };
 
   const clearAllFilters = () => {
-    setFilters(initialFilters);
+    // Track clearing all filters
+    trackFilterApplied('all', 'cleared', { action: 'clear_all' });
+    
+    setFilters({
+      ...initialFilters,
+      city: ['Delhi', 'Noida', 'Gurugram'] // Keep Delhi NCR as default
+    });
     updateSearchQuery('');
   };
 
@@ -120,7 +215,16 @@ export default function Explore() {
   };
 
   const handleSortChange = (newSort: string) => {
+    const oldSort = sort;
     setSort(newSort as 'recommended' | 'most-enquired' | 'budget-low');
+    
+    // Track sort change
+    if (oldSort !== newSort) {
+      trackFilterApplied('sort', newSort, { 
+        action: 'changed',
+        previousSort: oldSort 
+      });
+    }
   };
 
   const handlePageChange = (newPage: number) => {
@@ -129,8 +233,13 @@ export default function Explore() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Count active filters
+  // Count active filters (excluding default Delhi NCR)
   const activeFilterCount = [
+    // Only count city filters if they're different from default Delhi NCR
+    ...(filters.city.length !== 3 || 
+        !filters.city.includes('Delhi') || 
+        !filters.city.includes('Noida') || 
+        !filters.city.includes('Gurugram') ? filters.city : []),
     ...filters.locality,
     ...filters.budgetBand,
     filters.teamSize,
@@ -236,12 +345,24 @@ export default function Explore() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="font-display text-2xl font-bold text-foreground">
-                {filters.locality.length > 0 
-                  ? `Workspaces in ${filters.locality.length === 1 ? filters.locality[0] : `${filters.locality.length} areas`}`
-                  : searchQuery
-                  ? `Search results for "${searchQuery}"`
-                  : "All Workspaces in Delhi"
-                }
+                {searchQuery ? (
+                  `Search results for "${searchQuery}"`
+                ) : filters.city.length === 3 && 
+                     filters.city.includes('Delhi') && 
+                     filters.city.includes('Noida') && 
+                     filters.city.includes('Gurugram') ? (
+                  filters.locality.length > 0 
+                    ? `Workspaces in ${filters.locality.length === 1 ? filters.locality[0] : `${filters.locality.length} areas`} (Delhi NCR)`
+                    : "All Workspaces in Delhi NCR"
+                ) : filters.city.length === 1 ? (
+                  filters.locality.length > 0 
+                    ? `Workspaces in ${filters.locality.length === 1 ? filters.locality[0] : `${filters.locality.length} areas`} (${filters.city[0]})`
+                    : `All Workspaces in ${filters.city[0]}`
+                ) : (
+                  filters.locality.length > 0 
+                    ? `Workspaces in ${filters.locality.length === 1 ? filters.locality[0] : `${filters.locality.length} areas`}`
+                    : `Workspaces in ${filters.city.join(', ')}`
+                )}
               </h1>
               <div className="flex items-center gap-4 mt-1">
                 <p className="text-muted-premium">

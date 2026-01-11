@@ -47,7 +47,8 @@ const trustIndicators = [
 ];
 
 export default function PremiumSpaceDetail() {
-  const { slug } = useParams<{ slug: string }>();
+  const { "*": slugPath } = useParams<{ "*": string }>();
+  const slug = slugPath || ""; // Use slug as-is without leading slash
   const [currentImage, setCurrentImage] = useState(0);
   const [visitDialogOpen, setVisitDialogOpen] = useState(false);
   const [enquiryDialogOpen, setEnquiryDialogOpen] = useState(false);
@@ -58,7 +59,7 @@ export default function PremiumSpaceDetail() {
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
   const observerRef = useRef<IntersectionObserver | null>(null);
 
-  const { data: listing, isLoading, error } = useListingDetail(slug!);
+  const { data: listing, isLoading, error } = useListingDetail(slug);
 
   // Track listing view when listing data is loaded
   useEffect(() => {
@@ -143,12 +144,41 @@ export default function PremiumSpaceDetail() {
     });
   };
 
+  // Handle loading and error states
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
+  if (error || !listing) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-2">Listing not found</h1>
+          <p className="text-muted-foreground">The listing you're looking for doesn't exist or has been removed.</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Get all photos for the image carousel (hero photos + offering photos)
+  const allPhotos = [
+    ...(listing.heroPhotos || []),
+    ...Object.values(listing.offerings || {}).flatMap((offering: any) => offering.photos || [])
+  ];
+
+  // Ensure currentImage is within bounds
+  const safeCurrentImage = Math.min(currentImage, Math.max(0, allPhotos.length - 1));
+
   const nextImage = () => {
-    setCurrentImage((prev) => (prev + 1) % listing.photos.length);
+    setCurrentImage((prev) => (prev + 1) % allPhotos.length);
   };
 
   const prevImage = () => {
-    setCurrentImage((prev) => (prev - 1 + listing.photos.length) % listing.photos.length);
+    setCurrentImage((prev) => (prev - 1 + allPhotos.length) % allPhotos.length);
   };
 
   const scrollToSection = (sectionId: string) => {
@@ -158,38 +188,8 @@ export default function PremiumSpaceDetail() {
     }
   };
 
-  // Mock offerings data - in real implementation this would come from the enhanced listing data
-  const mockOfferings = [
-    {
-      type: "private-offices" as OfferingType,
-      title: "Private Offices",
-      description: "Fully furnished private offices with premium amenities and dedicated support.",
-      features: ["Dedicated workspace", "24/7 access", "High-speed internet", "Meeting room access", "Reception services"],
-      startingPrice: 25000,
-      unit: "month" as const,
-      photos: listing.photos.slice(0, 2),
-      enabled: true,
-    },
-    {
-      type: "dedicated-desks" as OfferingType,
-      title: "Dedicated Desks",
-      description: "Your own desk in a shared workspace environment with all essential amenities.",
-      features: ["Fixed desk assignment", "Storage locker", "High-speed internet", "Printing access", "Community events"],
-      budgetBand: "₹₹",
-      photos: listing.photos.slice(1, 3),
-      enabled: true,
-    },
-    {
-      type: "meeting-rooms" as OfferingType,
-      title: "Meeting Rooms",
-      description: "Professional meeting spaces available on hourly basis with AV equipment.",
-      features: ["AV equipment", "Whiteboard", "Video conferencing", "Catering options", "Flexible booking"],
-      startingPrice: 500,
-      unit: "hr" as const,
-      photos: listing.photos.slice(2, 4),
-      enabled: true,
-    },
-  ];
+  // Get enabled offerings from the listing data
+  const enabledOfferings = Object.values(listing.offerings || {}).filter((offering: any) => offering.enabled);
 
   return (
     <div className="pb-24 md:pb-0">
@@ -220,13 +220,19 @@ export default function PremiumSpaceDetail() {
           <div className="space-y-8">
             {/* Hero Gallery */}
             <div className="relative aspect-[16/10] overflow-hidden rounded-xl bg-muted">
-              <img
-                src={listing.photos[currentImage]}
-                alt={`${listing.displayName} - Photo ${currentImage + 1}`}
-                className="h-full w-full object-cover transition-transform duration-300"
-              />
+              {allPhotos.length > 0 ? (
+                <img
+                  src={allPhotos[safeCurrentImage]?.url}
+                  alt={`${listing.displayName} - Photo ${safeCurrentImage + 1}`}
+                  className="h-full w-full object-cover transition-transform duration-300"
+                />
+              ) : (
+                <div className="flex items-center justify-center h-full bg-muted">
+                  <p className="text-muted-foreground">No photos available</p>
+                </div>
+              )}
 
-              {listing.photos.length > 1 && (
+              {allPhotos.length > 1 && (
                 <>
                   <button
                     onClick={prevImage}
@@ -241,13 +247,13 @@ export default function PremiumSpaceDetail() {
                     <ChevronRight className="h-6 w-6" />
                   </button>
                   <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
-                    {listing.photos.map((_, idx) => (
+                    {allPhotos.map((_, idx) => (
                       <button
                         key={idx}
                         onClick={() => setCurrentImage(idx)}
                         className={cn(
                           "h-3 w-3 rounded-full transition-all duration-200",
-                          idx === currentImage 
+                          idx === safeCurrentImage 
                             ? "bg-primary scale-110" 
                             : "bg-background/60 hover:bg-background/80"
                         )}
@@ -380,21 +386,22 @@ export default function PremiumSpaceDetail() {
               <h2 className="font-display text-2xl font-semibold text-foreground">Offerings & Pricing</h2>
               
               <div className="space-y-4">
-                {mockOfferings.map((offering) => (
-                  <Card key={offering.type} className="border-border/50 hover:border-border transition-all duration-200">
-                    <CardContent className="p-6">
-                      <div className="space-y-4">
-                        {/* Offering Header */}
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <h3 className="font-display text-xl font-semibold text-foreground mb-2">
-                              {offering.title}
-                            </h3>
-                            <p className="text-muted-foreground mb-3">{offering.description}</p>
-                            
-                            {/* Pricing */}
-                            <div className="text-lg font-semibold text-primary">
-                              {formatPrice({
+                {enabledOfferings.length > 0 ? (
+                  enabledOfferings.map((offering: any) => (
+                    <Card key={offering.type} className="border-border/50 hover:border-border transition-all duration-200">
+                      <CardContent className="p-6">
+                        <div className="space-y-4">
+                          {/* Offering Header */}
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <h3 className="font-display text-xl font-semibold text-foreground mb-2">
+                                {offering.title}
+                              </h3>
+                              <p className="text-muted-foreground mb-3">{offering.description}</p>
+                              
+                              {/* Pricing */}
+                              <div className="text-lg font-semibold text-primary">
+                                {formatPrice({
                                 startingPrice: offering.startingPrice,
                                 unit: offering.unit,
                                 budgetBand: offering.budgetBand,
@@ -443,7 +450,7 @@ export default function PremiumSpaceDetail() {
                                   {offering.photos.map((photo, index) => (
                                     <div key={index} className="aspect-[4/3] overflow-hidden rounded-lg">
                                       <img
-                                        src={photo}
+                                        src={photo.url}
                                         alt={`${offering.title} - Photo ${index + 1}`}
                                         className="h-full w-full object-cover hover:scale-105 transition-transform duration-200"
                                       />
@@ -457,7 +464,16 @@ export default function PremiumSpaceDetail() {
                       </div>
                     </CardContent>
                   </Card>
-                ))}
+                ))
+                ) : (
+                  <Card className="border-border/50">
+                    <CardContent className="p-6">
+                      <div className="text-center">
+                        <p className="text-muted-foreground">No offerings are currently available for this listing.</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
               </div>
             </section>
 
@@ -577,11 +593,11 @@ export default function PremiumSpaceDetail() {
                     <div>
                       <p className="text-sm text-muted-foreground">Starting from</p>
                       <p className="font-display text-2xl font-bold text-primary">
-                        {formatPrice({
-                          startingPrice: mockOfferings[0]?.startingPrice,
-                          unit: mockOfferings[0]?.unit,
-                          budgetBand: mockOfferings[0]?.budgetBand,
-                        })}
+                        {enabledOfferings.length > 0 ? formatPrice({
+                          startingPrice: enabledOfferings[0]?.startingPrice,
+                          unit: enabledOfferings[0]?.unit,
+                          budgetBand: enabledOfferings[0]?.budgetBand,
+                        }) : "Contact for pricing"}
                       </p>
                       <p className="text-sm text-muted-foreground mt-1">
                         {transparencyLines.budgetDisclaimer}

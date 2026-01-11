@@ -171,7 +171,7 @@ async def get_listing_performance(
             from bson import ObjectId
             
             db = get_database()
-            listing = await db.listings.find_one({"_id": ObjectId(listing_id)})
+            listing = await db.premium_listings.find_one({"_id": ObjectId(listing_id)})
             if not listing or listing.get("partnerId") != current_user.get("partnerId"):
                 raise AppError(
                     status_code=status.HTTP_403_FORBIDDEN,

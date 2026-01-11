@@ -1,28 +1,56 @@
-import { useParams, useSearchParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Edit, Eye, Send, AlertCircle, CheckCircle, Clock, XCircle } from "lucide-react";
+import { useParams, useSearchParams, useNavigate, Link } from "react-router-dom";
+import { 
+  ArrowLeft, 
+  Edit, 
+  CheckCircle, 
+  AlertCircle, 
+  XCircle, 
+  MapPin,
+  Clock,
+  Camera,
+  Building,
+  Star,
+  Eye,
+  MessageSquare,
+  Wifi,
+  Coffee
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/StatusBadge";
 import { Separator } from "@/components/ui/separator";
 import { ListingBuilder } from "@/components/ListingBuilder";
 import { AdminNotesPanel } from "@/components/AdminNotesPanel";
 import { usePartnerListing } from "@/hooks/useAuth";
-import { VerificationStatus } from "@/types/models";
-import { cn } from "@/lib/utils";
 
 export function PartnerListingDetail() {
-  const { listingId } = useParams<{ listingId: string }>();
+  const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const isEdit = searchParams.get('edit') === 'true';
 
-  const { data: listing, isLoading, error } = usePartnerListing(listingId || '');
+  console.log("PartnerListingDetail debug:", {
+    id,
+    isEdit,
+    urlParams: useParams(),
+    searchParams: Object.fromEntries(searchParams.entries())
+  });
+
+  const { data: listing, isLoading, error } = usePartnerListing(id || '');
 
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <div className="text-center py-8">
-          <p className="text-muted-foreground">Loading listing...</p>
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" asChild>
+            <Link to="/partner/listings">
+              <ArrowLeft className="h-5 w-5" />
+            </Link>
+          </Button>
+          <div>
+            <h1 className="font-display text-2xl font-bold">Loading...</h1>
+          </div>
         </div>
       </div>
     );
@@ -32,11 +60,13 @@ export function PartnerListingDetail() {
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/partner/listings')}>
-            <ArrowLeft className="h-5 w-5" />
+          <Button variant="ghost" size="icon" asChild>
+            <Link to="/partner/listings">
+              <ArrowLeft className="h-5 w-5" />
+            </Link>
           </Button>
           <div>
-            <h1 className="font-display text-2xl font-bold text-foreground">Listing Not Found</h1>
+            <h1 className="font-display text-2xl font-bold text-destructive">Listing Not Found</h1>
             <p className="text-muted-foreground">The requested listing could not be found</p>
           </div>
         </div>
@@ -46,85 +76,55 @@ export function PartnerListingDetail() {
 
   // If in edit mode, show the listing builder
   if (isEdit) {
-    return <ListingBuilder listingId={listingId} isEdit={true} />;
+    return <ListingBuilder listingId={id} isEdit={true} />;
   }
 
-  // Otherwise show the listing details view
-  const getStatusConfig = (status: VerificationStatus) => {
-    const configs = {
-      'PENDING_REVIEW': {
-        label: 'Pending Review',
-        description: 'Your listing is being reviewed by our team',
-        variant: 'secondary' as const,
-        icon: Clock,
-        color: 'text-yellow-600'
-      },
-      'NEEDS_INFO': {
-        label: 'Needs Information',
-        description: 'Additional information required before approval',
-        variant: 'destructive' as const,
-        icon: AlertCircle,
-        color: 'text-red-600'
-      },
-      'APPROVED_VERIFIED': {
-        label: 'Approved & Verified',
-        description: 'Your listing is live and visible to customers',
-        variant: 'default' as const,
-        icon: CheckCircle,
-        color: 'text-green-600'
-      },
-      'REJECTED': {
-        label: 'Rejected',
-        description: 'Your listing was rejected and needs significant changes',
-        variant: 'destructive' as const,
-        icon: XCircle,
-        color: 'text-red-600'
-      }
-    };
+  // Get enabled offerings
+  const enabledOfferings = Object.entries(listing.offerings || {}).filter(([_, offering]: [string, any]) => offering?.enabled);
+  
+  // Get all photos count
+  const heroPhotosCount = listing.heroPhotos?.length || 0;
+  const offeringPhotosCount = enabledOfferings.reduce((total, [_, offering]: [string, any]) => total + (offering?.photos?.length || 0), 0);
+  const totalPhotos = heroPhotosCount + offeringPhotosCount;
 
-    return configs[status] || configs['PENDING_REVIEW'];
-  };
-
-  const statusConfig = getStatusConfig(listing.verificationStatus as VerificationStatus);
-  const StatusIcon = statusConfig.icon;
-
+  // Check if partner can edit
   const canEdit = listing.verificationStatus === 'NEEDS_INFO' || 
                   listing.verificationStatus === 'PENDING_REVIEW' ||
+                  listing.verificationStatus === 'PENDING' ||
                   listing.verificationStatus === 'REJECTED' ||
                   listing.status === 'pending';
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/partner/listings')}>
+      <div className="flex items-center gap-4">
+        <Button variant="ghost" size="icon" asChild>
+          <Link to="/partner/listings">
             <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div>
-            <div className="flex items-center gap-3">
-              <h1 className="font-display text-2xl font-bold text-foreground">
-                {listing.displayName}
-              </h1>
-              <Badge variant={statusConfig.variant} className="flex items-center gap-1">
-                <StatusIcon className="h-3 w-3" />
-                {statusConfig.label}
-              </Badge>
+          </Link>
+        </Button>
+        <div className="flex-1">
+          <h1 className="font-display text-2xl font-bold">{listing.displayName}</h1>
+          <p className="text-muted-foreground">{listing.locality}, {listing.city}</p>
+          <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
+            <div className="flex items-center gap-1">
+              <Eye className="h-4 w-4" />
+              {listing.viewCount || 0} views
             </div>
-            <p className="text-muted-foreground">{listing.locality}</p>
+            <div className="flex items-center gap-1">
+              <MessageSquare className="h-4 w-4" />
+              {listing.enquiryCount || 0} enquiries
+            </div>
+            <div className="flex items-center gap-1">
+              <Camera className="h-4 w-4" />
+              {totalPhotos} photos
+            </div>
           </div>
         </div>
-
-        <div className="flex gap-2">
-          <Button variant="outline" asChild>
-            <a href={`/listing/${listing.slug}`} target="_blank" rel="noopener noreferrer">
-              <Eye className="h-4 w-4" />
-              Preview
-            </a>
-          </Button>
-          
+        <div className="flex items-center gap-3">
+          <StatusBadge status={listing.verificationStatus} />
           {canEdit && (
-            <Button onClick={() => navigate(`/partner/listings/${listingId}?edit=true`)}>
+            <Button onClick={() => navigate(`/partner/listings/${id}?edit=true`)}>
               <Edit className="h-4 w-4" />
               {listing.verificationStatus === 'NEEDS_INFO' ? 'Edit & Resubmit' : 'Edit'}
             </Button>
@@ -132,192 +132,282 @@ export function PartnerListingDetail() {
         </div>
       </div>
 
-      {/* Status Card */}
-      <Card className={cn(
-        "border-2",
-        statusConfig.variant === 'default' && "border-green-200 bg-green-50",
-        statusConfig.variant === 'secondary' && "border-yellow-200 bg-yellow-50",
-        statusConfig.variant === 'destructive' && "border-red-200 bg-red-50"
-      )}>
-        <CardHeader>
-          <div className="flex items-center gap-3">
-            <StatusIcon className={cn("h-6 w-6", statusConfig.color)} />
-            <div>
-              <CardTitle className={statusConfig.color}>{statusConfig.label}</CardTitle>
-              <p className={cn("text-sm", statusConfig.color.replace('600', '700'))}>
-                {statusConfig.description}
-              </p>
-            </div>
-          </div>
-        </CardHeader>
-        
-        {listing.verificationStatus === 'NEEDS_INFO' && (
-          <CardContent>
-            <AdminNotesPanel listing={listing} />
-          </CardContent>
-        )}
-      </Card>
-
-      {/* Listing Details */}
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Basic Information */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Basic Information</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <p className="text-sm text-muted-foreground">Display Name</p>
-              <p className="font-medium">{listing.displayName}</p>
-            </div>
-            
-            <div>
-              <p className="text-sm text-muted-foreground">Location</p>
-              <p className="font-medium">{listing.locality}, {listing.city || 'Delhi'}</p>
-            </div>
-            
-            <div>
-              <p className="text-sm text-muted-foreground">Overview</p>
-              <p className="text-sm">{listing.overview}</p>
-            </div>
-            
-            <div>
-              <p className="text-sm text-muted-foreground">Workspace Types</p>
-              <div className="flex flex-wrap gap-1 mt-1">
-                {listing.workspaceTypes?.map((type) => (
-                  <Badge key={type} variant="outline">{type}</Badge>
-                ))}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Status & Dates */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Status & Timeline</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <p className="text-sm text-muted-foreground">Listing Status</p>
-              <p className="font-medium">{listing.status}</p>
-            </div>
-            
-            <div>
-              <p className="text-sm text-muted-foreground">Verification Status</p>
-              <p className="font-medium">{listing.verificationStatus}</p>
-            </div>
-            
-            <div>
-              <p className="text-sm text-muted-foreground">Created</p>
-              <p className="font-medium">
-                {new Date(listing.createdAt).toLocaleDateString('en-IN', {
-                  day: 'numeric',
-                  month: 'long',
-                  year: 'numeric'
-                })}
-              </p>
-            </div>
-            
-            <div>
-              <p className="text-sm text-muted-foreground">Last Updated</p>
-              <p className="font-medium">
-                {new Date(listing.updatedAt).toLocaleDateString('en-IN', {
-                  day: 'numeric',
-                  month: 'long',
-                  year: 'numeric'
-                })}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Amenities */}
-      {listing.amenities && listing.amenities.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Amenities</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-2">
-              {listing.amenities.map((amenity) => (
-                <Badge key={amenity} variant="secondary">{amenity}</Badge>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+      {/* Admin Notes Panel - Show if needs info or rejected */}
+      {(listing.verificationStatus === 'NEEDS_INFO' || listing.verificationStatus === 'REJECTED') && listing.adminNotes && (
+        <AdminNotesPanel listing={listing} />
       )}
 
-      {/* Photos */}
-      {listing.photos && listing.photos.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Photos ({listing.photos.length})</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {listing.photos.map((photo, index) => (
-                <div key={index} className="relative">
-                  <img
-                    src={typeof photo === 'string' ? photo : photo.url}
-                    alt={`${listing.displayName} ${index + 1}`}
-                    className="w-full h-32 object-cover rounded-lg border"
-                  />
-                  <Badge className="absolute bottom-2 left-2" variant="secondary">
-                    {index + 1}
-                  </Badge>
+      <div className="grid gap-6 lg:grid-cols-3">
+        {/* Main Content */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Hero Photos */}
+          {listing.heroPhotos && listing.heroPhotos.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Camera className="h-5 w-5" />
+                  Hero Photos ({listing.heroPhotos.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {listing.heroPhotos.map((photo: any, idx: number) => (
+                    <div key={idx} className="relative group">
+                      <img
+                        src={photo.url}
+                        alt={`Hero photo ${idx + 1}`}
+                        className="w-full h-48 object-cover rounded-lg border"
+                      />
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors rounded-lg" />
+                      <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
+                        {photo.width}×{photo.height}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+              </CardContent>
+            </Card>
+          )}
 
-      {/* Next Steps */}
-      {listing.verificationStatus !== 'APPROVED_VERIFIED' && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Next Steps</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {listing.verificationStatus === 'PENDING_REVIEW' && (
-              <div className="space-y-2">
-                <p className="text-sm">
-                  Your listing is currently being reviewed by our team. This typically takes 1-2 business days.
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  We'll notify you once the review is complete. You can make edits while the review is in progress.
-                </p>
+          {/* Overview */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Overview</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">{listing.overview}</p>
+            </CardContent>
+          </Card>
+
+          {/* Offerings */}
+          {enabledOfferings.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Building className="h-5 w-5" />
+                  Offerings ({enabledOfferings.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {enabledOfferings.map(([offeringType, offering]: [string, any]) => (
+                  <div key={offeringType} className="border rounded-lg p-4 space-y-4">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <h4 className="font-semibold text-lg">{offering.title}</h4>
+                        <p className="text-sm text-muted-foreground capitalize">{offeringType.replace('-', ' ')}</p>
+                      </div>
+                      <div className="text-right">
+                        {offering.startingPrice && (
+                          <div className="font-semibold text-lg">
+                            ₹{offering.startingPrice.toLocaleString()}
+                            {offering.unit && <span className="text-sm text-muted-foreground">/{offering.unit}</span>}
+                          </div>
+                        )}
+                        {offering.budgetBand && (
+                          <Badge variant="outline">{offering.budgetBand}</Badge>
+                        )}
+                      </div>
+                    </div>
+
+                    {offering.description && (
+                      <p className="text-muted-foreground">{offering.description}</p>
+                    )}
+
+                    {offering.features && offering.features.length > 0 && (
+                      <div>
+                        <h5 className="font-medium mb-2">Features</h5>
+                        <div className="flex flex-wrap gap-2">
+                          {offering.features.map((feature: string, idx: number) => (
+                            <Badge key={idx} variant="secondary" className="text-xs">
+                              {feature}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {offering.photos && offering.photos.length > 0 && (
+                      <div>
+                        <h5 className="font-medium mb-2">Photos ({offering.photos.length})</h5>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                          {offering.photos.map((photo: any, idx: number) => (
+                            <div key={idx} className="relative group">
+                              <img
+                                src={photo.url}
+                                alt={`${offering.title} photo ${idx + 1}`}
+                                className="w-full h-32 object-cover rounded border"
+                              />
+                              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors rounded" />
+                              <div className="absolute bottom-1 left-1 bg-black/70 text-white text-xs px-1 py-0.5 rounded">
+                                {photo.width}×{photo.height}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Location Details */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <MapPin className="h-5 w-5" />
+                Location & Access
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <p className="text-sm text-muted-foreground">Locality</p>
+                  <p className="font-medium">{listing.locality}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">City</p>
+                  <p className="font-medium">{listing.city}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Access Hours</p>
+                  <p className="font-medium">{listing.accessHours || "Not specified"}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Weekend Access</p>
+                  <p className="font-medium">{listing.weekendAccess ? "Available" : "Not available"}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Near Metro</p>
+                  <p className="font-medium">{listing.nearMetro ? "Yes" : "No"}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Power Backup</p>
+                  <p className="font-medium">{listing.powerBackup ? "Available" : "Not available"}</p>
+                </div>
               </div>
-            )}
-            
-            {listing.verificationStatus === 'NEEDS_INFO' && (
-              <div className="space-y-3">
-                <p className="text-sm">
-                  Our team has requested additional information. Please review the feedback above and make the necessary changes.
-                </p>
-                <Button onClick={() => navigate(`/partner/listings/${listingId}?edit=true`)}>
-                  <Edit className="h-4 w-4" />
-                  Edit & Resubmit
-                </Button>
+
+              {listing.metroNote && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Metro Information</p>
+                  <p className="font-medium">{listing.metroNote}</p>
+                </div>
+              )}
+
+              <Separator />
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <p className="text-sm text-muted-foreground">Parking</p>
+                  <p className="font-medium">{listing.parking || "Not available"}</p>
+                </div>
+                {listing.internetSpeedMbps && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Internet Speed</p>
+                    <p className="font-medium">{listing.internetSpeedMbps} Mbps</p>
+                  </div>
+                )}
               </div>
-            )}
-            
-            {listing.verificationStatus === 'REJECTED' && (
-              <div className="space-y-3">
-                <p className="text-sm">
-                  Your listing was rejected. Please review the feedback and make significant improvements before resubmitting.
-                </p>
-                <Button onClick={() => navigate(`/partner/listings/${listingId}?edit=true`)}>
-                  <Edit className="h-4 w-4" />
-                  Edit & Resubmit
-                </Button>
+            </CardContent>
+          </Card>
+
+          {/* Amenities */}
+          {listing.amenities && listing.amenities.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Star className="h-5 w-5" />
+                  Amenities ({listing.amenities.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  {listing.amenities.map((amenity: string) => (
+                    <div key={amenity} className="flex items-center gap-2">
+                      <div className="flex h-6 w-6 items-center justify-center rounded bg-primary/10">
+                        {amenity.toLowerCase().includes("wifi") ? (
+                          <Wifi className="h-3 w-3 text-primary" />
+                        ) : amenity.toLowerCase().includes("cafe") ? (
+                          <Coffee className="h-3 w-3 text-primary" />
+                        ) : (
+                          <CheckCircle className="h-3 w-3 text-primary" />
+                        )}
+                      </div>
+                      <span className="text-sm">{amenity}</span>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+
+        {/* Sidebar */}
+        <div className="space-y-6">
+          {/* Listing Info */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Listing Information</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <p className="text-sm text-muted-foreground">Status</p>
+                <StatusBadge status={listing.verificationStatus} />
               </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
+              <div>
+                <p className="text-sm text-muted-foreground">Published</p>
+                <p className="font-medium">{listing.isPublished ? "Yes - Live on site" : "No - Pending review"}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Created</p>
+                <p className="font-medium">{listing.createdAt ? new Date(listing.createdAt).toLocaleDateString() : 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Last Updated</p>
+                <p className="font-medium">{listing.updatedAt ? new Date(listing.updatedAt).toLocaleDateString() : 'N/A'}</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Status Guide */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Status Guide</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <div className="flex items-start gap-2">
+                <Clock className="h-4 w-4 text-yellow-600 mt-0.5" />
+                <div>
+                  <p className="font-medium">Pending Review</p>
+                  <p className="text-muted-foreground">Your listing is being reviewed by our team</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-2">
+                <AlertCircle className="h-4 w-4 text-orange-600 mt-0.5" />
+                <div>
+                  <p className="font-medium">Needs Info</p>
+                  <p className="text-muted-foreground">Additional information required</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-2">
+                <CheckCircle className="h-4 w-4 text-green-600 mt-0.5" />
+                <div>
+                  <p className="font-medium">Approved</p>
+                  <p className="text-muted-foreground">Your listing is live and visible</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-2">
+                <XCircle className="h-4 w-4 text-red-600 mt-0.5" />
+                <div>
+                  <p className="font-medium">Rejected</p>
+                  <p className="text-muted-foreground">Listing needs significant changes</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   );
 }

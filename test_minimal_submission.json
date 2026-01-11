@@ -1,0 +1,81 @@
+{
+  "displayName": "Test Workspace",
+  "overview": "This is a test workspace for debugging submission issues. It has enough characters to pass validation requirements.",
+  "locality": "Test Locality",
+  "city": "Delhi",
+  "amenities": ["High-speed WiFi", "Reception"],
+  "accessHours": "9 AM - 9 PM",
+  "weekendAccess": false,
+  "nearMetro": false,
+  "metroNote": null,
+  "parking": "NONE",
+  "powerBackup": false,
+  "heroPhotos": [],
+  "offerings": {
+    "private-offices": {
+      "type": "private-offices",
+      "title": "Private Offices",
+      "description": "Test private offices",
+      "features": [],
+      "enabled": true,
+      "startingPrice": 10000,
+      "unit": "month",
+      "budgetBand": "₹",
+      "photos": [],
+      "capacity": null,
+      "availability": null
+    },
+    "dedicated-desks": {
+      "type": "dedicated-desks",
+      "title": "Dedicated Desks",
+      "description": "",
+      "features": [],
+      "enabled": false,
+      "startingPrice": null,
+      "unit": null,
+      "budgetBand": null,
+      "photos": [],
+      "capacity": null,
+      "availability": null
+    },
+    "hot-desks": {
+      "type": "hot-desks",
+      "title": "Hot Desks",
+      "description": "",
+      "features": [],
+      "enabled": false,
+      "startingPrice": null,
+      "unit": null,
+      "budgetBand": null,
+      "photos": [],
+      "capacity": null,
+      "availability": null
+    },
+    "meeting-rooms": {
+      "type": "meeting-rooms",
+      "title": "Meeting Rooms",
+      "description": "",
+      "features": [],
+      "enabled": false,
+      "startingPrice": null,
+      "unit": null,
+      "budgetBand": null,
+      "photos": [],
+      "capacity": null,
+      "availability": null
+    },
+    "event-spaces": {
+      "type": "event-spaces",
+      "title": "Event Spaces",
+      "description": "",
+      "features": [],
+      "enabled": false,
+      "startingPrice": null,
+      "unit": null,
+      "budgetBand": null,
+      "photos": [],
+      "capacity": null,
+      "availability": null
+    }
+  }
+}

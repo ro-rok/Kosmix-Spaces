@@ -28,7 +28,7 @@ export function SearchBar({
   
   const debouncedQuery = useDebounce(query, 300);
   const { data: localitiesData } = useLocalities();
-  const localities = localitiesData || [];
+  const localities = localitiesData?.localities || localitiesData?.flat || [];
 
   // Call onSearch when debounced query changes
   useEffect(() => {

@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 import logging
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from app.core.config import get_settings
+from app.db.indexes import safe_create_index
 
 logger = logging.getLogger(__name__)
 
@@ -129,7 +130,7 @@ class DatabaseOptimizer:
         indexes_created = {}
         
         try:
-            # Listings collection indexes
+            # Listings collection indexes (avoid slug since it's already created as unique)
             listings_collection = self.db.listings
             listings_indexes = [
                 # Search and filtering indexes
@@ -138,7 +139,6 @@ class DatabaseOptimizer:
                 [("workspaceTypes", 1), ("status", 1)],
                 [("verificationStatus", 1), ("status", 1)],
                 [("partnerId", 1), ("status", 1)],
-                [("slug", 1)],  # Unique slug lookup
                 [("createdAt", -1)],  # Recent listings
                 [("updatedAt", -1)],  # Recently updated
                 
@@ -151,17 +151,16 @@ class DatabaseOptimizer:
             created = []
             for index_spec in listings_indexes:
                 try:
-                    await listings_collection.create_index(index_spec)
+                    await safe_create_index(listings_collection, index_spec)
                     created.append(str(index_spec))
                 except Exception as e:
                     logger.warning(f"Failed to create index {index_spec}: {e}")
             
             indexes_created['listings'] = created
             
-            # Partners collection indexes
+            # Partners collection indexes (avoid email since it's already created as unique)
             partners_collection = self.db.partners
             partners_indexes = [
-                [("email", 1)],  # Unique email lookup
                 [("status", 1)],
                 [("createdAt", -1)],
             ]
@@ -169,7 +168,7 @@ class DatabaseOptimizer:
             created = []
             for index_spec in partners_indexes:
                 try:
-                    await partners_collection.create_index(index_spec)
+                    await safe_create_index(partners_collection, index_spec)
                     created.append(str(index_spec))
                 except Exception as e:
                     logger.warning(f"Failed to create index {index_spec}: {e}")
@@ -189,7 +188,7 @@ class DatabaseOptimizer:
             created = []
             for index_spec in leads_indexes:
                 try:
-                    await leads_collection.create_index(index_spec)
+                    await safe_create_index(leads_collection, index_spec)
                     created.append(str(index_spec))
                 except Exception as e:
                     logger.warning(f"Failed to create index {index_spec}: {e}")
@@ -213,7 +212,7 @@ class DatabaseOptimizer:
             created = []
             for index_spec in analytics_indexes:
                 try:
-                    await analytics_collection.create_index(index_spec)
+                    await safe_create_index(analytics_collection, index_spec)
                     created.append(str(index_spec))
                 except Exception as e:
                     logger.warning(f"Failed to create index {index_spec}: {e}")

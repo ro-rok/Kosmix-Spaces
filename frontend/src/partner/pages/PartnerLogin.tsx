@@ -55,7 +55,25 @@ export function PartnerLogin() {
       // Navigate immediately - the PartnerRoute will handle the loading state
       navigate("/partner", { replace: true });
     } catch (error: any) {
-      toast.error(error.message || "Login failed");
+      // Show specific error messages
+      let errorMessage = "Login failed";
+      if (error.message) {
+        if (error.message.includes("Wrong password")) {
+          errorMessage = "❌ Wrong password. Please try again.";
+        } else if (error.message.includes("Invalid email")) {
+          errorMessage = "❌ Invalid email address.";
+        } else if (error.message.includes("not found")) {
+          errorMessage = "❌ Account not found. Please check your email or register.";
+        } else if (error.message.includes("pending")) {
+          errorMessage = "⏳ Your account is pending approval.";
+        } else if (error.message.includes("suspended")) {
+          errorMessage = "🚫 Your account has been suspended. Please contact support.";
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
+      toast.error(errorMessage);
     } finally {
       setIsLoginLoading(false);
     }

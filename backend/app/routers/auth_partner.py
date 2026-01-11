@@ -71,10 +71,10 @@ async def login_partner(credentials: PartnerLoginRequest):
     # Try case-insensitive email search first
     partner = await db.partners.find_one({"email": {"$regex": f"^{credentials.email}$", "$options": "i"}})
     if not partner:
-        raise UnauthorizedError("Invalid email or password")
+        raise UnauthorizedError("Account not found. Please check your email or register.")
     
     if not verify_password(credentials.password, partner["passwordHash"]):
-        raise UnauthorizedError("Invalid email or password")
+        raise UnauthorizedError("Wrong password")
     
     if partner["status"] not in ["ACTIVE", "PENDING"]:
         status_messages = {

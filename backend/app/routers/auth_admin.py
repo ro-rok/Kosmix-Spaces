@@ -19,10 +19,10 @@ async def login_admin(credentials: AdminLoginRequest):
     """Admin login."""
     # For MVP, use env vars for single admin user
     if credentials.email != settings.ADMIN_EMAIL:
-        raise UnauthorizedError("Invalid email or password")
+        raise UnauthorizedError("Invalid email address")
     
     if not verify_password(credentials.password, settings.ADMIN_PASSWORD_HASH):
-        raise UnauthorizedError("Invalid email or password")
+        raise UnauthorizedError("Wrong password")
     
     # Create JWT token
     token_data = {

@@ -202,7 +202,7 @@ export function useAdminPremiumListings(params: {
   
   return useQuery({
     queryKey: ["admin", "premium-listings", params],
-    queryFn: () => api.admin.getPremiumListings(params),
+    queryFn: () => api.admin.getListings(params),
     enabled: !!token && userType === "admin",
     staleTime: 1000 * 60 * 2, // 2 minutes
   });
@@ -214,7 +214,7 @@ export function useAdminPremiumListing(listingId: string) {
   
   return useQuery({
     queryKey: ["admin", "premium-listing", listingId],
-    queryFn: () => api.admin.getPremiumListing(listingId),
+    queryFn: () => api.admin.getListing(listingId),
     enabled: !!token && userType === "admin" && !!listingId,
     staleTime: 1000 * 60 * 2, // 2 minutes
   });
@@ -225,7 +225,7 @@ export function useApprovePremiumListing() {
   
   return useMutation({
     mutationFn: ({ listingId, notes }: { listingId: string; notes?: string }) => 
-      api.admin.approvePremiumListing(listingId, notes),
+      api.admin.approveListing(listingId, notes),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "premium-listings"] });
       queryClient.invalidateQueries({ queryKey: ["admin", "premium-listing"] });
@@ -238,7 +238,7 @@ export function useNeedsInfoPremiumListing() {
   
   return useMutation({
     mutationFn: ({ listingId, notes }: { listingId: string; notes: string }) => 
-      api.admin.needsInfoPremiumListing(listingId, notes),
+      api.admin.needsInfoListing(listingId, notes),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "premium-listings"] });
       queryClient.invalidateQueries({ queryKey: ["admin", "premium-listing"] });
@@ -251,7 +251,7 @@ export function useRejectPremiumListing() {
   
   return useMutation({
     mutationFn: ({ listingId, reason }: { listingId: string; reason: string }) => 
-      api.admin.rejectPremiumListing(listingId, reason),
+      api.admin.rejectListing(listingId, reason),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "premium-listings"] });
       queryClient.invalidateQueries({ queryKey: ["admin", "premium-listing"] });
@@ -292,9 +292,21 @@ export function usePartnerListing(listingId: string) {
   const token = getStoredToken();
   const userType = getStoredUserType();
   
+  console.log("usePartnerListing debug:", {
+    listingId,
+    hasToken: !!token,
+    userType,
+    isEnabled: !!token && userType === "partner" && !!listingId
+  });
+  
   return useQuery({
     queryKey: ["partner", "listing", listingId],
-    queryFn: () => api.partner.getListing(listingId),
+    queryFn: async () => {
+      console.log("Fetching partner listing with ID:", listingId);
+      const result = await api.partner.getListing(listingId);
+      console.log("Partner listing result:", result);
+      return result;
+    },
     enabled: !!token && userType === "partner" && !!listingId,
     staleTime: 1000 * 60 * 2, // 2 minutes
   });
@@ -305,6 +317,17 @@ export function useSubmitListing() {
   
   return useMutation({
     mutationFn: (data: any) => api.partner.submitListing(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["partner", "listings"] });
+    },
+  });
+}
+
+export function useSubmitExistingListing() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: (listingId: string) => api.partner.submitExistingListing(listingId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["partner", "listings"] });
     },
@@ -374,4 +397,47 @@ export function useAuthStatus() {
   }, []);
   
   return { isAuthenticated, userType };
+}
+
+// Analytics hooks
+export function useAdminAnalytics(params?: {
+  startDate?: string;
+  endDate?: string;
+}) {
+  const token = getStoredToken();
+  const userType = getStoredUserType();
+  
+  return useQuery({
+    queryKey: ["admin", "analytics", params],
+    queryFn: () => api.analytics.getAdminAnalytics(params),
+    enabled: !!token && userType === "admin",
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+}
+
+export function usePartnerAnalytics(partnerId: string, params?: {
+  startDate?: string;
+  endDate?: string;
+}) {
+  const token = getStoredToken();
+  const userType = getStoredUserType();
+  
+  return useQuery({
+    queryKey: ["partner", "analytics", partnerId, params],
+    queryFn: () => api.analytics.getPartnerAnalytics(partnerId, params),
+    enabled: !!token && userType === "partner" && !!partnerId,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+}
+
+export function usePartnerListingsStats() {
+  const token = getStoredToken();
+  const userType = getStoredUserType();
+  
+  return useQuery({
+    queryKey: ["partner", "listings", "stats"],
+    queryFn: () => api.partner.getListingsStats(),
+    enabled: !!token && userType === "partner",
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
 }

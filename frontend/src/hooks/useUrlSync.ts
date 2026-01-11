@@ -10,12 +10,14 @@ export function useUrlSync() {
 
   // Parse filters from URL
   const parseFiltersFromUrl = useCallback((): SearchFilters => {
+    const city = searchParams.getAll('city');
     const locality = searchParams.getAll('locality');
     const budgetBand = searchParams.getAll('budget');
     const teamSize = searchParams.get('teamSize') || '';
     const amenities = searchParams.getAll('amenities');
     
     return {
+      city: city.length > 0 ? city : ['Delhi', 'Noida', 'Gurugram'], // Default to Delhi NCR
       locality,
       teamSize,
       budgetBand,
@@ -41,6 +43,16 @@ export function useUrlSync() {
     }
     
     // Add filters
+    // Only add city filters to URL if they're different from default Delhi NCR
+    const isDefaultDelhiNCR = filters.city.length === 3 && 
+      filters.city.includes('Delhi') && 
+      filters.city.includes('Noida') && 
+      filters.city.includes('Gurugram');
+    
+    if (!isDefaultDelhiNCR) {
+      filters.city.forEach(city => params.append('city', city));
+    }
+    
     filters.locality.forEach(loc => params.append('locality', loc));
     filters.budgetBand.forEach(budget => params.append('budget', budget));
     

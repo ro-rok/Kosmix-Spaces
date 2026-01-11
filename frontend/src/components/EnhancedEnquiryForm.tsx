@@ -85,7 +85,7 @@ export function EnhancedEnquiryForm({
   const [submissionResult, setSubmissionResult] = React.useState<any>(null);
 
   const { data: localitiesData } = useLocalities();
-  const localities = localitiesData || [];
+  const localities = localitiesData?.localities || localitiesData?.flat || [];
 
   // Initialize form with enhanced validation
   const form = useEnquiryForm(enquirySchema, {

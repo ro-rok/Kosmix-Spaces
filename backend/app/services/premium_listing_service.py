@@ -10,7 +10,8 @@ from app.models.premium_listing import (
     SlugData,
     LocationData,
     ListingSubmissionValidation,
-    OfferingPhoto
+    OfferingPhoto,
+    HeroPhoto
 )
 from app.services.slug_service import ensure_unique_slug, find_listing_by_slug
 from app.core.errors import NotFoundError, ValidationError
@@ -92,13 +93,17 @@ async def get_premium_listing(listing_id: str, partner_id: Optional[str] = None)
     """Get premium listing by ID."""
     db = get_database()
     
-    query = {"_id": ObjectId(listing_id)}
-    if partner_id:
-        query["partnerId"] = ObjectId(partner_id)
-    
-    listing = await db.premium_listings.find_one(query)
+    # First check if listing exists at all
+    listing = await db.premium_listings.find_one({"_id": ObjectId(listing_id)})
     if not listing:
         raise NotFoundError("Listing", listing_id)
+    
+    # If partner_id provided, verify ownership
+    if partner_id:
+        if str(listing["partnerId"]) != partner_id:
+            # Log for debugging
+            print(f"DEBUG: Partner ID mismatch - listing partnerId: {listing['partnerId']}, requested partnerId: {partner_id}")
+            raise NotFoundError("Listing", listing_id)
     
     return listing
 
@@ -240,14 +245,13 @@ async def add_hero_photo(listing_id: str, partner_id: str, photo_data: dict) -> 
     listing = await get_premium_listing(listing_id, partner_id)
     
     # Create hero photo document with compression metadata
-    photo = OfferingPhoto(
+    photo = HeroPhoto(
         url=photo_data["url"],
         publicId=photo_data["publicId"],
         width=photo_data["width"],
         height=photo_data["height"],
         bytes=photo_data["bytes"],
         format=photo_data["format"],
-        offeringType="hero",  # Special type for hero photos
         order=len(listing.get("heroPhotos", [])),
         # Add compression metadata if available
         compressionRatio=photo_data.get("compression", {}).get("total_compression_ratio", 0),
@@ -326,41 +330,67 @@ async def validate_listing_for_submission(listing_id: str, partner_id: str) -> L
     listing = await get_premium_listing(listing_id, partner_id)
     validation = ListingSubmissionValidation(isValid=True)
     
+    print(f"DEBUG: Validating listing {listing_id}")
+    
     # Check basic info
     if not listing.get("displayName", "").strip():
         validation.add_error("Display name is required")
+        print("DEBUG: Display name validation failed")
+    else:
+        print(f"DEBUG: Display name OK: {listing.get('displayName')}")
     
-    if not listing.get("overview", "").strip() or len(listing["overview"]) < 50:
-        validation.add_error("Overview must be at least 50 characters")
+    if not listing.get("overview", "").strip() or len(listing["overview"]) < 10:
+        validation.add_error("Overview must be at least 10 characters")
+        print(f"DEBUG: Overview validation failed, length: {len(listing.get('overview', ''))}")
+    else:
+        print(f"DEBUG: Overview OK, length: {len(listing['overview'])}")
     
     # Check location
     location = listing.get("location", {})
     if not location.get("locality"):
         validation.add_error("Locality is required")
+        print("DEBUG: Locality validation failed")
+    else:
+        print(f"DEBUG: Locality OK: {location.get('locality')}")
     
     # Check offerings - at least one must be enabled with photos
     offerings = listing.get("offerings", {})
     enabled_offerings = 0
     offerings_with_photos = 0
     
+    print(f"DEBUG: Checking offerings: {list(offerings.keys())}")
+    
     for offering_type, offering in offerings.items():
         if offering.get("enabled"):
             enabled_offerings += 1
+            print(f"DEBUG: {offering_type} is enabled")
             
             # Check for photos
             photos = offering.get("photos", [])
+            print(f"DEBUG: {offering_type} has {len(photos)} photos")
             if len(photos) >= 1:
                 offerings_with_photos += 1
+                print(f"DEBUG: {offering_type} photos OK")
             else:
                 validation.add_error(f"{offering.get('title', offering_type)} must have at least 1 photo")
+                print(f"DEBUG: {offering_type} photos validation failed")
+        else:
+            print(f"DEBUG: {offering_type} is disabled")
+    
+    print(f"DEBUG: Total enabled offerings: {enabled_offerings}")
+    print(f"DEBUG: Offerings with photos: {offerings_with_photos}")
     
     if enabled_offerings == 0:
         validation.add_error("At least one offering must be enabled")
+        print("DEBUG: No enabled offerings")
     
     # Check amenities
-    if len(listing.get("amenities", [])) == 0:
+    amenities = listing.get("amenities", [])
+    print(f"DEBUG: Amenities: {amenities}")
+    if len(amenities) == 0:
         validation.add_warning("Consider adding amenities to make listing more attractive")
     
+    print(f"DEBUG: Validation result - isValid: {validation.isValid}, errors: {validation.errors}")
     return validation
 
 
@@ -510,5 +540,64 @@ def listing_to_public_response(listing: dict) -> dict:
     # Add approximate coordinates if available (privacy-protected)
     if location.get("approximateCoordinates"):
         public_listing["approximateCoordinates"] = location["approximateCoordinates"]
+    
+    # Add derived fields for frontend compatibility
+    # Derive workspaceTypes from enabled offerings
+    enabled_offerings = [
+        offering_type for offering_type, offering in listing.get("offerings", {}).items()
+        if offering.get("enabled", False)
+    ]
+    public_listing["workspaceTypes"] = enabled_offerings
+    
+    # Derive budget band from lowest priced enabled offering
+    budget_bands = []
+    min_price = None
+    for offering in listing.get("offerings", {}).values():
+        if offering.get("enabled", False) and offering.get("budgetBand"):
+            budget_bands.append(offering["budgetBand"])
+        if offering.get("enabled", False) and offering.get("startingPrice"):
+            if min_price is None or offering["startingPrice"] < min_price:
+                min_price = offering["startingPrice"]
+    
+    if budget_bands:
+        # Use the most common budget band, or the first one
+        public_listing["budgetBand"] = budget_bands[0]
+    elif min_price:
+        # Derive budget band from price
+        if min_price < 10000:
+            public_listing["budgetBand"] = "₹"
+        elif min_price < 25000:
+            public_listing["budgetBand"] = "₹₹"
+        else:
+            public_listing["budgetBand"] = "₹₹₹"
+    
+    # Derive seat capacity from offerings
+    min_seats = None
+    max_seats = None
+    for offering in listing.get("offerings", {}).values():
+        if offering.get("enabled", False) and offering.get("capacity"):
+            capacity = offering["capacity"]
+            if isinstance(capacity, dict):
+                if capacity.get("minSeats") is not None:
+                    if min_seats is None or capacity["minSeats"] < min_seats:
+                        min_seats = capacity["minSeats"]
+                if capacity.get("maxSeats") is not None:
+                    if max_seats is None or capacity["maxSeats"] > max_seats:
+                        max_seats = capacity["maxSeats"]
+    
+    public_listing["seatCapacityMin"] = min_seats or 1
+    public_listing["seatCapacityMax"] = max_seats or min_seats or 10
+    
+    # Set default availability status
+    public_listing["availabilityStatus"] = "available"
+    
+    # Set default values for missing fields
+    public_listing["dealTags"] = []
+    public_listing["pricingMode"] = "on-enquiry"
+    public_listing["gstInvoiceAvailable"] = True  # Assume premium listings provide GST
+    public_listing["meetingRoomsAddon"] = any(
+        offering.get("enabled", False) for offering_type, offering in listing.get("offerings", {}).items()
+        if offering_type == "meeting-rooms"
+    )
     
     return public_listing

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Filter, X, Train, Car, Zap, FileText, MapPin, Users, DollarSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -33,7 +33,7 @@ export function FilterDrawer({ filters, onChange, onClear }: FilterDrawerProps) 
   const [open, setOpen] = useState(false);
   
   const { data: localitiesData } = useLocalities();
-  const localities = localitiesData || [];
+  const localities = localitiesData?.localities || localitiesData?.flat || [];
 
   // Count active filters
   const activeCount = [
@@ -52,11 +52,13 @@ export function FilterDrawer({ filters, onChange, onClear }: FilterDrawerProps) 
 
   const hasActiveFilters = activeCount > 0;
 
-  // Convert localities to options format
-  const localityOptions = localities.map(loc => ({
-    value: loc.id,
-    label: loc.name
-  }));
+  // Convert localities to options format, filtered by selected cities
+  const localityOptions = localities
+    .filter(loc => filters.city.includes(loc.city))
+    .map(loc => ({
+      value: loc.id,
+      label: loc.name
+    }));
 
   // Convert budget bands to options format
   const budgetOptions = Object.entries(budgetBandLabels).map(([value, label]) => ({
@@ -87,9 +89,32 @@ export function FilterDrawer({ filters, onChange, onClear }: FilterDrawerProps) 
               </Button>
             )}
           </div>
+          <SheetDescription>
+            Refine your search results by selecting specific criteria below.
+          </SheetDescription>
         </SheetHeader>
 
         <div className="mt-6 space-y-6">
+          {/* City Multi-Select */}
+          <div className="space-y-3 animate-slide-up" style={{ animationDelay: '0.05s' }}>
+            <Label className="text-sm font-medium flex items-center gap-2">
+              <MapPin className="h-4 w-4 text-primary" />
+              Cities
+            </Label>
+            <MultiSelectFilter
+              options={[
+                { value: 'Delhi', label: 'Delhi' },
+                { value: 'Noida', label: 'Noida' },
+                { value: 'Gurugram', label: 'Gurugram' }
+              ]}
+              value={filters.city}
+              onChange={(value) => updateFilter("city", value.length > 0 ? value : ['Delhi', 'Noida', 'Gurugram'])}
+              placeholder="Delhi NCR"
+              searchPlaceholder="Search cities..."
+              className="w-full"
+            />
+          </div>
+
           {/* Locality Multi-Select */}
           <div className="space-y-3 animate-slide-up" style={{ animationDelay: '0.1s' }}>
             <Label className="text-sm font-medium flex items-center gap-2">
@@ -129,14 +154,14 @@ export function FilterDrawer({ filters, onChange, onClear }: FilterDrawerProps) 
               Team Size
             </Label>
             <Select
-              value={filters.teamSize}
-              onValueChange={(value) => updateFilter("teamSize", value)}
+              value={filters.teamSize || "all"}
+              onValueChange={(value) => updateFilter("teamSize", value === "all" ? "" : value)}
             >
               <SelectTrigger className="btn-premium">
                 <SelectValue placeholder="Any size" />
               </SelectTrigger>
               <SelectContent className="glass">
-                <SelectItem value="">Any size</SelectItem>
+                <SelectItem value="all">Any size</SelectItem>
                 {teamSizeBands.map((band) => (
                   <SelectItem key={band.value} value={band.value}>
                     {band.label}

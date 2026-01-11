@@ -122,7 +122,7 @@ export function WorkspaceForm({ onSubmit, initialData, isLoading = false }: Work
   const [formData, setFormData] = useState<WorkspaceFormData | null>(null);
 
   const { data: localitiesData } = useLocalities();
-  const localities = localitiesData || [];
+  const localities = localitiesData?.localities || localitiesData?.flat || [];
 
   const {
     register,

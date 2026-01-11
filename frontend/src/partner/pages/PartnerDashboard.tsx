@@ -1,56 +1,14 @@
 import { Link } from "react-router-dom";
-import { Plus, FileText, Clock, AlertCircle, CheckCircle, XCircle, Shield, Bug } from "lucide-react";
+import { Plus, FileText, Clock, CheckCircle, XCircle, Shield, Eye, MessageSquare, TrendingUp, BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { usePartnerMe, useCreatePartnerListing } from "@/hooks/useAuth";
-import { VerificationStatus } from "@/types/models";
+import { usePartnerMe, usePartnerListingsStats, usePartnerAnalytics } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
 
 export function PartnerDashboard() {
   const { data: partner, isLoading, error } = usePartnerMe();
-  const createListingMutation = useCreatePartnerListing();
-
-  const testApiCall = async () => {
-    try {
-      // Use the exact same format as the form submission
-      const testData = {
-        displayName: "Test Workspace",
-        brandHidden: false,
-        locality: "Connaught Place",
-        workspaceTypes: ["DEDICATED_DESKS"],
-        seatCapacityMin: 1,
-        seatCapacityMax: 10,
-        availabilityStatus: "AVAILABLE",
-        budgetBandId: "10k-20k",
-        budgetDisplayText: "Contact for pricing",
-        nearMetro: false,
-        metroNote: null,
-        parking: "NONE",
-        powerBackup: false,
-        gstInvoiceAvailable: false,
-        accessHours: "9 AM - 9 PM",
-        weekendAccess: false,
-        amenities: ["High-speed WiFi"],
-        meetingRoomsCount: null,
-        meetingRoomsAddonOnly: true,
-        internetSpeedMbps: null,
-        dealTags: [],
-        dealDetails: null,
-        dealEligibility: null,
-        overview: "This is a test workspace overview with more than 10 characters",
-        houseRules: null,
-      };
-
-      console.log("Test data:", JSON.stringify(testData, null, 2));
-      const result = await createListingMutation.mutateAsync(testData);
-      console.log("Test result:", result);
-      toast.success("Test API call successful!");
-    } catch (error: any) {
-      console.error("Test API call failed:", error);
-      toast.error(`Test failed: ${error.message}`);
-    }
-  };
+  const { data: listingsStats } = usePartnerListingsStats();
+  const { data: analytics } = usePartnerAnalytics(partner?.partnerId || "");
 
   if (isLoading) {
     return (
@@ -201,24 +159,152 @@ export function PartnerDashboard() {
         </Button>
       </div>
 
-      {/* Debug Test Button */}
+      {/* Analytics Cards - Only show for approved partners */}
       {isApproved && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Debug Tools</CardTitle>
-            <CardDescription>Test API functionality</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button 
-              onClick={testApiCall}
-              disabled={createListingMutation.isPending}
-              variant="outline"
-            >
-              <Bug className="h-4 w-4" />
-              {createListingMutation.isPending ? "Testing..." : "Test API Call"}
-            </Button>
-          </CardContent>
-        </Card>
+        <>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Total Listings</CardTitle>
+                <FileText className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{listingsStats?.totalListings || 0}</div>
+                <p className="text-xs text-muted-foreground">
+                  {listingsStats?.approved || 0} approved, {listingsStats?.pendingReview || 0} pending
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Total Views</CardTitle>
+                <Eye className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{analytics?.views || 0}</div>
+                <p className="text-xs text-muted-foreground">
+                  Listing page views
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Total Enquiries</CardTitle>
+                <MessageSquare className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{analytics?.enquiries || 0}</div>
+                <p className="text-xs text-muted-foreground">
+                  Customer enquiries
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Conversion Rate</CardTitle>
+                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {analytics?.conversionRate ? `${analytics.conversionRate.toFixed(1)}%` : '0%'}
+                </div>
+                <p className="text-xs text-muted-foreground">Views to enquiries</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Performance Insights */}
+          <div className="grid gap-6 lg:grid-cols-2">
+            {/* Top Performing Listings */}
+            {analytics?.topListings && analytics.topListings.length > 0 ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Top Performing Listings</CardTitle>
+                  <CardDescription>Your most viewed and enquired listings</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="space-y-3">
+                    {analytics.topListings.slice(0, 5).map((listing: any) => (
+                      <div key={listing.listingId} className="flex items-center justify-between border-b border-border pb-3 last:border-0 last:pb-0">
+                        <div>
+                          <p className="font-medium text-foreground">{listing.displayName}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {listing.views} views • {listing.enquiries} enquiries
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-medium">
+                            {listing.views > 0 ? ((listing.enquiries / listing.views) * 100).toFixed(1) : 0}%
+                          </p>
+                          <p className="text-xs text-muted-foreground">conversion</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Performance Insights</CardTitle>
+                  <CardDescription>Analytics will appear once your listings receive views</CardDescription>
+                </CardHeader>
+                <CardContent className="py-8">
+                  <div className="text-center text-muted-foreground">
+                    <BarChart3 className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>No performance data yet</p>
+                    <p className="text-xs mt-1">Submit and publish listings to start tracking performance</p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Listing Status Overview */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Listing Status Overview</CardTitle>
+                <CardDescription>Current status of your submissions</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-600" />
+                    <span className="text-sm">Approved</span>
+                  </div>
+                  <span className="font-medium">{listingsStats?.approved || 0}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-yellow-600" />
+                    <span className="text-sm">Pending Review</span>
+                  </div>
+                  <span className="font-medium">{listingsStats?.pendingReview || 0}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <XCircle className="h-4 w-4 text-red-600" />
+                    <span className="text-sm">Rejected</span>
+                  </div>
+                  <span className="font-medium">{listingsStats?.rejected || 0}</span>
+                </div>
+                {(listingsStats?.totalListings || 0) === 0 && (
+                  <div className="text-center py-4">
+                    <p className="text-sm text-muted-foreground">No listings submitted yet</p>
+                    <Button asChild size="sm" className="mt-2">
+                      <Link to="/partner/listings/new">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Submit Your First Listing
+                      </Link>
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </>
       )}
 
       {!isApproved && (

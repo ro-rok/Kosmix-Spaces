@@ -18,10 +18,17 @@ export function AppliedFilters({
   className
 }: AppliedFiltersProps) {
   const { data: localitiesData } = useLocalities();
-  const localities = localitiesData || [];
+  const localities = localitiesData?.localities || localitiesData?.flat || [];
 
-  // Count total active filters
+  // Count total active filters (excluding default Delhi NCR)
+  const isDefaultDelhiNCR = filters.city.length === 3 && 
+    filters.city.includes('Delhi') && 
+    filters.city.includes('Noida') && 
+    filters.city.includes('Gurugram');
+    
   const activeFilters = [
+    // Only include city filters if they're different from default Delhi NCR
+    ...(isDefaultDelhiNCR ? [] : filters.city),
     ...filters.locality,
     ...filters.budgetBand,
     filters.teamSize,
@@ -51,6 +58,15 @@ export function AppliedFilters({
         <span className="text-sm font-medium text-muted-foreground">
           Active filters:
         </span>
+
+        {/* City filters (only show if not default Delhi NCR) */}
+        {!isDefaultDelhiNCR && filters.city.map((city) => (
+          <FilterChip
+            key={`city-${city}`}
+            label={city}
+            onRemove={() => onRemoveFilter('city', city)}
+          />
+        ))}
 
         {/* Locality filters */}
         {filters.locality.map((localityId) => (

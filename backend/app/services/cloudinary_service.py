@@ -172,9 +172,12 @@ async def upload_image(
         # Get optimal compression settings for this photo type
         compression_settings = get_compression_settings(photo_type)
         
+        # Get settings instance
+        current_settings = get_settings()
+        
         # Prepare upload options
         upload_options = {
-            "folder": f"{settings.CLOUDINARY_FOLDER}/{folder}",
+            "folder": f"{current_settings.CLOUDINARY_FOLDER}/{folder}",
             "resource_type": "image",
             "quality": compression_settings["quality"],
             "transformation": [compression_settings] if photo_type != "original" else None,

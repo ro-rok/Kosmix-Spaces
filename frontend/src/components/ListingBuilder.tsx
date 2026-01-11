@@ -22,7 +22,7 @@ import {
   VerificationStatus
 } from "@/types/models";
 import { initializeAllOfferings, validateOfferingsForSubmission } from "@/lib/offerings";
-import { usePartnerListing, useSubmitListing, useCreatePartnerListing, useUpdatePartnerListing } from "@/hooks/useAuth";
+import { usePartnerListing, useSubmitListing, useSubmitExistingListing, useCreatePartnerListing, useUpdatePartnerListing } from "@/hooks/useAuth";
 import { trackPartnerListingSubmitted } from "@/lib/analytics";
 
 interface ListingBuilderProps {
@@ -41,6 +41,10 @@ export function ListingBuilder({ listingId, isEdit = false }: ListingBuilderProp
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const initialStep = (searchParams.get('step') as StepId) || 'basic-info';
+  
+  // Handle empty listingId - treat as new listing
+  const actualListingId = listingId && listingId.trim() ? listingId : undefined;
+  const actualIsEdit = isEdit && !!actualListingId;
   
   // State management
   const [currentStep, setCurrentStep] = useState<StepId>(initialStep);
@@ -64,14 +68,15 @@ export function ListingBuilder({ listingId, isEdit = false }: ListingBuilderProp
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // API hooks
-  const { data: existingListing, isLoading: isLoadingListing } = usePartnerListing(listingId || '');
+  const { data: existingListing, isLoading: isLoadingListing } = usePartnerListing(actualListingId || '');
   const submitListingMutation = useSubmitListing();
+  const submitExistingListingMutation = useSubmitExistingListing();
   const createListingMutation = useCreatePartnerListing();
   const updateListingMutation = useUpdatePartnerListing();
 
   // Load existing listing data if editing
   useEffect(() => {
-    if (isEdit && existingListing) {
+    if (actualIsEdit && existingListing) {
       // Map backend boolean fields to amenities
       const baseAmenities = existingListing.amenities || [];
       const derivedAmenities = [...baseAmenities];
@@ -106,7 +111,7 @@ export function ListingBuilder({ listingId, isEdit = false }: ListingBuilderProp
         },
       });
     }
-  }, [isEdit, existingListing]);
+  }, [actualIsEdit, existingListing]);
 
   // Helper function to map backend offerings to form structure
   const mapBackendOfferingsToForm = (listing: any): Record<OfferingType, OfferingFormData> => {
@@ -211,8 +216,8 @@ export function ListingBuilder({ listingId, isEdit = false }: ListingBuilderProp
     try {
       const listingData = mapFormDataToBackend(formData);
       
-      if (isEdit && listingId) {
-        await updateListingMutation.mutateAsync({ listingId, data: listingData });
+      if (actualIsEdit && actualListingId) {
+        await updateListingMutation.mutateAsync({ listingId: actualListingId, data: listingData });
         toast.success('Listing saved successfully');
       } else {
         const result = await createListingMutation.mutateAsync(listingData);
@@ -262,13 +267,13 @@ export function ListingBuilder({ listingId, isEdit = false }: ListingBuilderProp
         offerings: formData.offerings
       };
 
-      if (isEdit && listingId) {
-        // For editing, use the update endpoint (you may need to create this)
-        await updateListingMutation.mutateAsync({ listingId, data: submissionData });
-        toast.success('Listing updated and submitted for approval');
+      if (actualIsEdit && actualListingId) {
+        // For editing existing listing, just submit for review
+        await submitExistingListingMutation.mutateAsync(actualListingId);
+        toast.success('Listing submitted for approval');
         navigate('/partner/listings');
       } else {
-        // For new listings, use the submit endpoint
+        // For new listings, use the complete submit endpoint
         const result = await submitListingMutation.mutateAsync(submissionData);
         toast.success('Listing submitted for approval');
         
@@ -338,7 +343,7 @@ export function ListingBuilder({ listingId, isEdit = false }: ListingBuilderProp
 
   // Get status badge for existing listing
   const getStatusBadge = () => {
-    if (!isEdit || !existingListing) return null;
+    if (!actualIsEdit || !existingListing) return null;
 
     const status = existingListing.verificationStatus as VerificationStatus;
     const statusConfig = {
@@ -362,7 +367,7 @@ export function ListingBuilder({ listingId, isEdit = false }: ListingBuilderProp
   };
 
   // Check if fields should be locked (approved listings can't be edited)
-  const isFieldsLocked = isEdit && existingListing && 
+  const isFieldsLocked = actualIsEdit && existingListing && 
     existingListing.verificationStatus !== 'NEEDS_INFO' && 
     existingListing.status === 'approved';
 
@@ -387,12 +392,12 @@ export function ListingBuilder({ listingId, isEdit = false }: ListingBuilderProp
           <div>
             <div className="flex items-center gap-3">
               <h1 className="font-display text-2xl font-bold text-foreground">
-                {isEdit ? 'Edit Listing' : 'Create New Listing'}
+                {actualIsEdit ? 'Edit Listing' : 'Create New Listing'}
               </h1>
               {getStatusBadge()}
             </div>
             <p className="text-muted-foreground">
-              {isEdit ? 'Update your workspace listing' : 'Add your workspace to our platform'}
+              {actualIsEdit ? 'Update your workspace listing' : 'Add your workspace to our platform'}
             </p>
           </div>
         </div>
@@ -465,7 +470,7 @@ export function ListingBuilder({ listingId, isEdit = false }: ListingBuilderProp
               onChange={updateOfferings}
               errors={validationErrors}
               disabled={isFieldsLocked}
-              listingId={listingId}
+              listingId={actualListingId}
               onSaveListing={saveListing}
             />
           )}

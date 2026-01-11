@@ -138,37 +138,6 @@ async function apiRequest<T>(
   }
 }
 
-// Helper function to map backend listing to frontend format
-function mapBackendListing(backendListing: any): Listing {
-  return {
-    slug: backendListing.slug,
-    displayName: backendListing.displayName,
-    locality: backendListing.locality,
-    localityId: backendListing.locality.toLowerCase().replace(/\s+/g, '-'),
-    city: backendListing.city,
-    workspaceTypes: backendListing.workspaceTypes,
-    photos: backendListing.photos.map((photo: any) => photo.url),
-    seatCapacityMin: backendListing.seatCapacityMin,
-    seatCapacityMax: backendListing.seatCapacityMax,
-    availabilityStatus: backendListing.availabilityStatus.toLowerCase(),
-    budgetBand: backendListing.budgetBandId,
-    pricingMode: "on-enquiry",
-    nearMetro: backendListing.nearMetro,
-    metroNote: backendListing.metroNote,
-    parking: backendListing.parking !== "NONE",
-    powerBackup: backendListing.powerBackup,
-    gstInvoiceAvailable: backendListing.gstInvoiceAvailable,
-    accessHours: backendListing.accessHours,
-    amenities: backendListing.amenities,
-    meetingRoomsAddon: backendListing.meetingRooms?.addonOnly || false,
-    dealTags: backendListing.dealTags,
-    verificationStatus: backendListing.verificationStatus || "PENDING_REVIEW",
-    highlights: [], // Not provided by backend, could be derived from amenities
-    overview: backendListing.overview,
-    createdAt: backendListing.createdAt,
-  };
-}
-
 // Enhanced API client with comprehensive endpoint mapping
 export const api = {
   // Health check
@@ -233,7 +202,7 @@ export const api = {
       }>("/admin/auth/me", {}, "admin-me", 60000),
   },
 
-  // Public endpoints
+  // Public endpoints (premium only)
   public: {
     // Localities - cache for 10 minutes
     getLocalities: () => 
@@ -242,7 +211,17 @@ export const api = {
         flat: Array<{ id: string; name: string; city: string; popular: boolean; metroConnected?: boolean }>;
       }>("/public/localities", {}, "localities", 600000),
 
-    // Listings - cache based on params
+    // Cities - cache for 30 minutes
+    getCities: () =>
+      apiRequest<Array<{
+        id: string;
+        name: string;
+        displayName: string;
+        isActive: boolean;
+        metroAvailable: boolean;
+      }>>("/locations/cities", {}, "cities", 1800000),
+
+    // Premium listings - cache based on params
     getListings: (params: {
       locality?: string;
       budgetBandId?: string;
@@ -263,21 +242,18 @@ export const api = {
         }
       });
       
-      const cacheKey = `listings-${searchParams.toString()}`;
+      const cacheKey = `premium-listings-${searchParams.toString()}`;
       
       return apiRequest<{
         items: any[];
         total: number;
         page: number;
         pageSize: number;
-      }>(`/public/listings?${searchParams}`, {}, cacheKey, 300000).then(response => ({
-        ...response,
-        items: response.items.map(mapBackendListing)
-      }));
+      }>(`/public/listings?${searchParams}`, {}, cacheKey, 300000);
     },
 
     getListingBySlug: (slug: string) =>
-      apiRequest<any>(`/public/listings/${slug}`, {}, `listing-${slug}`, 300000).then(mapBackendListing),
+      apiRequest<any>(`/public/listings/${slug}`, {}, `premium-listing-${slug}`, 300000),
 
     // Leads (Enquiries)
     createLead: (lead: {
@@ -349,7 +325,7 @@ export const api = {
     getListing: (listingId: string) =>
       apiRequest<any>(`/partner/listings/${listingId}`),
 
-    // Submit complete listing with all photos
+    // Submit complete listing with all photos (new listing)
     submitListing: (data: {
       displayName: string;
       overview: string;
@@ -380,6 +356,16 @@ export const api = {
       }>("/partner/listings/submit", {
         method: "POST",
         body: JSON.stringify(data),
+      }),
+
+    // Submit existing listing for review
+    submitExistingListing: (listingId: string) =>
+      apiRequest<{
+        ok: boolean;
+        message: string;
+        listing: any;
+      }>(`/partner/listings/${listingId}/submit`, {
+        method: "POST",
       }),
 
     createListing: (data: any) =>
@@ -422,6 +408,35 @@ export const api = {
       apiRequest<{ ok: boolean; message: string }>(`/partner/delete-photo/${encodeURIComponent(publicId)}`, {
         method: "DELETE",
       }),
+
+    // Add new locality
+    addLocality: (data: {
+      name: string;
+      cityId: string;
+      metroConnected?: boolean;
+      metroNote?: string;
+    }) =>
+      apiRequest<{
+        id: string;
+        name: string;
+        cityId: string;
+        status: string;
+        message?: string;
+      }>("/locations/localities", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+
+    // Get partner listings statistics
+    getListingsStats: () =>
+      apiRequest<{
+        totalListings: number;
+        pendingReview: number;
+        approved: number;
+        rejected: number;
+        totalViews: number;
+        totalEnquiries: number;
+      }>("/partner/listings/stats", {}, "partner-listings-stats", 300000),
   },
 
   // Admin endpoints
@@ -486,24 +501,8 @@ export const api = {
         method: "DELETE",
       }),
 
-    // Listing moderation
+    // Premium listing moderation (only)
     getListings: (params: {
-      status?: string;
-      page?: number;
-      pageSize?: number;
-    } = {}) => {
-      const searchParams = new URLSearchParams();
-      Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
-          searchParams.append(key, String(value));
-        }
-      });
-      
-      return apiRequest<Array<any>>(`/admin/listings?${searchParams}`);
-    },
-
-    // Premium listing moderation
-    getPremiumListings: (params: {
       status?: string;
       page?: number;
       pageSize?: number;
@@ -518,59 +517,77 @@ export const api = {
       return apiRequest<Array<any>>(`/admin/premium-listings?${searchParams}`);
     },
 
-    getPremiumListing: (listingId: string) =>
+    getListing: (listingId: string) =>
       apiRequest<any>(`/admin/premium-listings/${listingId}`),
 
-    approvePremiumListing: (listingId: string, notes?: string) =>
+    approveListing: (listingId: string, notes?: string) =>
       apiRequest<{ ok: boolean; message: string }>(`/admin/premium-listings/${listingId}/approve`, {
         method: "POST",
         body: JSON.stringify({ notes }),
       }),
 
-    needsInfoPremiumListing: (listingId: string, notes: string) =>
+    needsInfoListing: (listingId: string, notes: string) =>
       apiRequest<{ ok: boolean; message: string }>(`/admin/premium-listings/${listingId}/needs-info`, {
         method: "POST",
         body: JSON.stringify({ notes }),
       }),
 
-    rejectPremiumListing: (listingId: string, reason: string) =>
+    rejectListing: (listingId: string, reason: string) =>
       apiRequest<{ ok: boolean; message: string }>(`/admin/premium-listings/${listingId}/reject`, {
         method: "POST",
         body: JSON.stringify({ reason }),
       }),
 
-    getListing: (listingId: string) =>
-      apiRequest<any>(`/admin/listings/${listingId}`),
+    // Locality management
+    getLocalities: (params: {
+      query?: string;
+      cityId?: string;
+      status?: string;
+      page?: number;
+      pageSize?: number;
+    } = {}) => {
+      const searchParams = new URLSearchParams();
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          searchParams.append(key, String(value));
+        }
+      });
+      
+      return apiRequest<{
+        localities: Array<{
+          id: string;
+          name: string;
+          cityId: string;
+          cityName: string;
+          status: string;
+          popular: boolean;
+          metroConnected: boolean;
+          addedBy?: string;
+          addedByType: string;
+          listingCount: number;
+          enquiryCount: number;
+          createdAt: string;
+        }>;
+        totalCount: number;
+        approvedCount: number;
+        pendingCount: number;
+        rejectedCount: number;
+      }>(`/locations/localities/search?${searchParams}`);
+    },
 
-    updateVerification: (listingId: string, data: {
-      checks: {
-        photosQuality?: boolean;
-        contactVerified?: boolean;
-        locationAccurate?: boolean;
-      };
-      notes?: string;
+    approveLocality: (localityId: string, data: {
+      action: "APPROVE" | "REJECT";
+      rejectionReason?: string;
+      popular?: boolean;
     }) =>
-      apiRequest<{ ok: boolean }>(`/admin/listings/${listingId}/verification`, {
-        method: "PATCH",
+      apiRequest<{
+        id: string;
+        name: string;
+        status: string;
+        message?: string;
+      }>(`/locations/localities/${localityId}/approve`, {
+        method: "POST",
         body: JSON.stringify(data),
-      }),
-
-    approveListing: (listingId: string, notes?: string) =>
-      apiRequest<{ ok: boolean; message: string }>(`/admin/listings/${listingId}/approve`, {
-        method: "POST",
-        body: JSON.stringify({ notes }),
-      }),
-
-    needsInfoListing: (listingId: string, notes: string) =>
-      apiRequest<{ ok: boolean; message: string }>(`/admin/listings/${listingId}/needs-info`, {
-        method: "POST",
-        body: JSON.stringify({ notes }),
-      }),
-
-    rejectListing: (listingId: string, reason: string) =>
-      apiRequest<{ ok: boolean; message: string }>(`/admin/listings/${listingId}/reject`, {
-        method: "POST",
-        body: JSON.stringify({ reason }),
       }),
 
     // Lead management
@@ -672,7 +689,7 @@ export const api = {
         conversionRate: number;
         topLocalities: Array<{ locality: string; searches: number; views: number }>;
         topListings: Array<{ listingId: string; displayName: string; views: number; enquiries: number }>;
-      }>(`/analytics/admin${queryString ? `?${queryString}` : ''}`);
+      }>(`/analytics/admin${queryString ? `?${queryString}` : ''}`, {}, `admin-analytics-${queryString}`, 300000);
     },
 
     // Get partner-specific analytics
@@ -690,7 +707,7 @@ export const api = {
         enquiries: number;
         conversionRate: number;
         topListings: Array<{ listingId: string; displayName: string; views: number; enquiries: number }>;
-      }>(`/analytics/partner/${partnerId}${queryString ? `?${queryString}` : ''}`);
+      }>(`/analytics/partner/${partnerId}${queryString ? `?${queryString}` : ''}`, {}, `partner-analytics-${partnerId}-${queryString}`, 300000);
     },
   },
 

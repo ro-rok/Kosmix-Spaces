@@ -32,8 +32,8 @@ const AdminListingDetail = lazy(() => import("@/admin/pages/AdminListingDetail")
 const AdminLeads = lazy(() => import("@/admin/pages/AdminLeads").then(m => ({ default: m.AdminLeads })));
 const AdminVisits = lazy(() => import("@/admin/pages/AdminVisits").then(m => ({ default: m.AdminVisits })));
 const AdminPartners = lazy(() => import("@/admin/pages/AdminPartners").then(m => ({ default: m.AdminPartners })));
+const AdminLocalities = lazy(() => import("@/admin/pages/AdminLocalities"));
 const AdminLogin = lazy(() => import("@/admin/pages/AdminLogin").then(m => ({ default: m.AdminLogin })));
-const AdminAnalytics = lazy(() => import("@/admin/pages/AdminAnalytics"));
 
 // Partner pages - lazy loaded to reduce initial bundle size
 const PartnerLayout = lazy(() => import("@/partner/PartnerLayout").then(m => ({ default: m.PartnerLayout })));
@@ -42,7 +42,6 @@ const PartnerDashboard = lazy(() => import("@/partner/pages/PartnerDashboard").t
 const PartnerListings = lazy(() => import("@/partner/pages/PartnerListings").then(m => ({ default: m.PartnerListings })));
 const PartnerListingDetail = lazy(() => import("@/partner/pages/PartnerListingDetail").then(m => ({ default: m.PartnerListingDetail })));
 const SubmitListing = lazy(() => import("@/partner/pages/SubmitListing").then(m => ({ default: m.SubmitListing })));
-const PartnerAnalytics = lazy(() => import("@/partner/pages/PartnerAnalytics"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -108,7 +107,7 @@ const App = () => {
               <Route element={<Layout />}>
                 <Route path="/" element={<Index />} />
                 <Route path="/explore" element={<Explore />} />
-                <Route path="/spaces/:slug" element={<PremiumSpaceDetail />} />
+                <Route path="/spaces/*" element={<PremiumSpaceDetail />} />
                 <Route path="/how-it-works" element={<HowItWorks />} />
                 <Route path="/trust" element={<Trust />} />
                 <Route path="/partners" element={<Partners />} />
@@ -168,6 +167,14 @@ const App = () => {
                   } 
                 />
                 <Route 
+                  path="localities" 
+                  element={
+                    <Suspense fallback={<InlineLoading text="Loading localities..." />}>
+                      <AdminLocalities />
+                    </Suspense>
+                  } 
+                />
+                <Route 
                   path="leads" 
                   element={
                     <Suspense fallback={<InlineLoading text="Loading leads..." />}>
@@ -180,14 +187,6 @@ const App = () => {
                   element={
                     <Suspense fallback={<InlineLoading text="Loading visits..." />}>
                       <AdminVisits />
-                    </Suspense>
-                  } 
-                />
-                <Route 
-                  path="analytics" 
-                  element={
-                    <Suspense fallback={<InlineLoading text="Loading analytics..." />}>
-                      <AdminAnalytics />
                     </Suspense>
                   } 
                 />
@@ -241,14 +240,6 @@ const App = () => {
                   element={
                     <Suspense fallback={<InlineLoading text="Loading listing details..." />}>
                       <PartnerListingDetail />
-                    </Suspense>
-                  } 
-                />
-                <Route 
-                  path="analytics" 
-                  element={
-                    <Suspense fallback={<InlineLoading text="Loading analytics..." />}>
-                      <PartnerAnalytics />
                     </Suspense>
                   } 
                 />

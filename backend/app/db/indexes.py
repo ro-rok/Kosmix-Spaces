@@ -65,6 +65,18 @@ async def create_indexes():
     await safe_create_index(db.partners, "email", unique=True)
     await safe_create_index(db.partners, "status")
     
+    # Cities indexes
+    await safe_create_index(db.cities, "id", unique=True)
+    await safe_create_index(db.cities, "name")
+    
+    # Localities indexes
+    await safe_create_index(db.localities, "id", unique=True)
+    await safe_create_index(db.localities, "cityId")
+    await safe_create_index(db.localities, "status")
+    await safe_create_index(db.localities, "name")
+    await safe_create_index(db.localities, [("cityId", 1), ("status", 1)])
+    await safe_create_index(db.localities, [("popular", -1), ("listingCount", -1)])
+    
     # Verifications indexes
     await safe_create_index(db.verifications, [("entityType", 1), ("entityId", 1)])
     await safe_create_index(db.verifications, "status")

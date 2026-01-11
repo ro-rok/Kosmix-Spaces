@@ -14,20 +14,18 @@ from app.middleware.error_tracking import ErrorTrackingMiddleware, SecurityHeade
 # Import routers
 from app.routers import (
     health, 
-    public, 
     premium_public,
     auth_partner, 
     auth_admin, 
-    partner_listings,
     premium_listings,
-    admin_listings, 
     admin_premium_listings,
     admin_partners, 
     leads, 
     visits, 
     analytics,
     design_system,
-    performance
+    performance,
+    locations
 )
 
 settings = get_settings()
@@ -77,8 +75,9 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
+    expose_headers=["X-Request-ID"],
 )
 
 # Add custom middleware
@@ -162,20 +161,20 @@ async def general_exception_handler(request: Request, exc: Exception):
 # Include routers
 app.include_router(health.router, prefix="/api", tags=["Health"])
 
-# Public routes (enhanced and legacy)
-app.include_router(premium_public.router, prefix="/api/public", tags=["Public Enhanced"])
-app.include_router(public.router, prefix="/api/public/legacy", tags=["Public Legacy"])
+# Public routes (premium only)
+app.include_router(premium_public.router, prefix="/api/public", tags=["Public Premium"])
+
+# Location management routes
+app.include_router(locations.router, tags=["Locations"])
 
 # Authentication routes
 app.include_router(auth_partner.router, prefix="/api/partner/auth", tags=["Partner Auth"])
 app.include_router(auth_admin.router, prefix="/api/admin/auth", tags=["Admin Auth"])
 
-# Partner routes (enhanced and legacy)
+# Partner routes (premium only)
 app.include_router(premium_listings.router, prefix="/api/partner", tags=["Partner Premium"])
-app.include_router(partner_listings.router, prefix="/api/partner/legacy", tags=["Partner Legacy"])
 
-# Admin routes
-app.include_router(admin_listings.router, prefix="/api/admin", tags=["Admin Listings"])
+# Admin routes (premium only)
 app.include_router(admin_premium_listings.router, prefix="/api/admin", tags=["Admin Premium Listings"])
 app.include_router(admin_partners.router, prefix="/api/admin", tags=["Admin Partners"])
 app.include_router(leads.router, prefix="/api/admin", tags=["Admin Leads"])
@@ -198,6 +197,7 @@ async def root():
         "message": "Kosmix Spaces Premium API",
         "version": "2.0.0",
         "features": [
+            "Premium listing management",
             "Enhanced slug-based routing",
             "Premium offering management",
             "Advanced photo management",

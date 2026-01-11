@@ -88,7 +88,9 @@ async def upload_photo_to_cloudinary(
     partner_id = current_user["partnerId"]
     
     # Validate file
-    validate_image_file(file)
+    is_valid, error_message = validate_image_file(file)
+    if not is_valid:
+        raise HTTPException(status_code=400, detail=error_message)
     
     try:
         # Upload to Cloudinary
@@ -98,11 +100,18 @@ async def upload_photo_to_cloudinary(
             tags=[f"partner:{partner_id}", f"offering:{offering_type}"]
         )
         
+        # Check if the result contains the expected fields
+        if not isinstance(result, dict):
+            raise HTTPException(status_code=500, detail=f"Unexpected Cloudinary response type: {type(result)}")
+        
+        if "url" not in result:
+            raise HTTPException(status_code=500, detail=f"Cloudinary response missing url. Response: {result}")
+        
         return {
             "ok": True,
             "photo": {
-                "url": result["secure_url"],
-                "publicId": result["public_id"],
+                "url": result["url"],
+                "publicId": result["publicId"],
                 "width": result["width"],
                 "height": result["height"],
                 "bytes": result["bytes"],
@@ -148,7 +157,26 @@ async def submit_listing_with_photos(
     """
     partner_id = current_user["partnerId"]
     
+    print(f"DEBUG: Starting submission for partner {partner_id}")
+    print(f"DEBUG: Request data - displayName: {request.displayName}")
+    print(f"DEBUG: Request data - locality: {request.locality}")
+    print(f"DEBUG: Request data - offerings keys: {list(request.offerings.keys())}")
+    
     try:
+        # Collect all photos from offerings to use as hero photos
+        all_photos = []
+        for offering_type, offering_data in request.offerings.items():
+            if offering_data.get("enabled") and offering_data.get("photos"):
+                for photo_data in offering_data["photos"]:
+                    # Validate photo data has required fields
+                    if all(key in photo_data for key in ["url", "publicId", "width", "height", "bytes", "format"]):
+                        all_photos.append(photo_data)
+        
+        # Use first photo as hero photo if no hero photos provided
+        hero_photos_to_add = request.heroPhotos if request.heroPhotos else []
+        if not hero_photos_to_add and all_photos:
+            hero_photos_to_add = [all_photos[0]]  # Use first photo from offerings as hero
+        
         # Create the listing with all data
         listing_data = {
             "displayName": request.displayName,
@@ -165,49 +193,102 @@ async def submit_listing_with_photos(
         }
         
         # Create the listing
+        print(f"DEBUG: Creating listing with data: {listing_data}")
         listing = await create_premium_listing(partner_id, listing_data)
         listing_id = str(listing["_id"])
+        print(f"DEBUG: Created listing with ID: {listing_id}")
         
         # Add hero photos to database
-        for photo_data in request.heroPhotos:
-            await add_hero_photo(
-                listing_id=listing_id,
-                partner_id=partner_id,
-                photo_data=photo_data.model_dump()
-            )
+        for photo_data in hero_photos_to_add:
+            try:
+                await add_hero_photo(
+                    listing_id=listing_id,
+                    partner_id=partner_id,
+                    photo_data=photo_data if isinstance(photo_data, dict) else photo_data
+                )
+            except Exception as e:
+                print(f"Error adding hero photo: {e}")
+                # Continue with other photos
         
         # Add offering photos to database
         for offering_type, offering_data in request.offerings.items():
-            if offering_data.get("enabled") and offering_data.get("photos"):
-                # Update offering data
-                await update_offering(
-                    listing_id=listing_id,
-                    partner_id=partner_id,
-                    offering_type=offering_type,
-                    offering_data=offering_data
-                )
-                
-                # Add photos for this offering
-                for photo_data in offering_data["photos"]:
-                    await add_offering_photo(
+            if offering_data.get("enabled"):
+                try:
+                    # Update offering data
+                    await update_offering(
                         listing_id=listing_id,
                         partner_id=partner_id,
                         offering_type=offering_type,
-                        photo_data=photo_data
+                        offering_data=offering_data
                     )
+                    
+                    # Add photos for this offering if they exist
+                    if offering_data.get("photos"):
+                        for photo_data in offering_data["photos"]:
+                            try:
+                                await add_offering_photo(
+                                    listing_id=listing_id,
+                                    partner_id=partner_id,
+                                    offering_type=offering_type,
+                                    photo_data=photo_data
+                                )
+                            except Exception as e:
+                                print(f"Error adding offering photo for {offering_type}: {e}")
+                                # Continue with other photos
+                except Exception as e:
+                    print(f"Error updating offering {offering_type}: {e}")
+                    # Continue with other offerings
         
         # Submit for review
         await submit_listing_for_review(listing_id, partner_id)
+        
+        # Get final listing data
+        final_listing = await get_premium_listing(listing_id, partner_id)
         
         return {
             "ok": True,
             "listingId": listing_id,
             "message": "Listing submitted successfully",
-            "listing": listing_to_public_response(await get_premium_listing(listing_id, partner_id))
+            "listing": listing_to_public_response(final_listing)
         }
         
     except Exception as e:
+        print(f"DEBUG: Error in submission: {str(e)}")
+        print(f"DEBUG: Error type: {type(e)}")
+        import traceback
+        print(f"DEBUG: Traceback: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=f"Failed to submit listing: {str(e)}")
+
+
+@router.get("/listings/stats", response_model=dict)
+async def get_partner_listings_stats(
+    current_user: dict = Depends(require_partner)
+):
+    """Get partner listings statistics."""
+    partner_id = current_user["partnerId"]
+    db = get_database()
+    
+    # Get all listings for this partner
+    listings = await db.premium_listings.find({"partnerId": ObjectId(partner_id)}).to_list(length=None)
+    
+    # Count by status
+    total_listings = len(listings)
+    pending_review = len([l for l in listings if l.get("verificationStatus") in ["PENDING", "NEEDS_INFO"]])
+    approved = len([l for l in listings if l.get("verificationStatus") in ["APPROVED", "APPROVED_VERIFIED"]])
+    rejected = len([l for l in listings if l.get("verificationStatus") == "REJECTED"])
+    
+    # Get analytics data
+    total_views = sum(l.get("viewCount", 0) for l in listings)
+    total_enquiries = sum(l.get("enquiryCount", 0) for l in listings)
+    
+    return {
+        "totalListings": total_listings,
+        "pendingReview": pending_review,
+        "approved": approved,
+        "rejected": rejected,
+        "totalViews": total_views,
+        "totalEnquiries": total_enquiries
+    }
 
 
 @router.get("/listings", response_model=dict)
@@ -238,10 +319,44 @@ async def get_listing(
     listing_id: str,
     current_user: dict = Depends(require_partner)
 ):
-    """Get listing by ID (partner's own listings only)."""
+    """Get listing by ID or slug (partner's own listings only)."""
     partner_id = current_user["partnerId"]
+    db = get_database()
     
-    listing = await get_premium_listing(listing_id, partner_id)
+    print(f"DEBUG: Partner {partner_id} requesting listing {listing_id}")
+    
+    # Try to find by ObjectId first, then by slug
+    listing = None
+    try:
+        listing = await db.premium_listings.find_one({
+            "_id": ObjectId(listing_id),
+            "partnerId": ObjectId(partner_id)
+        })
+        print(f"DEBUG: Found by ObjectId: {listing is not None}")
+    except Exception as e:
+        print(f"DEBUG: ObjectId lookup failed: {e}")
+    
+    # If not found by ID, try by slug
+    if not listing:
+        listing = await db.premium_listings.find_one({
+            "slugData.slug": listing_id,
+            "partnerId": ObjectId(partner_id)
+        })
+        print(f"DEBUG: Found by slug: {listing is not None}")
+    
+    # Also try partial slug match
+    if not listing:
+        listing = await db.premium_listings.find_one({
+            "slugData.slug": {"$regex": listing_id, "$options": "i"},
+            "partnerId": ObjectId(partner_id)
+        })
+        print(f"DEBUG: Found by partial slug: {listing is not None}")
+    
+    if not listing:
+        print(f"DEBUG: No listing found for partner {partner_id} with identifier {listing_id}")
+        raise HTTPException(status_code=404, detail="Listing not found")
+    
+    print(f"DEBUG: Returning listing: {listing['_id']}")
     return listing_to_public_response(listing)
 
 
@@ -541,22 +656,6 @@ async def submit_listing(
         "message": "Listing submitted for review",
         "listing": listing_to_public_response(listing)
     }
-
-
-# Public endpoints for premium listings
-@router.get("/public/listings/{slug}", response_model=dict)
-async def get_public_listing_by_slug(slug: str):
-    """Get public listing detail by slug."""
-    listing = await get_premium_listing_by_slug(slug)
-    
-    # Only return published listings
-    if not listing.get("isPublished") or listing.get("verificationStatus") != "APPROVED_VERIFIED":
-        raise NotFoundError("Listing", slug)
-    
-    # Increment view count
-    await increment_listing_view(str(listing["_id"]))
-    
-    return listing_to_public_response(listing)
 
 
 # Additional endpoints for listing builder

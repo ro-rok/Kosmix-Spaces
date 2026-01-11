@@ -19,6 +19,26 @@ PricingUnit = Literal["month", "hr", "day", "NA"]
 BudgetBand = Literal["₹", "₹₹", "₹₹₹"]
 
 
+class HeroPhoto(BaseModel):
+    """Hero photo for listing with compression metadata."""
+    url: str
+    publicId: str
+    width: int
+    height: int
+    bytes: int
+    format: str
+    order: int = 0  # For photo ordering
+    
+    # Compression metadata
+    compressionRatio: Optional[int] = 0  # Percentage compression achieved
+    originalSize: Optional[int] = None  # Original file size in bytes
+    variants: Optional[Dict[str, str]] = {}  # Different size variants (thumbnail, mobile, etc.)
+    
+    # Upload metadata
+    uploadedAt: datetime = Field(default_factory=datetime.utcnow)
+    tags: List[str] = []  # Cloudinary tags for organization
+
+
 class OfferingPhoto(BaseModel):
     """Photo specific to an offering with compression metadata."""
     url: str

@@ -10,7 +10,8 @@ import {
   Shield,
   LogOut,
   UserCheck,
-  BarChart3
+  BarChart3,
+  MapPin
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
@@ -20,9 +21,9 @@ const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/admin" },
   { icon: Building2, label: "Listings", href: "/admin/listings" },
   { icon: UserCheck, label: "Partners", href: "/admin/partners" },
+  { icon: MapPin, label: "Localities", href: "/admin/localities" },
   { icon: Users, label: "Leads", href: "/admin/leads" },
   { icon: Calendar, label: "Visits", href: "/admin/visits" },
-  { icon: BarChart3, label: "Analytics", href: "/admin/analytics" },
 ];
 
 export function AdminLayout() {

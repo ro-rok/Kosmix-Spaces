@@ -42,7 +42,22 @@ export function AdminLogin() {
       navigate("/admin");
     } catch (error: any) {
       console.error("Login error:", error);
-      toast.error(error.message || "Login failed");
+      
+      // Show specific error messages
+      let errorMessage = "Login failed";
+      if (error.message) {
+        if (error.message.includes("Wrong password")) {
+          errorMessage = "❌ Wrong password. Please try again.";
+        } else if (error.message.includes("Invalid email")) {
+          errorMessage = "❌ Invalid email address.";
+        } else if (error.message.includes("Authentication required")) {
+          errorMessage = "❌ Please check your credentials and try again.";
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }

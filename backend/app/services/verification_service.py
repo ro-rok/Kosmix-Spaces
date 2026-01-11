@@ -100,13 +100,14 @@ async def approve_listing(listing_id: str, admin_id: str, notes: Optional[str] =
     db = get_database()
     now = datetime.utcnow()
     
-    # Update listing
-    await db.listings.update_one(
+    # Update premium listing
+    await db.premium_listings.update_one(
         {"_id": ObjectId(listing_id)},
         {
             "$set": {
                 "verificationStatus": "APPROVED_VERIFIED",
                 "publishedAt": now,
+                "isPublished": True,
                 "updatedAt": now
             }
         }
@@ -139,8 +140,8 @@ async def set_needs_info(listing_id: str, admin_id: str, notes: str):
     db = get_database()
     now = datetime.utcnow()
     
-    # Update listing
-    await db.listings.update_one(
+    # Update premium listing
+    await db.premium_listings.update_one(
         {"_id": ObjectId(listing_id)},
         {
             "$set": {
@@ -178,8 +179,8 @@ async def reject_listing(listing_id: str, admin_id: str, reason: str):
     db = get_database()
     now = datetime.utcnow()
     
-    # Update listing
-    await db.listings.update_one(
+    # Update premium listing
+    await db.premium_listings.update_one(
         {"_id": ObjectId(listing_id)},
         {
             "$set": {

@@ -30,6 +30,9 @@ class Settings(BaseSettings):
     # CORS
     CORS_ORIGINS: str = "http://localhost:3000"
     
+    # Debug
+    DEBUG: bool = True
+    
     # Admin (for MVP - single admin user)
     ADMIN_EMAIL: str = "admin@kosmix.com"
     ADMIN_PASSWORD_HASH: str  # bcrypt hash
@@ -43,6 +46,11 @@ class Settings(BaseSettings):
     def cors_origins_list(self) -> List[str]:
         """Parse CORS origins from comma-separated string."""
         return [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()]
+    
+    @property
+    def debug(self) -> bool:
+        """Check if debug mode is enabled."""
+        return self.DEBUG or self.APP_ENV.lower() in ["dev", "development"]
 
 
 @lru_cache()

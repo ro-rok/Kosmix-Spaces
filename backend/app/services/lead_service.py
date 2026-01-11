@@ -50,6 +50,21 @@ async def create_lead(lead_data: dict) -> dict:
     result = await db.leads.insert_one(lead_doc)
     lead_doc["_id"] = result.inserted_id
     
+    # Update locality statistics for enquiries
+    if "preferredLocalities" in lead_data and lead_data["preferredLocalities"]:
+        from app.services.location_service import LocationService
+        location_service = LocationService(db)
+        
+        for locality_name in lead_data["preferredLocalities"]:
+            # Try to find the city for this locality (we'll use a simple approach)
+            # In a real implementation, you might want to store city info with the lead
+            city_name = "Delhi"  # Default, could be improved by looking up the locality
+            await location_service.update_locality_stats(
+                locality_name=locality_name,
+                city_name=city_name,
+                increment_enquiries=1
+            )
+    
     return lead_doc
 
 

@@ -10,7 +10,6 @@ from app.models.analytics import (
     AnalyticsEvent, AnalyticsEventCreate, AnalyticsSummary, PartnerAnalytics,
     EventName, UserRole, ListingPerformance, LocalityPerformance, PartnerPerformance
 )
-from app.models.listing import WorkspaceListing
 from app.models.partner import PartnerAccount
 
 
