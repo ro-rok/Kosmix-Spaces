@@ -24,24 +24,7 @@ export default defineConfig(({ mode }) => ({
           'ui-vendor': ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-select'],
           'query-vendor': ['@tanstack/react-query'],
           
-          // Feature-based chunks
-          'admin-pages': [
-            './src/admin/pages/AdminDashboard',
-            './src/admin/pages/AdminListings',
-            './src/admin/pages/AdminPartners',
-            './src/admin/pages/AdminLeads',
-            './src/admin/pages/AdminVisits',
-            './src/admin/pages/AdminAnalytics'
-          ],
-          'partner-pages': [
-            './src/partner/pages/PartnerDashboard',
-            './src/partner/pages/PartnerListings',
-            './src/partner/pages/SubmitListing',
-            './src/partner/pages/PartnerAnalytics'
-          ],
-          
-          // Utility chunks
-          'utils': ['./src/lib/utils', './src/lib/api', './src/lib/analytics'],
+          // Performance chunk
           'performance': ['./src/lib/performance', './src/lib/image-compression']
         }
       }
