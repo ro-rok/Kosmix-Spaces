@@ -97,7 +97,12 @@ const App = () => {
           <Sonner />
           <ConnectionStatus />
           <SessionExpiryHandler />
-          <BrowserRouter>
+          <BrowserRouter
+            future={{
+              v7_startTransition: true,
+              v7_relativeSplatPath: true,
+            }}
+          >
             <Routes>
               {/* Public Routes - No lazy loading for better UX */}
               <Route element={<Layout />}>

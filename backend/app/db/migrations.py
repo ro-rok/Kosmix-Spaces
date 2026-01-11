@@ -1,10 +1,26 @@
 """Database migration utilities."""
 import asyncio
+import logging
 from datetime import datetime
 from typing import List, Dict, Any
 from bson import ObjectId
+from pymongo.errors import OperationFailure
 
 from app.db.mongodb import connect_to_mongo, get_database, close_mongo_connection
+
+logger = logging.getLogger(__name__)
+
+
+async def safe_create_index(collection, keys, **kwargs):
+    """Safely create an index, ignoring conflicts with existing indexes."""
+    try:
+        await collection.create_index(keys, **kwargs)
+    except OperationFailure as e:
+        if e.code == 86:  # IndexKeySpecsConflict
+            logger.debug(f"Index already exists for {collection.name}: {keys}")
+        else:
+            logger.error(f"Failed to create index for {collection.name}: {e}")
+            raise
 
 
 class Migration:
@@ -37,8 +53,8 @@ class Migration001AddAdminModel(Migration):
             await db.create_collection("admins")
         
         # Create indexes
-        await db.admins.create_index("email", unique=True)
-        await db.admins.create_index("status")
+        await safe_create_index(db.admins, "email", unique=True)
+        await safe_create_index(db.admins, "status")
         
         print("✅ Created admin collection and indexes")
     
@@ -57,21 +73,21 @@ class Migration002AddAnalyticsIndexes(Migration):
     async def up(self, db):
         """Add compound indexes for analytics queries."""
         # Time-based queries with filters
-        await db.analytics_events.create_index([
+        await safe_create_index(db.analytics_events, [
             ("timestamp", -1),
             ("eventName", 1),
             ("locality", 1)
         ])
         
         # Partner analytics
-        await db.analytics_events.create_index([
+        await safe_create_index(db.analytics_events, [
             ("partnerId", 1),
             ("timestamp", -1),
             ("eventName", 1)
         ])
         
         # Listing analytics
-        await db.analytics_events.create_index([
+        await safe_create_index(db.analytics_events, [
             ("listingId", 1),
             ("timestamp", -1),
             ("eventName", 1)
@@ -94,7 +110,7 @@ class Migration003AddListingSearchIndexes(Migration):
     
     async def up(self, db):
         """Add text search index."""
-        await db.listings.create_index([
+        await safe_create_index(db.listings, [
             ("displayName", "text"),
             ("locality", "text"),
             ("overview", "text"),

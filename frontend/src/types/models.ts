@@ -74,6 +74,16 @@ export interface Listing {
   createdAt: string;
 }
 
+// Photo data structure
+export interface PhotoData {
+  url: string;
+  publicId: string;
+  width: number;
+  height: number;
+  bytes: number;
+  format: string;
+}
+
 // Enhanced offering data structure for the new system
 export interface OfferingData {
   type: OfferingType;
@@ -81,15 +91,15 @@ export interface OfferingData {
   description: string;
   features: string[];
   startingPrice?: number;
-  unit?: 'month' | 'hr' | 'NA';
+  unit?: 'month' | 'hr' | 'day' | 'NA';
   budgetBand?: string;
-  photos: string[];
+  photos: PhotoData[];
   enabled: boolean;
 }
 
 // Offering form data with upload progress tracking
 export interface OfferingFormData extends OfferingData {
-  uploadProgress: Record<string, number>;
+  uploadProgress?: Record<string, number>;
 }
 
 // Enhanced listing data for the new system

@@ -145,8 +145,8 @@ export function useAdminListing(listingId: string) {
   const userType = getStoredUserType();
   
   return useQuery({
-    queryKey: ["admin", "listing", listingId],
-    queryFn: () => api.admin.getListing(listingId),
+    queryKey: ["admin", "premium-listing", listingId],
+    queryFn: () => api.admin.getPremiumListing(listingId),
     enabled: !!token && userType === "admin" && !!listingId,
     staleTime: 1000 * 60 * 2, // 2 minutes
   });
@@ -157,10 +157,10 @@ export function useApproveListing() {
   
   return useMutation({
     mutationFn: ({ listingId, notes }: { listingId: string; notes?: string }) => 
-      api.admin.approveListing(listingId, notes),
+      api.admin.approvePremiumListing(listingId, notes),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin", "listings"] });
-      queryClient.invalidateQueries({ queryKey: ["admin", "listing"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "premium-listings"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "premium-listing"] });
     },
   });
 }
@@ -170,10 +170,10 @@ export function useNeedsInfoListing() {
   
   return useMutation({
     mutationFn: ({ listingId, notes }: { listingId: string; notes: string }) => 
-      api.admin.needsInfoListing(listingId, notes),
+      api.admin.needsInfoPremiumListing(listingId, notes),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin", "listings"] });
-      queryClient.invalidateQueries({ queryKey: ["admin", "listing"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "premium-listings"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "premium-listing"] });
     },
   });
 }
@@ -183,10 +183,10 @@ export function useRejectListing() {
   
   return useMutation({
     mutationFn: ({ listingId, reason }: { listingId: string; reason: string }) => 
-      api.admin.rejectListing(listingId, reason),
+      api.admin.rejectPremiumListing(listingId, reason),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin", "listings"] });
-      queryClient.invalidateQueries({ queryKey: ["admin", "listing"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "premium-listings"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "premium-listing"] });
     },
   });
 }
@@ -326,29 +326,18 @@ export function useUpdatePartnerListing() {
 
 // Partner photo management hooks
 export function useUploadPhoto() {
-  const queryClient = useQueryClient();
-  
   return useMutation({
-    mutationFn: ({ listingId, file }: { listingId: string; file: File }) => 
-      api.partner.uploadPhoto(listingId, file),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["partner", "listings"] });
-      queryClient.invalidateQueries({ queryKey: ["partner", "listing"] });
-    },
+    mutationFn: ({ file, offeringType }: { file: File; offeringType?: string }) => 
+      api.partner.uploadPhoto(file, offeringType || "hero"),
   });
 }
 
 export function useDeletePhoto() {
-  const queryClient = useQueryClient();
-  
   return useMutation({
-    mutationFn: ({ listingId, publicId }: { listingId: string; publicId: string }) => 
-      api.partner.deletePhoto(listingId, publicId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["partner", "listings"] });
-      queryClient.invalidateQueries({ queryKey: ["partner", "listing"] });
-    },
+    mutationFn: (publicId: string) => 
+      api.partner.deletePhoto(publicId),
   });
+}
 }
 
 // Logout hook

@@ -38,6 +38,8 @@ import { toast } from "sonner";
 const statusOptions = [
   { value: "all", label: "All Statuses" },
   { value: "DRAFT", label: "Draft" },
+  { value: "PENDING", label: "Pending" },
+  { value: "SUBMITTED", label: "Submitted for Review" },
   { value: "PENDING_REVIEW", label: "Pending Review" },
   { value: "NEEDS_INFO", label: "Needs Info" },
   { value: "APPROVED_VERIFIED", label: "Approved" },
@@ -254,13 +256,15 @@ export function AdminListings() {
                     
                     <div className="flex gap-2">
                       <Button variant="outline" size="sm" className="flex-1 btn-premium" asChild>
-                        <Link to={`/admin/listings/${listing.slugData?.slug || listing.slug || listing.listingId}`}>
+                        <Link to={`/admin/listings/${listing.listingId}`}>
                           <Eye className="h-4 w-4" />
                           View Details
                         </Link>
                       </Button>
                       
-                      {listing.verificationStatus === "PENDING_REVIEW" && (
+                      {(listing.verificationStatus === "PENDING_REVIEW" || 
+                        listing.verificationStatus === "PENDING" || 
+                        listing.verificationStatus === "SUBMITTED") && (
                         <>
                           <Button
                             onClick={() => handleApprove(listing.listingId, listing.displayName)}
@@ -279,6 +283,15 @@ export function AdminListings() {
                             className="btn-premium"
                           >
                             <AlertCircle className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            onClick={() => handleReject(listing.listingId, listing.displayName)}
+                            disabled={rejectMutation.isPending}
+                            size="sm"
+                            variant="destructive"
+                            className="btn-premium"
+                          >
+                            <XCircle className="h-4 w-4" />
                           </Button>
                         </>
                       )}
@@ -348,13 +361,15 @@ export function AdminListings() {
                             <DropdownMenuContent align="end" className="glass">
                               <DropdownMenuLabel>Actions</DropdownMenuLabel>
                               <DropdownMenuItem asChild>
-                                <Link to={`/admin/listings/${listing.slugData?.slug || listing.slug || listing.listingId}`}>
+                                <Link to={`/admin/listings/${listing.listingId}`}>
                                   <Eye className="h-4 w-4" />
                                   View Details
                                 </Link>
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
-                              {listing.verificationStatus === "PENDING_REVIEW" && (
+                              {(listing.verificationStatus === "PENDING_REVIEW" || 
+                                listing.verificationStatus === "PENDING" || 
+                                listing.verificationStatus === "SUBMITTED") && (
                                 <>
                                   <DropdownMenuItem
                                     onClick={() => handleApprove(listing.listingId, listing.displayName)}

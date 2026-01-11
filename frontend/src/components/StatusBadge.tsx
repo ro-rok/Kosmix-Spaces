@@ -65,6 +65,11 @@ const statusConfig: Record<string, { label: string; icon: typeof Clock; classNam
     icon: XCircle,
     className: "bg-destructive/10 text-destructive",
   },
+  "SUBMITTED": {
+    label: "Submitted for Review",
+    icon: Clock,
+    className: "bg-blue-500/10 text-blue-600 dark:text-blue-500",
+  },
   "PENDING": {
     label: "Pending",
     icon: Clock,

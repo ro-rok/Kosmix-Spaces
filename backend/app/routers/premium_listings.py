@@ -2,8 +2,10 @@
 from typing import List, Optional
 from datetime import datetime
 from bson import ObjectId
+from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from app.core.security import require_partner
+from app.db.mongodb import get_database
 from app.models.premium_listing import (
     PremiumListingCreate,
     PremiumListingUpdate,
@@ -31,15 +33,107 @@ from app.services.premium_listing_service import (
 from app.services.cloudinary_service import (
     upload_image, 
     delete_image, 
-    upload_offering_photo,
-    upload_hero_photo,
     validate_image_file,
-    get_compression_stats,
-    upload_temporary_photo
+    get_compression_stats
 )
 from app.core.errors import ValidationError, NotFoundError
 
 router = APIRouter()
+
+
+class PhotoData(BaseModel):
+    url: str
+    publicId: str
+    width: int
+    height: int
+    bytes: int
+    format: str
+
+
+class OfferingPhotos(BaseModel):
+    photos: List[PhotoData] = []
+
+
+class SubmitListingRequest(BaseModel):
+    """Request model for submitting listing with all data including photos."""
+    displayName: str
+    overview: str
+    locality: str
+    city: str = "Delhi"
+    amenities: List[str] = []
+    accessHours: Optional[str] = "9 AM - 9 PM"
+    weekendAccess: bool = False
+    nearMetro: bool = False
+    metroNote: Optional[str] = None
+    parking: Optional[str] = "NONE"
+    powerBackup: bool = False
+    # Hero photos
+    heroPhotos: List[PhotoData] = []
+    # Offerings with their photos
+    offerings: dict = {}
+
+
+@router.post("/upload-photo")
+async def upload_photo_to_cloudinary(
+    file: UploadFile = File(...),
+    offering_type: str = Form("hero"),
+    current_user: dict = Depends(require_partner)
+):
+    """
+    Upload photo directly to Cloudinary and return URL.
+    Photo is NOT saved to database - just uploaded to cloud storage.
+    Frontend keeps the URL in form state until listing is submitted.
+    """
+    partner_id = current_user["partnerId"]
+    
+    # Validate file
+    validate_image_file(file)
+    
+    try:
+        # Upload to Cloudinary
+        result = await upload_image(
+            file=file,
+            folder=f"kosmixspaces/partners/{partner_id}/{offering_type}",
+            tags=[f"partner:{partner_id}", f"offering:{offering_type}"]
+        )
+        
+        return {
+            "ok": True,
+            "photo": {
+                "url": result["secure_url"],
+                "publicId": result["public_id"],
+                "width": result["width"],
+                "height": result["height"],
+                "bytes": result["bytes"],
+                "format": result["format"]
+            }
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Photo upload failed: {str(e)}")
+
+
+@router.delete("/delete-photo/{public_id:path}")
+async def delete_photo_from_cloudinary(
+    public_id: str,
+    current_user: dict = Depends(require_partner)
+):
+    """Delete photo from Cloudinary (before listing is submitted)."""
+    partner_id = current_user["partnerId"]
+    
+    # Verify the photo belongs to this partner
+    if f"partners/{partner_id}" not in public_id:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this photo")
+    
+    try:
+        success = await delete_image(public_id)
+        if not success:
+            raise HTTPException(status_code=404, detail="Photo not found")
+        
+        return {"ok": True, "message": "Photo deleted"}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to delete photo: {str(e)}")
 
 
 @router.post("/listings", response_model=dict)
@@ -579,8 +673,7 @@ async def upload_temporary_photo(
 @router.post("/listings/{listing_id}/move-temp-photos")
 async def move_temporary_photos(
     listing_id: str,
-    temp_photos: List[str],  # List of temporary public IDs
-    offering_type: Optional[str] = None,
+    request: MoveTempPhotosRequest,
     current_user: dict = Depends(require_partner)
 ):
     """Move temporary photos to permanent listing folder."""
@@ -598,21 +691,29 @@ async def move_temporary_photos(
         moved_photos = await move_temporary_photos_to_listing(
             partner_id=partner_id,
             listing_id=listing_id,
-            temp_public_ids=temp_photos,
-            offering_type=offering_type
+            temp_public_ids=request.temp_photos,
+            offering_type=request.offering_type
         )
         
         # Add photos to listing in database
-        if offering_type and moved_photos:
-            from app.services.premium_listing_service import add_offering_photo
-            
-            for photo_data in moved_photos:
-                await add_offering_photo(
-                    listing_id=listing_id,
-                    partner_id=partner_id,
-                    offering_type=offering_type,
-                    photo_data=photo_data
-                )
+        if moved_photos:
+            if request.offering_type and request.offering_type != "hero":
+                # Add to specific offering
+                for photo_data in moved_photos:
+                    await add_offering_photo(
+                        listing_id=listing_id,
+                        partner_id=partner_id,
+                        offering_type=request.offering_type,
+                        photo_data=photo_data
+                    )
+            else:
+                # Add as hero photos (when offering_type is None or "hero")
+                for photo_data in moved_photos:
+                    await add_hero_photo(
+                        listing_id=listing_id,
+                        partner_id=partner_id,
+                        photo_data=photo_data
+                    )
         
         return {
             "ok": True,

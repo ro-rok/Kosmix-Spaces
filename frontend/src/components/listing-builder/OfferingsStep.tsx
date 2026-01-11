@@ -10,10 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { 
   Upload, 
   X, 
-  Image as ImageIcon, 
   Plus, 
   Minus, 
-  GripVertical,
   AlertCircle,
   CheckCircle
 } from "lucide-react";
@@ -23,16 +21,14 @@ import { cn } from "@/lib/utils";
 import { 
   OfferingType, 
   OfferingFormData, 
-  offeringTypeLabels, 
-  defaultOfferingTitles 
+  offeringTypeLabels,
+  PhotoData
 } from "@/types/models";
 import { 
   updateOffering, 
-  toggleOfferingEnabled, 
-  validateOfferingsForSubmission 
+  toggleOfferingEnabled 
 } from "@/lib/offerings";
 import { useUploadPhoto, useDeletePhoto } from "@/hooks/useAuth";
-import { useUploadTempPhoto, useDeleteTempPhoto, TempPhoto } from "@/hooks/useTempPhotos";
 
 interface OfferingsStepProps {
   data: Record<OfferingType, OfferingFormData>;
@@ -51,56 +47,26 @@ const offeringTypes: OfferingType[] = [
   'event-spaces'
 ];
 
-const commonFeatures = {
+const commonFeatures: Record<OfferingType, string[]> = {
   'private-offices': [
-    'Fully furnished',
-    'Air conditioning',
-    'Natural light',
-    'Lockable door',
-    'Whiteboard',
-    'Storage space',
-    'Phone line',
-    'Ethernet port'
+    'Fully furnished', 'Air conditioning', 'Natural light', 'Lockable door',
+    'Whiteboard', 'Storage space', 'Phone line', 'Ethernet port'
   ],
   'dedicated-desks': [
-    'Ergonomic chair',
-    'Monitor mount',
-    'Personal storage',
-    'Power outlets',
-    'Desk lamp',
-    'Cable management',
-    'Adjustable height',
-    'Privacy screen'
+    'Ergonomic chair', 'Monitor mount', 'Personal storage', 'Power outlets',
+    'Desk lamp', 'Cable management', 'Adjustable height', 'Privacy screen'
   ],
   'hot-desks': [
-    'Flexible seating',
-    'Power outlets',
-    'WiFi access',
-    'Shared amenities',
-    'Daily cleaning',
-    'Booking system',
-    'Mobile app',
-    'Community access'
+    'Flexible seating', 'Power outlets', 'WiFi access', 'Shared amenities',
+    'Daily cleaning', 'Booking system', 'Mobile app', 'Community access'
   ],
   'meeting-rooms': [
-    'Video conferencing',
-    'Projector/TV',
-    'Whiteboard',
-    'Conference phone',
-    'Air conditioning',
-    'Sound proofing',
-    'Flexible seating',
-    'Catering options'
+    'Video conferencing', 'Projector/TV', 'Whiteboard', 'Conference phone',
+    'Air conditioning', 'Sound proofing', 'Flexible seating', 'Catering options'
   ],
   'event-spaces': [
-    'AV equipment',
-    'Stage/podium',
-    'Flexible layout',
-    'Catering kitchen',
-    'Sound system',
-    'Lighting control',
-    'Parking available',
-    'Event support'
+    'AV equipment', 'Stage/podium', 'Flexible layout', 'Catering kitchen',
+    'Sound system', 'Lighting control', 'Parking available', 'Event support'
   ]
 };
 
@@ -108,24 +74,13 @@ export function OfferingsStep({
   data, 
   onChange, 
   errors, 
-  disabled = false, 
-  listingId,
-  onSaveListing
+  disabled = false
 }: OfferingsStepProps) {
   const [expandedOffering, setExpandedOffering] = useState<OfferingType | null>('private-offices');
   const [uploadingPhotos, setUploadingPhotos] = useState<Record<string, boolean>>({});
-  const [tempPhotos, setTempPhotos] = useState<Record<OfferingType, TempPhoto[]>>({
-    'private-offices': [],
-    'dedicated-desks': [],
-    'hot-desks': [],
-    'meeting-rooms': [],
-    'event-spaces': []
-  });
   
   const uploadPhotoMutation = useUploadPhoto();
   const deletePhotoMutation = useDeletePhoto();
-  const uploadTempPhotoMutation = useUploadTempPhoto();
-  const deleteTempPhotoMutation = useDeleteTempPhoto();
 
   const updateOfferingData = (type: OfferingType, updates: Partial<OfferingFormData>) => {
     const updatedOfferings = updateOffering(data, type, updates);
@@ -142,32 +97,27 @@ export function OfferingsStep({
     if (disabled) return;
     const currentFeatures = data[type].features || [];
     if (!currentFeatures.includes(feature)) {
-      updateOfferingData(type, {
-        features: [...currentFeatures, feature]
-      });
+      updateOfferingData(type, { features: [...currentFeatures, feature] });
     }
   };
 
   const removeFeature = (type: OfferingType, feature: string) => {
     if (disabled) return;
     const currentFeatures = data[type].features || [];
-    updateOfferingData(type, {
-      features: currentFeatures.filter(f => f !== feature)
-    });
+    updateOfferingData(type, { features: currentFeatures.filter(f => f !== feature) });
   };
 
+  // Simple photo upload - uploads to Cloudinary, stores URL in form state
   const handlePhotoUpload = async (type: OfferingType, files: FileList) => {
     if (disabled) return;
 
-    const fileArray = Array.from(files);
-    
-    for (const file of fileArray) {
+    for (const file of Array.from(files)) {
       if (!file.type.startsWith('image/')) {
         toast.error(`${file.name} is not an image file`);
         continue;
       }
 
-      if (file.size > 10 * 1024 * 1024) { // 10MB limit
+      if (file.size > 10 * 1024 * 1024) {
         toast.error(`${file.name} is too large. Maximum size is 10MB`);
         continue;
       }
@@ -176,39 +126,12 @@ export function OfferingsStep({
       setUploadingPhotos(prev => ({ ...prev, [uploadKey]: true }));
 
       try {
-        // Import compression utilities
-        const { compressImage, shouldCompressImage, getOptimalCompressionSettings } = await import('@/lib/image-compression');
+        const result = await uploadPhotoMutation.mutateAsync({ file, offeringType: type });
         
-        let fileToUpload = file;
+        // Add photo URL to form state
+        const currentPhotos = data[type].photos || [];
+        updateOfferingData(type, { photos: [...currentPhotos, result.photo] });
         
-        // Compress if needed
-        if (shouldCompressImage(file)) {
-          toast.info(`Compressing ${file.name}...`);
-          const compressionResult = await compressImage(file, getOptimalCompressionSettings(file));
-          fileToUpload = compressionResult.file;
-          
-          if (compressionResult.compressionRatio > 0) {
-            toast.success(`${file.name} compressed by ${compressionResult.compressionRatio}%`);
-          }
-        }
-
-        // Upload to temporary storage (no listing ID required)
-        const result = await uploadTempPhotoMutation.mutateAsync({
-          file: fileToUpload,
-          offeringType: type
-        });
-
-        // Add to temporary photos state
-        const tempPhoto: TempPhoto = {
-          ...result,
-          file: fileToUpload
-        };
-
-        setTempPhotos(prev => ({
-          ...prev,
-          [type]: [...prev[type], tempPhoto]
-        }));
-
         toast.success(`Photo uploaded for ${offeringTypeLabels[type]}`);
       } catch (error: any) {
         toast.error(`Failed to upload ${file.name}: ${error.message}`);
@@ -218,43 +141,17 @@ export function OfferingsStep({
     }
   };
 
-  const removeTempPhoto = async (type: OfferingType, photoIndex: number) => {
+  // Remove photo from form state and Cloudinary
+  const removePhoto = async (type: OfferingType, photoIndex: number) => {
     if (disabled) return;
 
-    const tempPhoto = tempPhotos[type][photoIndex];
-    if (!tempPhoto) return;
+    const photos = data[type].photos || [];
+    const photo = photos[photoIndex];
+    if (!photo) return;
 
     try {
-      await deleteTempPhotoMutation.mutateAsync(tempPhoto.publicId);
-
-      setTempPhotos(prev => ({
-        ...prev,
-        [type]: prev[type].filter((_, index) => index !== photoIndex)
-      }));
-
-      toast.success('Photo removed');
-    } catch (error: any) {
-      toast.error(`Failed to remove photo: ${error.message}`);
-    }
-  };
-
-  const removePhoto = async (type: OfferingType, photoIndex: number) => {
-    if (disabled || !listingId) return;
-
-    const photo = data[type].photos[photoIndex];
-    if (!photo || typeof photo === 'string') return;
-
-    try {
-      await deletePhotoMutation.mutateAsync({
-        listingId,
-        publicId: photo.publicId
-      });
-
-      const currentPhotos = data[type].photos || [];
-      updateOfferingData(type, {
-        photos: currentPhotos.filter((_, index) => index !== photoIndex)
-      });
-
+      await deletePhotoMutation.mutateAsync(photo.publicId);
+      updateOfferingData(type, { photos: photos.filter((_, i) => i !== photoIndex) });
       toast.success('Photo removed');
     } catch (error: any) {
       toast.error(`Failed to remove photo: ${error.message}`);
@@ -266,23 +163,15 @@ export function OfferingsStep({
     const issues: string[] = [];
 
     if (offering.enabled) {
-      // Count both permanent photos and temp photos
-      const permanentPhotos = offering.photos || [];
-      const tempPhotosForType = tempPhotos[type] || [];
-      const totalPhotos = permanentPhotos.length + tempPhotosForType.length;
-      
-      if (totalPhotos === 0) {
+      if ((offering.photos?.length || 0) === 0) {
         issues.push('At least 1 photo required');
       }
-      if (!offering.description.trim()) {
+      if (!offering.description?.trim()) {
         issues.push('Description required');
       }
     }
 
-    return {
-      isValid: issues.length === 0,
-      issues
-    };
+    return { isValid: issues.length === 0, issues };
   };
 
   const renderOfferingCard = (type: OfferingType) => {
@@ -343,9 +232,9 @@ export function OfferingsStep({
           <CardContent className="space-y-6">
             {/* Description */}
             <div className="space-y-2">
-              <Label>Description</Label>
+              <Label>Description *</Label>
               <Textarea
-                value={offering.description}
+                value={offering.description || ''}
                 onChange={(e) => updateOfferingData(type, { description: e.target.value })}
                 placeholder={`Describe your ${offeringTypeLabels[type].toLowerCase()}...`}
                 rows={3}
@@ -356,57 +245,30 @@ export function OfferingsStep({
             {/* Features */}
             <div className="space-y-3">
               <Label>Features</Label>
-              
-              {/* Common features for this offering type */}
-              <div className="space-y-2">
-                <p className="text-xs text-muted-foreground">Common features:</p>
-                <div className="flex flex-wrap gap-2">
-                  {commonFeatures[type].map((feature) => (
-                    <Button
-                      key={feature}
-                      variant={offering.features?.includes(feature) ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => {
-                        if (offering.features?.includes(feature)) {
-                          removeFeature(type, feature);
-                        } else {
-                          addFeature(type, feature);
-                        }
-                      }}
-                      disabled={disabled}
-                    >
-                      {offering.features?.includes(feature) ? (
-                        <Minus className="h-3 w-3 mr-1" />
-                      ) : (
-                        <Plus className="h-3 w-3 mr-1" />
-                      )}
-                      {feature}
-                    </Button>
-                  ))}
-                </div>
+              <div className="flex flex-wrap gap-2">
+                {commonFeatures[type].map((feature) => (
+                  <Button
+                    key={feature}
+                    variant={offering.features?.includes(feature) ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => {
+                      if (offering.features?.includes(feature)) {
+                        removeFeature(type, feature);
+                      } else {
+                        addFeature(type, feature);
+                      }
+                    }}
+                    disabled={disabled}
+                  >
+                    {offering.features?.includes(feature) ? (
+                      <Minus className="h-3 w-3 mr-1" />
+                    ) : (
+                      <Plus className="h-3 w-3 mr-1" />
+                    )}
+                    {feature}
+                  </Button>
+                ))}
               </div>
-
-              {/* Selected features */}
-              {offering.features && offering.features.length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-xs text-muted-foreground">Selected features:</p>
-                  <div className="flex flex-wrap gap-2">
-                    {offering.features.map((feature) => (
-                      <Badge key={feature} variant="secondary" className="flex items-center gap-1">
-                        {feature}
-                        {!disabled && (
-                          <button
-                            onClick={() => removeFeature(type, feature)}
-                            className="hover:text-destructive"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        )}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
 
             {/* Pricing */}
@@ -428,9 +290,7 @@ export function OfferingsStep({
                 <Label>Unit</Label>
                 <Select
                   value={offering.unit || ''}
-                  onValueChange={(value) => updateOfferingData(type, { 
-                    unit: value as 'month' | 'hr' | 'NA' 
-                  })}
+                  onValueChange={(value) => updateOfferingData(type, { unit: value as any })}
                   disabled={disabled}
                 >
                   <SelectTrigger>
@@ -439,19 +299,27 @@ export function OfferingsStep({
                   <SelectContent>
                     <SelectItem value="month">per month</SelectItem>
                     <SelectItem value="hr">per hour</SelectItem>
-                    <SelectItem value="NA">N/A</SelectItem>
+                    <SelectItem value="day">per day</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               
               <div className="space-y-2">
                 <Label>Budget Band</Label>
-                <Input
+                <Select
                   value={offering.budgetBand || ''}
-                  onChange={(e) => updateOfferingData(type, { budgetBand: e.target.value })}
-                  placeholder="e.g., ₹₹₹"
+                  onValueChange={(value) => updateOfferingData(type, { budgetBand: value })}
                   disabled={disabled}
-                />
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="₹">₹ (Budget)</SelectItem>
+                    <SelectItem value="₹₹">₹₹ (Mid-range)</SelectItem>
+                    <SelectItem value="₹₹₹">₹₹₹ (Premium)</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
@@ -460,7 +328,7 @@ export function OfferingsStep({
               <div className="flex items-center justify-between">
                 <Label>Photos *</Label>
                 <p className="text-xs text-muted-foreground">
-                  {(offering.photos?.length || 0) + tempPhotos[type].length} photos
+                  {offering.photos?.length || 0} photos uploaded
                 </p>
               </div>
 
@@ -472,9 +340,7 @@ export function OfferingsStep({
                     accept="image/*"
                     multiple
                     onChange={(e) => {
-                      if (e.target.files) {
-                        handlePhotoUpload(type, e.target.files);
-                      }
+                      if (e.target.files) handlePhotoUpload(type, e.target.files);
                     }}
                     className="hidden"
                     id={`photo-upload-${type}`}
@@ -488,78 +354,31 @@ export function OfferingsStep({
                     )}
                   >
                     <Upload className="h-5 w-5" />
-                    {isUploading ? 'Uploading & Compressing...' : 'Upload Photos'}
-                    <span className="text-xs text-muted-foreground ml-2">
-                      ⚡ Auto-compressed
-                    </span>
+                    {isUploading ? 'Uploading...' : 'Upload Photos'}
                   </Label>
                 </div>
               )}
 
-              {/* Photo grid - show both permanent and temporary photos */}
-              {((offering.photos && offering.photos.length > 0) || tempPhotos[type].length > 0) && (
-                <div className="space-y-4">
-                  {/* Permanent photos */}
-                  {offering.photos && offering.photos.length > 0 && (
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground mb-2">Saved Photos</p>
-                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                        {offering.photos.map((photo, index) => (
-                          <div key={`permanent-${index}`} className="relative group">
-                            <img
-                              src={typeof photo === 'string' ? photo : photo.url}
-                              alt={`${offeringTypeLabels[type]} ${index + 1}`}
-                              className="w-full h-32 object-cover rounded-lg border"
-                            />
-                            {!disabled && listingId && (
-                              <button
-                                onClick={() => removePhoto(type, index)}
-                                className="absolute top-2 right-2 p-1 bg-destructive text-destructive-foreground rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                              >
-                                <X className="h-3 w-3" />
-                              </button>
-                            )}
-                            <div className="absolute bottom-2 left-2">
-                              <Badge variant="default" className="text-xs">Saved</Badge>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
+              {/* Photo grid */}
+              {offering.photos && offering.photos.length > 0 && (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {offering.photos.map((photo, index) => (
+                    <div key={index} className="relative group">
+                      <img
+                        src={photo.url}
+                        alt={`${offeringTypeLabels[type]} ${index + 1}`}
+                        className="w-full h-32 object-cover rounded-lg border"
+                      />
+                      {!disabled && (
+                        <button
+                          onClick={() => removePhoto(type, index)}
+                          className="absolute top-2 right-2 p-1 bg-destructive text-destructive-foreground rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      )}
                     </div>
-                  )}
-                  
-                  {/* Temporary photos */}
-                  {tempPhotos[type].length > 0 && (
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground mb-2">
-                        Recent Photos ({tempPhotos[type].length})
-                      </p>
-                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                        {tempPhotos[type].map((photo, index) => (
-                          <div key={`temp-${index}`} className="relative group">
-                            <img
-                              src={photo.url}
-                              alt={`${offeringTypeLabels[type]} temp ${index + 1}`}
-                              className="w-full h-32 object-cover rounded-lg border border-orange-200"
-                            />
-                            {!disabled && (
-                              <button
-                                onClick={() => removeTempPhoto(type, index)}
-                                className="absolute top-2 right-2 p-1 bg-destructive text-destructive-foreground rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                              >
-                                <X className="h-3 w-3" />
-                              </button>
-                            )}
-                            <div className="absolute bottom-2 left-2">
-                              <Badge variant="outline" className="text-xs bg-blue-100 text-blue-700 border-blue-300">
-                                Uploaded
-                              </Badge>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                  ))}
                 </div>
               )}
 
@@ -584,36 +403,6 @@ export function OfferingsStep({
     );
   };
 
-  // Custom validation that includes temp photos
-  const validateOfferingsWithTempPhotos = () => {
-    const errors: string[] = [];
-    const enabledOfferings = Object.entries(data)
-      .filter(([_, offering]) => offering.enabled)
-      .map(([type, offering]) => ({ type: type as OfferingType, ...offering }));
-    
-    if (enabledOfferings.length === 0) {
-      errors.push('At least one offering must be enabled');
-    }
-    
-    enabledOfferings.forEach(offering => {
-      const permanentPhotos = offering.photos || [];
-      const tempPhotosForType = tempPhotos[offering.type] || [];
-      const totalPhotos = permanentPhotos.length + tempPhotosForType.length;
-      
-      if (totalPhotos === 0) {
-        errors.push(`${offering.title} must have at least 1 photo`);
-      }
-    });
-    
-    return {
-      isValid: errors.length === 0,
-      errors,
-    };
-  };
-
-  // Overall validation
-  const overallValidation = validateOfferingsWithTempPhotos();
-
   return (
     <div className="space-y-6">
       {/* Instructions */}
@@ -621,67 +410,23 @@ export function OfferingsStep({
         <h3 className="font-medium mb-2">Configure Your Workspace Offerings</h3>
         <p className="text-sm text-muted-foreground">
           Enable and configure the types of workspace you offer. Each enabled offering must have 
-          at least one photo and a description. You can enable multiple offering types.
+          at least one photo and a description.
         </p>
       </div>
-
-      {/* Overall validation status */}
-      {!overallValidation.isValid && (
-        <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
-          <div className="flex items-center gap-2 text-destructive font-medium">
-            <AlertCircle className="h-4 w-4" />
-            Offerings Validation Issues
-          </div>
-          <ul className="mt-2 text-sm text-destructive/80 list-disc list-inside">
-            {overallValidation.errors.map((error, index) => (
-              <li key={index}>{error}</li>
-            ))}
-          </ul>
-        </div>
-      )}
 
       {/* Offering cards */}
       <div className="space-y-4">
         {offeringTypes.map(renderOfferingCard)}
       </div>
 
-      {/* Summary */}
-      <div className="bg-muted/50 p-4 rounded-lg">
-        <h4 className="font-medium mb-2">Summary</h4>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-          <div>
-            <p className="text-muted-foreground">Enabled Offerings</p>
-            <p className="font-medium">
-              {Object.values(data).filter(o => o.enabled).length} of {offeringTypes.length}
-            </p>
-          </div>
-          <div>
-            <p className="text-muted-foreground">Total Photos</p>
-            <p className="font-medium">
-              {Object.values(data).reduce((total, o) => total + (o.photos?.length || 0), 0) + 
-               Object.values(tempPhotos).reduce((total, photos) => total + photos.length, 0)}
-            </p>
-          </div>
-          <div>
-            <p className="text-muted-foreground">Ready for Submission</p>
-            <p className={cn(
-              "font-medium",
-              overallValidation.isValid ? "text-green-600" : "text-destructive"
-            )}>
-              {overallValidation.isValid ? 'Yes' : 'No'}
-            </p>
-          </div>
-          <div>
-            <p className="text-muted-foreground">Issues</p>
-            <p className="font-medium text-destructive">
-              {overallValidation.errors.length}
-            </p>
+      {/* Global error */}
+      {errors.offerings && (
+        <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3">
+          <div className="flex items-center gap-2 text-destructive text-sm">
+            <AlertCircle className="h-4 w-4" />
+            {errors.offerings}
           </div>
         </div>
-      </div>
-
-      {errors.offerings && (
-        <p className="text-sm text-destructive">{errors.offerings}</p>
       )}
     </div>
   );

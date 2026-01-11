@@ -378,7 +378,7 @@ async def submit_listing_for_review(listing_id: str, partner_id: str) -> dict:
         {"_id": ObjectId(listing_id)},
         {
             "$set": {
-                "verificationStatus": "SUBMITTED",
+                "verificationStatus": "PENDING_REVIEW",
                 "updatedAt": datetime.utcnow()
             }
         }
@@ -443,34 +443,48 @@ def _get_default_offering_title(offering_type: OfferingType) -> str:
 
 def listing_to_public_response(listing: dict) -> dict:
     """Convert internal listing to public API response."""
+    # Handle missing slugData for legacy listings
+    slug_data = listing.get("slugData", {})
+    slug = slug_data.get("slug") if slug_data else None
+    
+    # Fallback slug generation for legacy listings without slugData
+    if not slug:
+        # Generate a basic slug from displayName and locality
+        display_name = listing.get("displayName", "")
+        locality = listing.get("location", {}).get("locality", "")
+        slug = f"{display_name}-{locality}".lower().replace(" ", "-")
+    
+    # Get location data safely
+    location = listing.get("location", {})
+    
     # Remove internal fields
     public_listing = {
         "listingId": str(listing["_id"]),
-        "slug": listing["slugData"]["slug"],
-        "displayName": listing["displayName"],
-        "overview": listing["overview"],
-        "locality": listing["location"]["locality"],
-        "city": listing["location"]["city"],
-        "nearMetro": listing["location"]["nearMetro"],
-        "metroNote": listing["location"]["metroNote"],
-        "metroDetails": listing["location"].get("metroDetails"),
-        "accessHours": listing["location"].get("accessHours", "9 AM - 9 PM"),
-        "weekendAccess": listing["location"].get("weekendAccess", False),
-        "twentyFourSevenAccess": listing["location"].get("twentyFourSevenAccess", False),
-        "parking": listing["location"].get("parking", "NONE"),
-        "parkingNotes": listing["location"].get("parkingNotes"),
-        "powerBackup": listing["location"].get("powerBackup", False),
-        "internetSpeedMbps": listing["location"].get("internetSpeedMbps"),
-        "wifiDetails": listing["location"].get("wifiDetails"),
-        "houseRules": listing["location"].get("houseRules"),
-        "specialInstructions": listing["location"].get("specialInstructions"),
-        "amenities": listing["amenities"],
-        "highlights": listing["highlights"],
+        "slug": slug,
+        "displayName": listing.get("displayName", ""),
+        "overview": listing.get("overview", ""),
+        "locality": location.get("locality", ""),
+        "city": location.get("city", "Delhi"),
+        "nearMetro": location.get("nearMetro", False),
+        "metroNote": location.get("metroNote"),
+        "metroDetails": location.get("metroDetails"),
+        "accessHours": location.get("accessHours", "9 AM - 9 PM"),
+        "weekendAccess": location.get("weekendAccess", False),
+        "twentyFourSevenAccess": location.get("twentyFourSevenAccess", False),
+        "parking": location.get("parking", "NONE"),
+        "parkingNotes": location.get("parkingNotes"),
+        "powerBackup": location.get("powerBackup", False),
+        "internetSpeedMbps": location.get("internetSpeedMbps"),
+        "wifiDetails": location.get("wifiDetails"),
+        "houseRules": location.get("houseRules"),
+        "specialInstructions": location.get("specialInstructions"),
+        "amenities": listing.get("amenities", []),
+        "highlights": listing.get("highlights", []),
         "offerings": {},
-        "heroPhotos": listing["heroPhotos"],
-        "verificationStatus": listing["verificationStatus"],
-        "isPublished": listing["isPublished"],
-        "viewCount": listing["viewCount"],
+        "heroPhotos": listing.get("heroPhotos", []),
+        "verificationStatus": listing.get("verificationStatus", "PENDING"),
+        "isPublished": listing.get("isPublished", False),
+        "viewCount": listing.get("viewCount", 0),
         "status": listing.get("verificationStatus", "PENDING").lower(),  # For frontend compatibility
         "adminNotes": listing.get("adminNotes"),  # Include admin notes for partners
         "createdAt": listing["createdAt"].isoformat() if listing.get("createdAt") else None,
@@ -478,23 +492,23 @@ def listing_to_public_response(listing: dict) -> dict:
     }
     
     # Process offerings (remove internal data)
-    for offering_type, offering in listing["offerings"].items():
+    for offering_type, offering in listing.get("offerings", {}).items():
         public_listing["offerings"][offering_type] = {
-            "type": offering["type"],
-            "title": offering["title"],
-            "description": offering["description"],
-            "features": offering["features"],
-            "enabled": offering["enabled"],
+            "type": offering.get("type", offering_type),
+            "title": offering.get("title", ""),
+            "description": offering.get("description", ""),
+            "features": offering.get("features", []),
+            "enabled": offering.get("enabled", False),
             "startingPrice": offering.get("startingPrice"),
             "unit": offering.get("unit"),
             "budgetBand": offering.get("budgetBand"),
-            "photos": offering["photos"],
+            "photos": offering.get("photos", []),
             "capacity": offering.get("capacity"),
             "availability": offering.get("availability")
         }
     
     # Add approximate coordinates if available (privacy-protected)
-    if listing["location"].get("approximateCoordinates"):
-        public_listing["approximateCoordinates"] = listing["location"]["approximateCoordinates"]
+    if location.get("approximateCoordinates"):
+        public_listing["approximateCoordinates"] = location["approximateCoordinates"]
     
     return public_listing

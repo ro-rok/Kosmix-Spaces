@@ -11,7 +11,17 @@ import {
   Car,
   Zap,
   Wifi,
-  Coffee
+  Coffee,
+  Camera,
+  Building,
+  Calendar,
+  Shield,
+  Globe,
+  Phone,
+  Mail,
+  Star,
+  Eye,
+  MessageSquare
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,7 +29,8 @@ import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { useAdminListing, useApproveListing, useNeedsInfoListing, useRejectListing } from "@/hooks/useAuth";
+import { Separator } from "@/components/ui/separator";
+import { useAdminPremiumListing, useApprovePremiumListing, useNeedsInfoPremiumListing, useRejectPremiumListing } from "@/hooks/useAuth";
 import { toast } from "sonner";
 
 export function AdminListingDetail() {
@@ -27,11 +38,11 @@ export function AdminListingDetail() {
   const [notes, setNotes] = useState("");
   const [reason, setReason] = useState("");
 
-  // Try to get the listing - this might be a slug or an ID
-  const { data: listing, isLoading, error } = useAdminListing(listingId!);
-  const approveMutation = useApproveListing();
-  const needsInfoMutation = useNeedsInfoListing();
-  const rejectMutation = useRejectListing();
+  // Get the premium listing
+  const { data: listing, isLoading, error } = useAdminPremiumListing(listingId!);
+  const approveMutation = useApprovePremiumListing();
+  const needsInfoMutation = useNeedsInfoPremiumListing();
+  const rejectMutation = useRejectPremiumListing();
 
   const handleApprove = async () => {
     if (!listing) return;
@@ -119,13 +130,13 @@ export function AdminListingDetail() {
     );
   }
 
-  const specs = [
-    { icon: Users, label: "Capacity", value: `${listing.seatCapacityMin}-${listing.seatCapacityMax} seats` },
-    { icon: Clock, label: "Access", value: listing.accessHours },
-    { icon: MapPin, label: "Metro", value: listing.nearMetro ? listing.metroNote || "Near Metro" : "Not near metro" },
-    { icon: Car, label: "Parking", value: listing.parking !== "NONE" ? "Available" : "Not available" },
-    { icon: Zap, label: "Power Backup", value: listing.powerBackup ? "Yes" : "No" },
-  ];
+  // Get enabled offerings
+  const enabledOfferings = Object.entries(listing.offerings || {}).filter(([_, offering]) => offering.enabled);
+  
+  // Get all photos count
+  const heroPhotosCount = listing.heroPhotos?.length || 0;
+  const offeringPhotosCount = enabledOfferings.reduce((total, [_, offering]) => total + (offering.photos?.length || 0), 0);
+  const totalPhotos = heroPhotosCount + offeringPhotosCount;
 
   return (
     <div className="space-y-6">
@@ -139,6 +150,20 @@ export function AdminListingDetail() {
         <div className="flex-1">
           <h1 className="font-display text-2xl font-bold">{listing.displayName}</h1>
           <p className="text-muted-foreground">{listing.locality}, {listing.city}</p>
+          <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
+            <div className="flex items-center gap-1">
+              <Eye className="h-4 w-4" />
+              {listing.viewCount || 0} views
+            </div>
+            <div className="flex items-center gap-1">
+              <MessageSquare className="h-4 w-4" />
+              {listing.enquiryCount || 0} enquiries
+            </div>
+            <div className="flex items-center gap-1">
+              <Camera className="h-4 w-4" />
+              {totalPhotos} photos
+            </div>
+          </div>
         </div>
         <StatusBadge status={listing.verificationStatus} />
       </div>
@@ -146,21 +171,29 @@ export function AdminListingDetail() {
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Photos */}
-          {listing.photos.length > 0 && (
+          {/* Hero Photos */}
+          {listing.heroPhotos && listing.heroPhotos.length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle>Photos</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <Camera className="h-5 w-5" />
+                  Hero Photos ({listing.heroPhotos.length})
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {listing.photos.map((photo, idx) => (
-                    <img
-                      key={idx}
-                      src={photo.url}
-                      alt=""
-                      className="w-full h-32 object-cover rounded-lg border"
-                    />
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {listing.heroPhotos.map((photo, idx) => (
+                    <div key={idx} className="relative group">
+                      <img
+                        src={photo.url}
+                        alt={`Hero photo ${idx + 1}`}
+                        className="w-full h-48 object-cover rounded-lg border"
+                      />
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors rounded-lg" />
+                      <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
+                        {photo.width}×{photo.height}
+                      </div>
+                    </div>
                   ))}
                 </div>
               </CardContent>
@@ -173,72 +206,245 @@ export function AdminListingDetail() {
               <CardTitle>Overview</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-muted-foreground leading-relaxed">{listing.overview}</p>
+              <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">{listing.overview}</p>
             </CardContent>
           </Card>
 
-          {/* Specifications */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Specifications</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-4 sm:grid-cols-2">
-                {specs.map((spec) => (
-                  <div key={spec.label} className="flex items-start gap-3 p-3 border rounded-lg">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted">
-                      <spec.icon className="h-4 w-4 text-muted-foreground" />
+          {/* Offerings */}
+          {enabledOfferings.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Building className="h-5 w-5" />
+                  Offerings ({enabledOfferings.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {enabledOfferings.map(([offeringType, offering]) => (
+                  <div key={offeringType} className="border rounded-lg p-4 space-y-4">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <h4 className="font-semibold text-lg">{offering.title}</h4>
+                        <p className="text-sm text-muted-foreground capitalize">{offeringType.replace('-', ' ')}</p>
+                      </div>
+                      <div className="text-right">
+                        {offering.startingPrice && (
+                          <div className="font-semibold text-lg">
+                            ₹{offering.startingPrice.toLocaleString()}
+                            {offering.unit && <span className="text-sm text-muted-foreground">/{offering.unit}</span>}
+                          </div>
+                        )}
+                        {offering.budgetBand && (
+                          <Badge variant="outline">{offering.budgetBand}</Badge>
+                        )}
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">{spec.label}</p>
-                      <p className="font-medium">{spec.value}</p>
-                    </div>
+
+                    {offering.description && (
+                      <p className="text-muted-foreground">{offering.description}</p>
+                    )}
+
+                    {offering.features && offering.features.length > 0 && (
+                      <div>
+                        <h5 className="font-medium mb-2">Features</h5>
+                        <div className="flex flex-wrap gap-2">
+                          {offering.features.map((feature, idx) => (
+                            <Badge key={idx} variant="secondary" className="text-xs">
+                              {feature}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {offering.capacity && (
+                      <div>
+                        <h5 className="font-medium mb-2">Capacity</h5>
+                        <div className="text-sm text-muted-foreground">
+                          {JSON.stringify(offering.capacity, null, 2)}
+                        </div>
+                      </div>
+                    )}
+
+                    {offering.availability && (
+                      <div>
+                        <h5 className="font-medium mb-2">Availability</h5>
+                        <p className="text-sm text-muted-foreground">{offering.availability}</p>
+                      </div>
+                    )}
+
+                    {offering.photos && offering.photos.length > 0 && (
+                      <div>
+                        <h5 className="font-medium mb-2">Photos ({offering.photos.length})</h5>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                          {offering.photos.map((photo, idx) => (
+                            <div key={idx} className="relative group">
+                              <img
+                                src={photo.url}
+                                alt={`${offering.title} photo ${idx + 1}`}
+                                className="w-full h-32 object-cover rounded border"
+                              />
+                              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors rounded" />
+                              <div className="absolute bottom-1 left-1 bg-black/70 text-white text-xs px-1 py-0.5 rounded">
+                                {photo.width}×{photo.height}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
 
-          {/* Workspace Types */}
+          {/* Location Details */}
           <Card>
             <CardHeader>
-              <CardTitle>Workspace Types</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <MapPin className="h-5 w-5" />
+                Location & Access
+              </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-2">
-                {listing.workspaceTypes.map((type) => (
-                  <Badge key={type} variant="outline">
-                    {type.replace('_', ' ')}
-                  </Badge>
-                ))}
+            <CardContent className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <p className="text-sm text-muted-foreground">Locality</p>
+                  <p className="font-medium">{listing.locality}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">City</p>
+                  <p className="font-medium">{listing.city}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Access Hours</p>
+                  <p className="font-medium">{listing.accessHours || "Not specified"}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Weekend Access</p>
+                  <p className="font-medium">{listing.weekendAccess ? "Available" : "Not available"}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">24/7 Access</p>
+                  <p className="font-medium">{listing.twentyFourSevenAccess ? "Yes" : "No"}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Near Metro</p>
+                  <p className="font-medium">{listing.nearMetro ? "Yes" : "No"}</p>
+                </div>
               </div>
+
+              {listing.metroNote && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Metro Information</p>
+                  <p className="font-medium">{listing.metroNote}</p>
+                </div>
+              )}
+
+              {listing.metroDetails && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Metro Details</p>
+                  <p className="font-medium">{listing.metroDetails}</p>
+                </div>
+              )}
+
+              <Separator />
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <p className="text-sm text-muted-foreground">Parking</p>
+                  <p className="font-medium">{listing.parking || "Not available"}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Power Backup</p>
+                  <p className="font-medium">{listing.powerBackup ? "Available" : "Not available"}</p>
+                </div>
+                {listing.internetSpeedMbps && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Internet Speed</p>
+                    <p className="font-medium">{listing.internetSpeedMbps} Mbps</p>
+                  </div>
+                )}
+              </div>
+
+              {listing.parkingNotes && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Parking Notes</p>
+                  <p className="font-medium">{listing.parkingNotes}</p>
+                </div>
+              )}
+
+              {listing.wifiDetails && (
+                <div>
+                  <p className="text-sm text-muted-foreground">WiFi Details</p>
+                  <p className="font-medium">{listing.wifiDetails}</p>
+                </div>
+              )}
+
+              {listing.houseRules && (
+                <div>
+                  <p className="text-sm text-muted-foreground">House Rules</p>
+                  <p className="font-medium whitespace-pre-wrap">{listing.houseRules}</p>
+                </div>
+              )}
+
+              {listing.specialInstructions && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Special Instructions</p>
+                  <p className="font-medium whitespace-pre-wrap">{listing.specialInstructions}</p>
+                </div>
+              )}
             </CardContent>
           </Card>
 
           {/* Amenities */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Amenities</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                {listing.amenities.map((amenity) => (
-                  <div key={amenity} className="flex items-center gap-2">
-                    <div className="flex h-6 w-6 items-center justify-center rounded bg-primary/10">
-                      {amenity.toLowerCase().includes("wifi") ? (
-                        <Wifi className="h-3 w-3 text-primary" />
-                      ) : amenity.toLowerCase().includes("cafe") ? (
-                        <Coffee className="h-3 w-3 text-primary" />
-                      ) : (
-                        <CheckCircle className="h-3 w-3 text-primary" />
-                      )}
+          {listing.amenities && listing.amenities.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Star className="h-5 w-5" />
+                  Amenities ({listing.amenities.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  {listing.amenities.map((amenity) => (
+                    <div key={amenity} className="flex items-center gap-2">
+                      <div className="flex h-6 w-6 items-center justify-center rounded bg-primary/10">
+                        {amenity.toLowerCase().includes("wifi") ? (
+                          <Wifi className="h-3 w-3 text-primary" />
+                        ) : amenity.toLowerCase().includes("cafe") ? (
+                          <Coffee className="h-3 w-3 text-primary" />
+                        ) : (
+                          <CheckCircle className="h-3 w-3 text-primary" />
+                        )}
+                      </div>
+                      <span className="text-sm">{amenity}</span>
                     </div>
-                    <span className="text-sm">{amenity}</span>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Highlights */}
+          {listing.highlights && listing.highlights.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Highlights</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-2">
+                  {listing.highlights.map((highlight, idx) => (
+                    <Badge key={idx} variant="outline" className="text-sm">
+                      {highlight}
+                    </Badge>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* Sidebar */}
@@ -250,12 +456,16 @@ export function AdminListingDetail() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <p className="text-sm text-muted-foreground">Budget Band</p>
-                <p className="font-medium">{listing.budgetDisplayText}</p>
+                <p className="text-sm text-muted-foreground">Listing ID</p>
+                <p className="font-mono text-sm">{listing.listingId}</p>
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Availability</p>
-                <p className="font-medium">{listing.availabilityStatus}</p>
+                <p className="text-sm text-muted-foreground">Slug</p>
+                <p className="font-mono text-sm">{listing.slug}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Published</p>
+                <p className="font-medium">{listing.isPublished ? "Yes" : "No"}</p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Created</p>
@@ -267,18 +477,28 @@ export function AdminListingDetail() {
               </div>
               {listing.publishedAt && (
                 <div>
-                  <p className="text-sm text-muted-foreground">Published</p>
+                  <p className="text-sm text-muted-foreground">Published At</p>
                   <p className="font-medium">{new Date(listing.publishedAt).toLocaleDateString()}</p>
+                </div>
+              )}
+              {listing.lastViewedAt && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Last Viewed</p>
+                  <p className="font-medium">{new Date(listing.lastViewedAt).toLocaleDateString()}</p>
                 </div>
               )}
             </CardContent>
           </Card>
 
           {/* Admin Actions */}
-          {(listing.verificationStatus === "PENDING_REVIEW" || listing.verificationStatus === "NEEDS_INFO") && (
+          {(listing.verificationStatus === "PENDING_REVIEW" || 
+            listing.verificationStatus === "PENDING" || 
+            listing.verificationStatus === "SUBMITTED" || 
+            listing.verificationStatus === "NEEDS_INFO") && (
             <Card>
               <CardHeader>
                 <CardTitle>Admin Actions</CardTitle>
+                <p className="text-sm text-muted-foreground">Current Status: {listing.verificationStatus}</p>
               </CardHeader>
               <CardContent className="space-y-4">
                 {/* Approve */}
@@ -295,6 +515,7 @@ export function AdminListingDetail() {
                     onClick={handleApprove}
                     disabled={approveMutation.isPending}
                     className="w-full"
+                    variant="default"
                   >
                     <CheckCircle className="h-4 w-4" />
                     {approveMutation.isPending ? "Approving..." : "Approve & Publish"}
@@ -353,7 +574,7 @@ export function AdminListingDetail() {
                 <CardTitle>Admin Notes</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground">{listing.adminNotes}</p>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap">{listing.adminNotes}</p>
               </CardContent>
             </Card>
           )}

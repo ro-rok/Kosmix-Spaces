@@ -36,7 +36,7 @@ async function apiRequest<T>(
 ): Promise<T> {
   // Check cache first for GET requests
   if (cacheKey && (!options.method || options.method === 'GET')) {
-    const cached = performanceCache.get<T>(cacheKey);
+    const cached = performanceCache.get(cacheKey) as T | null;
     if (cached) {
       return cached;
     }
@@ -361,81 +361,33 @@ export const api = {
         body: JSON.stringify(data),
       }),
 
-    // Photo management
-    uploadPhoto: (listingId: string, file: File) => {
+    // Simple photo upload - uploads to Cloudinary, returns URL
+    // Photo is NOT saved to database until listing is submitted
+    uploadPhoto: (file: File, offeringType: string = "hero") => {
       const formData = new FormData();
       formData.append('file', file);
-      
-      return apiRequest<Array<{
-        url: string;
-        publicId: string;
-        width: number;
-        height: number;
-        bytes: number;
-        format: string;
-        tag?: string;
-      }>>(`/partner/listings/${listingId}/photos`, {
-        method: "POST",
-        headers: {}, // Remove Content-Type to let browser set it for FormData
-        body: formData,
-      });
-    },
-
-    deletePhoto: (listingId: string, publicId: string) =>
-      apiRequest<{ ok: boolean }>(`/partner/listings/${listingId}/photos/${publicId}`, {
-        method: "DELETE",
-      }),
-
-    // Temporary photo management (no listing ID required)
-    uploadTempPhoto: (file: File, offeringType?: string) => {
-      const formData = new FormData();
-      formData.append('file', file);
-      if (offeringType) {
-        formData.append('offering_type', offeringType);
-      }
+      formData.append('offering_type', offeringType);
       
       return apiRequest<{
-        url: string;
-        publicId: string;
-        width: number;
-        height: number;
-        bytes: number;
-        format: string;
-      }>(`/partner/temp-photos`, {
-        method: "POST",
-        body: formData,
-      });
-    },
-
-    moveTempPhotos: (listingId: string, tempPhotoIds: string[], offeringType?: string) =>
-      apiRequest<{
         ok: boolean;
-        moved_photos: Array<{
+        photo: {
           url: string;
           publicId: string;
           width: number;
           height: number;
           bytes: number;
           format: string;
-        }>;
-        message: string;
-      }>(`/partner/listings/${listingId}/move-temp-photos`, {
+        };
+      }>(`/partner/upload-photo`, {
         method: "POST",
-        body: JSON.stringify({
-          temp_photos: tempPhotoIds,
-          offering_type: offeringType
-        }),
-      }),
+        body: formData,
+      });
+    },
 
-    deleteTempPhoto: (publicId: string) =>
-      apiRequest<{ ok: boolean; message: string }>(`/partner/temp-photos/${publicId}`, {
+    // Delete photo from Cloudinary (before listing is submitted)
+    deletePhoto: (publicId: string) =>
+      apiRequest<{ ok: boolean; message: string }>(`/partner/delete-photo/${encodeURIComponent(publicId)}`, {
         method: "DELETE",
-      }),
-
-    cleanupTempPhotos: (maxAgeHours: number = 24) =>
-      apiRequest<{ ok: boolean; message: string }>(`/partner/cleanup-temp-photos`, {
-        method: "POST",
-        body: JSON.stringify({ max_age_hours: maxAgeHours }),
       }),
   },
 

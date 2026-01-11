@@ -1,5 +1,21 @@
 """Create MongoDB indexes on startup."""
+import logging
+from pymongo.errors import OperationFailure
 from app.db.mongodb import get_database
+
+logger = logging.getLogger(__name__)
+
+
+async def safe_create_index(collection, keys, **kwargs):
+    """Safely create an index, ignoring conflicts with existing indexes."""
+    try:
+        await collection.create_index(keys, **kwargs)
+    except OperationFailure as e:
+        if e.code == 86:  # IndexKeySpecsConflict
+            logger.debug(f"Index already exists for {collection.name}: {keys}")
+        else:
+            logger.error(f"Failed to create index for {collection.name}: {e}")
+            raise
 
 
 async def create_indexes():
@@ -7,27 +23,27 @@ async def create_indexes():
     db = get_database()
     
     # Listings indexes (legacy)
-    await db.listings.create_index("slug", unique=True)
-    await db.listings.create_index("partnerId")
-    await db.listings.create_index("verificationStatus")
-    await db.listings.create_index("locality")
-    await db.listings.create_index([("locality", 1), ("verificationStatus", 1)])
+    await safe_create_index(db.listings, "slug", unique=True)
+    await safe_create_index(db.listings, "partnerId")
+    await safe_create_index(db.listings, "verificationStatus")
+    await safe_create_index(db.listings, "locality")
+    await safe_create_index(db.listings, [("locality", 1), ("verificationStatus", 1)])
     
     # Premium listings indexes
-    await db.premium_listings.create_index("slugData.slug", unique=True)
-    await db.premium_listings.create_index("partnerId")
-    await db.premium_listings.create_index("verificationStatus")
-    await db.premium_listings.create_index("location.locality")
-    await db.premium_listings.create_index("isPublished")
-    await db.premium_listings.create_index([("location.locality", 1), ("verificationStatus", 1)])
-    await db.premium_listings.create_index([("isPublished", 1), ("verificationStatus", 1)])
-    await db.premium_listings.create_index([("partnerId", 1), ("updatedAt", -1)])
-    await db.premium_listings.create_index("viewCount")
-    await db.premium_listings.create_index("enquiryCount")
-    await db.premium_listings.create_index("lastViewedAt")
+    await safe_create_index(db.premium_listings, "slugData.slug", unique=True)
+    await safe_create_index(db.premium_listings, "partnerId")
+    await safe_create_index(db.premium_listings, "verificationStatus")
+    await safe_create_index(db.premium_listings, "location.locality")
+    await safe_create_index(db.premium_listings, "isPublished")
+    await safe_create_index(db.premium_listings, [("location.locality", 1), ("verificationStatus", 1)])
+    await safe_create_index(db.premium_listings, [("isPublished", 1), ("verificationStatus", 1)])
+    await safe_create_index(db.premium_listings, [("partnerId", 1), ("updatedAt", -1)])
+    await safe_create_index(db.premium_listings, "viewCount")
+    await safe_create_index(db.premium_listings, "enquiryCount")
+    await safe_create_index(db.premium_listings, "lastViewedAt")
     
     # Text search indexes for premium listings
-    await db.premium_listings.create_index([
+    await safe_create_index(db.premium_listings, [
         ("displayName", "text"),
         ("overview", "text"),
         ("location.locality", "text"),
@@ -35,61 +51,61 @@ async def create_indexes():
     ])
     
     # Leads indexes
-    await db.leads.create_index("phone")
-    await db.leads.create_index([("phone", 1), ("createdAt", -1)])
-    await db.leads.create_index("status")
-    await db.leads.create_index("createdAt")
+    await safe_create_index(db.leads, "phone")
+    await safe_create_index(db.leads, [("phone", 1), ("createdAt", -1)])
+    await safe_create_index(db.leads, "status")
+    await safe_create_index(db.leads, "createdAt")
     
     # Site visits indexes
-    await db.site_visits.create_index("leadId")
-    await db.site_visits.create_index("status")
-    await db.site_visits.create_index("createdAt")
+    await safe_create_index(db.site_visits, "leadId")
+    await safe_create_index(db.site_visits, "status")
+    await safe_create_index(db.site_visits, "createdAt")
     
     # Partners indexes
-    await db.partners.create_index("email", unique=True)
-    await db.partners.create_index("status")
+    await safe_create_index(db.partners, "email", unique=True)
+    await safe_create_index(db.partners, "status")
     
     # Verifications indexes
-    await db.verifications.create_index([("entityType", 1), ("entityId", 1)])
-    await db.verifications.create_index("status")
+    await safe_create_index(db.verifications, [("entityType", 1), ("entityId", 1)])
+    await safe_create_index(db.verifications, "status")
     
     # Analytics indexes
-    await db.analytics_events.create_index("eventId", unique=True)
-    await db.analytics_events.create_index("timestamp")
-    await db.analytics_events.create_index("eventName")
-    await db.analytics_events.create_index("sessionId")
-    await db.analytics_events.create_index("userRole")
-    await db.analytics_events.create_index("listingId")
-    await db.analytics_events.create_index("partnerId")
-    await db.analytics_events.create_index("locality")
-    await db.analytics_events.create_index([("eventName", 1), ("timestamp", -1)])
-    await db.analytics_events.create_index([("listingId", 1), ("eventName", 1), ("timestamp", -1)])
-    await db.analytics_events.create_index([("partnerId", 1), ("eventName", 1), ("timestamp", -1)])
-    await db.analytics_events.create_index([("locality", 1), ("eventName", 1), ("timestamp", -1)])
-    await db.analytics_events.create_index([("timestamp", -1), ("eventName", 1)])  # For time-based queries
+    await safe_create_index(db.analytics_events, "eventId", unique=True)
+    await safe_create_index(db.analytics_events, "timestamp")
+    await safe_create_index(db.analytics_events, "eventName")
+    await safe_create_index(db.analytics_events, "sessionId")
+    await safe_create_index(db.analytics_events, "userRole")
+    await safe_create_index(db.analytics_events, "listingId")
+    await safe_create_index(db.analytics_events, "partnerId")
+    await safe_create_index(db.analytics_events, "locality")
+    await safe_create_index(db.analytics_events, [("eventName", 1), ("timestamp", -1)])
+    await safe_create_index(db.analytics_events, [("listingId", 1), ("eventName", 1), ("timestamp", -1)])
+    await safe_create_index(db.analytics_events, [("partnerId", 1), ("eventName", 1), ("timestamp", -1)])
+    await safe_create_index(db.analytics_events, [("locality", 1), ("eventName", 1), ("timestamp", -1)])
+    await safe_create_index(db.analytics_events, [("timestamp", -1), ("eventName", 1)])  # For time-based queries
 
     # Design system indexes
-    await db.design_system_config.create_index("environment", unique=True)
-    await db.design_system_config.create_index("version")
-    await db.design_system_config.create_index("updatedAt")
+    await safe_create_index(db.design_system_config, "environment", unique=True)
+    await safe_create_index(db.design_system_config, "version")
+    await safe_create_index(db.design_system_config, "updatedAt")
     
     # User design preferences indexes
-    await db.user_design_preferences.create_index([("userId", 1), ("userType", 1)], unique=True)
-    await db.user_design_preferences.create_index("userType")
-    await db.user_design_preferences.create_index("lastDevice")
-    await db.user_design_preferences.create_index("updatedAt")
-    await db.user_design_preferences.create_index("preferences.theme")
-    await db.user_design_preferences.create_index("preferences.animationLevel")
-    await db.user_design_preferences.create_index("preferences.highContrast")
-    await db.user_design_preferences.create_index("preferences.reduceMotion")
+    await safe_create_index(db.user_design_preferences, [("userId", 1), ("userType", 1)], unique=True)
+    await safe_create_index(db.user_design_preferences, "userType")
+    await safe_create_index(db.user_design_preferences, "lastDevice")
+    await safe_create_index(db.user_design_preferences, "updatedAt")
+    await safe_create_index(db.user_design_preferences, "preferences.theme")
+    await safe_create_index(db.user_design_preferences, "preferences.animationLevel")
+    await safe_create_index(db.user_design_preferences, "preferences.highContrast")
+    await safe_create_index(db.user_design_preferences, "preferences.reduceMotion")
     
     # Design system analytics indexes
-    await db.design_system_analytics.create_index("timestamp")
-    await db.design_system_analytics.create_index([("timestamp", -1)])  # For cleanup queries
-    await db.design_system_analytics.create_index("cssLoadTime")
-    await db.design_system_analytics.create_index("renderTime")
-    await db.design_system_analytics.create_index("accessibilityScore")
+    await safe_create_index(db.design_system_analytics, "timestamp")
+    await safe_create_index(db.design_system_analytics, [("timestamp", -1)])  # For cleanup queries
+    await safe_create_index(db.design_system_analytics, "cssLoadTime")
+    await safe_create_index(db.design_system_analytics, "renderTime")
+    await safe_create_index(db.design_system_analytics, "accessibilityScore")
     
     # Design system metrics indexes
-    await db.design_system_metrics.create_index("type", unique=True)
-    await db.design_system_metrics.create_index("lastUpdated")
+    await safe_create_index(db.design_system_metrics, "type", unique=True)
+    await safe_create_index(db.design_system_metrics, "lastUpdated")
