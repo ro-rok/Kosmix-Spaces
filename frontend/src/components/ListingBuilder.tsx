@@ -22,7 +22,7 @@ import {
   VerificationStatus
 } from "@/types/models";
 import { initializeAllOfferings, validateOfferingsForSubmission } from "@/lib/offerings";
-import { usePartnerListing, useCreatePartnerListing, useUpdatePartnerListing } from "@/hooks/useAuth";
+import { usePartnerListing, useSubmitListing, useCreatePartnerListing, useUpdatePartnerListing } from "@/hooks/useAuth";
 import { trackPartnerListingSubmitted } from "@/lib/analytics";
 
 interface ListingBuilderProps {
@@ -65,6 +65,7 @@ export function ListingBuilder({ listingId, isEdit = false }: ListingBuilderProp
 
   // API hooks
   const { data: existingListing, isLoading: isLoadingListing } = usePartnerListing(listingId || '');
+  const submitListingMutation = useSubmitListing();
   const createListingMutation = useCreatePartnerListing();
   const updateListingMutation = useUpdatePartnerListing();
 
@@ -244,16 +245,34 @@ export function ListingBuilder({ listingId, isEdit = false }: ListingBuilderProp
 
     setIsSubmitting(true);
     try {
-      const listingData = mapFormDataToBackend(formData);
-      
+      // Prepare submission data with photos
+      const submissionData = {
+        displayName: formData.basicInfo.displayName,
+        overview: formData.basicInfo.overview,
+        locality: formData.basicInfo.locality,
+        city: formData.basicInfo.city,
+        amenities: formData.basicInfo.amenities,
+        accessHours: formData.basicInfo.accessHours,
+        weekendAccess: formData.basicInfo.weekendAccess,
+        nearMetro: formData.basicInfo.amenities.includes('Near Metro Station'),
+        metroNote: formData.basicInfo.amenities.includes('Near Metro Station') ? 'Near metro station' : undefined,
+        parking: formData.basicInfo.amenities.includes('Parking') ? 'AVAILABLE' : 'NONE',
+        powerBackup: formData.basicInfo.amenities.includes('Power Backup'),
+        heroPhotos: [], // Add hero photos if you have them in form data
+        offerings: formData.offerings
+      };
+
       if (isEdit && listingId) {
-        await updateListingMutation.mutateAsync({ listingId, data: listingData });
-        toast.success('Listing submitted for approval');
+        // For editing, use the update endpoint (you may need to create this)
+        await updateListingMutation.mutateAsync({ listingId, data: submissionData });
+        toast.success('Listing updated and submitted for approval');
+        navigate('/partner/listings');
       } else {
-        const result = await createListingMutation.mutateAsync(listingData);
+        // For new listings, use the submit endpoint
+        const result = await submitListingMutation.mutateAsync(submissionData);
         toast.success('Listing submitted for approval');
         
-        // Track listing submission for new listings
+        // Track listing submission
         const enabledOfferings = Object.entries(formData.offerings)
           .filter(([_, offering]) => offering.enabled)
           .map(([type, _]) => type);
@@ -267,10 +286,7 @@ export function ListingBuilder({ listingId, isEdit = false }: ListingBuilderProp
         });
         
         navigate(`/partner/listings/${result.listingId}`);
-        return;
       }
-      
-      navigate('/partner/listings');
     } catch (error: any) {
       toast.error(`Failed to submit listing: ${error.message}`);
     } finally {

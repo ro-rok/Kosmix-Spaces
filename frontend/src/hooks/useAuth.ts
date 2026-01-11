@@ -300,6 +300,17 @@ export function usePartnerListing(listingId: string) {
   });
 }
 
+export function useSubmitListing() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: (data: any) => api.partner.submitListing(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["partner", "listings"] });
+    },
+  });
+}
+
 export function useCreatePartnerListing() {
   const queryClient = useQueryClient();
   
@@ -337,7 +348,6 @@ export function useDeletePhoto() {
     mutationFn: (publicId: string) => 
       api.partner.deletePhoto(publicId),
   });
-}
 }
 
 // Logout hook

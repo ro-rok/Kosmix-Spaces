@@ -12,7 +12,8 @@ from app.models.premium_listing import (
     OfferingUpdateRequest,
     OfferingType,
     PhotoUploadResponse,
-    TempPhotoUploadResponse
+    TempPhotoUploadResponse,
+    MoveTempPhotosRequest
 )
 from app.services.premium_listing_service import (
     create_premium_listing,
@@ -136,20 +137,77 @@ async def delete_photo_from_cloudinary(
         raise HTTPException(status_code=500, detail=f"Failed to delete photo: {str(e)}")
 
 
-@router.post("/listings", response_model=dict)
-async def create_listing(
-    listing_data: PremiumListingCreate,
+@router.post("/listings/submit")
+async def submit_listing_with_photos(
+    request: SubmitListingRequest,
     current_user: dict = Depends(require_partner)
 ):
-    """Create a new premium listing."""
+    """
+    Submit complete listing with all data including photos.
+    This creates the listing and saves all photos to database in one operation.
+    """
     partner_id = current_user["partnerId"]
     
-    listing = await create_premium_listing(
-        partner_id=partner_id,
-        listing_data=listing_data.model_dump()
-    )
-    
-    return listing_to_public_response(listing)
+    try:
+        # Create the listing with all data
+        listing_data = {
+            "displayName": request.displayName,
+            "overview": request.overview,
+            "locality": request.locality,
+            "city": request.city,
+            "amenities": request.amenities,
+            "accessHours": request.accessHours,
+            "weekendAccess": request.weekendAccess,
+            "nearMetro": request.nearMetro,
+            "metroNote": request.metroNote,
+            "parking": request.parking,
+            "powerBackup": request.powerBackup,
+        }
+        
+        # Create the listing
+        listing = await create_premium_listing(partner_id, listing_data)
+        listing_id = str(listing["_id"])
+        
+        # Add hero photos to database
+        for photo_data in request.heroPhotos:
+            await add_hero_photo(
+                listing_id=listing_id,
+                partner_id=partner_id,
+                photo_data=photo_data.model_dump()
+            )
+        
+        # Add offering photos to database
+        for offering_type, offering_data in request.offerings.items():
+            if offering_data.get("enabled") and offering_data.get("photos"):
+                # Update offering data
+                await update_offering(
+                    listing_id=listing_id,
+                    partner_id=partner_id,
+                    offering_type=offering_type,
+                    offering_data=offering_data
+                )
+                
+                # Add photos for this offering
+                for photo_data in offering_data["photos"]:
+                    await add_offering_photo(
+                        listing_id=listing_id,
+                        partner_id=partner_id,
+                        offering_type=offering_type,
+                        photo_data=photo_data
+                    )
+        
+        # Submit for review
+        await submit_listing_for_review(listing_id, partner_id)
+        
+        return {
+            "ok": True,
+            "listingId": listing_id,
+            "message": "Listing submitted successfully",
+            "listing": listing_to_public_response(await get_premium_listing(listing_id, partner_id))
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to submit listing: {str(e)}")
 
 
 @router.get("/listings", response_model=dict)

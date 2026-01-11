@@ -310,3 +310,9 @@ class TempPhotoUploadResponse(BaseModel):
     height: int
     bytes: int
     format: str
+
+
+class MoveTempPhotosRequest(BaseModel):
+    """Request model for moving temporary photos to permanent listing."""
+    temp_photos: List[str]  # List of temporary photo public IDs
+    offering_type: Optional[str] = None  # Target offering type, None for hero photos

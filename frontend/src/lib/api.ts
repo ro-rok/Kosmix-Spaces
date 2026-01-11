@@ -349,6 +349,39 @@ export const api = {
     getListing: (listingId: string) =>
       apiRequest<any>(`/partner/listings/${listingId}`),
 
+    // Submit complete listing with all photos
+    submitListing: (data: {
+      displayName: string;
+      overview: string;
+      locality: string;
+      city: string;
+      amenities: string[];
+      accessHours?: string;
+      weekendAccess: boolean;
+      nearMetro: boolean;
+      metroNote?: string;
+      parking?: string;
+      powerBackup: boolean;
+      heroPhotos: Array<{
+        url: string;
+        publicId: string;
+        width: number;
+        height: number;
+        bytes: number;
+        format: string;
+      }>;
+      offerings: Record<string, any>;
+    }) =>
+      apiRequest<{
+        ok: boolean;
+        listingId: string;
+        message: string;
+        listing: any;
+      }>("/partner/listings/submit", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+
     createListing: (data: any) =>
       apiRequest<any>("/partner/listings", {
         method: "POST",
