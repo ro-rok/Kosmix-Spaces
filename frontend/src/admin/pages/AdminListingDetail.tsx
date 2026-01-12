@@ -460,6 +460,17 @@ export function AdminListingDetail() {
                 <p className="font-mono text-sm">{listing.slug}</p>
               </div>
               <div>
+                <p className="text-sm text-muted-foreground">Availability</p>
+                <Badge 
+                  variant={listing.availabilityStatus === 'available' ? 'default' : 'secondary'}
+                  className={listing.availabilityStatus === 'available' ? 'bg-green-500 hover:bg-green-600' : 'bg-red-500 hover:bg-red-600 text-white'}
+                >
+                  {listing.availabilityStatus === 'available' ? 'Available' : 
+                   listing.availabilityStatus === 'unavailable' ? 'Unavailable' :
+                   listing.availabilityStatus === 'limited' ? 'Limited' : 'Waitlist'}
+                </Badge>
+              </div>
+              <div>
                 <p className="text-sm text-muted-foreground">Published</p>
                 <p className="font-medium">{listing.isPublished ? "Yes" : "No"}</p>
               </div>
