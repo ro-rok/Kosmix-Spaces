@@ -13,6 +13,8 @@ import { PartnerRoute } from "@/components/PartnerRoute";
 import { InlineLoading } from "@/components/ui/loading";
 import { performanceMonitor } from "@/lib/performance";
 import { preloadLogoAssets } from "@/lib/assets";
+import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 
 // Public pages - loaded immediately for better UX
 import Index from "./pages/Index";
@@ -252,6 +254,10 @@ const App = () => {
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
+          
+          {/* Vercel Analytics and Speed Insights */}
+          <Analytics />
+          <SpeedInsights />
         </TooltipProvider>
       </AuthProvider>
     </QueryClientProvider>
