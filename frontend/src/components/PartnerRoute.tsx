@@ -1,5 +1,6 @@
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { PageLoadingAnimation } from "@/components/LoadingAnimation";
 import { useEffect } from "react";
 
 interface PartnerRouteProps {
@@ -20,14 +21,7 @@ export function PartnerRoute({ children, requireApproved = false }: PartnerRoute
 
   // If loading, show loading state
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
-          <p className="text-muted-foreground">Verifying authentication...</p>
-        </div>
-      </div>
-    );
+    return <PageLoadingAnimation text="Verifying authentication..." />;
   }
 
   // If not authenticated or wrong user type, redirect to login
@@ -43,14 +37,7 @@ export function PartnerRoute({ children, requireApproved = false }: PartnerRoute
 
   // If still loading user data, show loading
   if (!user && isAuthenticated && userRole === "partner") {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
-          <p className="text-muted-foreground">Loading partner data...</p>
-        </div>
-      </div>
-    );
+    return <PageLoadingAnimation text="Loading partner data..." />;
   }
 
   // If partner approval is required and partner is not approved

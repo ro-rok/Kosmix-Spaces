@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { MessageCircle, Phone, Mail, MapPin } from "lucide-react";
+import { Logo } from "@/components/Logo";
 import { contactConfig, transparencyLines } from "@/config/contact";
 import { buildWhatsAppLink, buildCallLink, buildEmailLink } from "@/lib/whatsapp";
 
@@ -20,11 +21,7 @@ export function Footer() {
           {/* Brand */}
           <div className="space-y-4">
             <Link to="/" className="flex items-center gap-2">
-              <img 
-                src="/favicon-32x32.png" 
-                alt="Kosmix Spaces" 
-                className="h-8 w-8"
-              />
+              <Logo size="medium" showFallbackText />
               <span className="font-display text-lg font-bold">
                 Kosmix<span className="text-primary">Spaces</span>
               </span>

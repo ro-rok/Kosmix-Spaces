@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/StatusBadge";
+import { PageLoadingAnimation } from "@/components/LoadingAnimation";
 import {
   Table,
   TableBody,
@@ -120,21 +121,7 @@ export function AdminListings() {
   const paginatedListings = filteredListings.slice((page - 1) * pageSize, page * pageSize);
 
   if (isLoading) {
-    return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="font-display text-2xl font-bold text-foreground">Premium Listings Management</h1>
-          <p className="text-muted-foreground">Manage and verify premium workspace listings</p>
-        </div>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center py-8">
-              <p className="text-muted-foreground">Loading premium listings...</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
+    return <PageLoadingAnimation text="Loading premium listings..." />;
   }
 
   if (error) {

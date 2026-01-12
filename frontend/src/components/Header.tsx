@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Menu, X, Phone, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Logo } from "@/components/Logo";
 import { buildWhatsAppLink, buildCallLink } from "@/lib/whatsapp";
 import { cn } from "@/lib/utils";
 
@@ -22,11 +23,7 @@ export function Header() {
       <div className="container flex h-16 items-center justify-between">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2">
-          <img 
-            src="/favicon-32x32.png" 
-            alt="Kosmix Spaces" 
-            className="h-8 w-8"
-          />
+          <Logo size="medium" showFallbackText />
           <span className="font-display text-xl font-bold text-foreground">
             Kosmix<span className="text-primary">Spaces</span>
           </span>

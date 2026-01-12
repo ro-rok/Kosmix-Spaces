@@ -1,4 +1,4 @@
-import React, { Suspense, lazy } from "react";
+import React, { Suspense, lazy, useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -12,6 +12,7 @@ import { AdminRoute } from "@/components/AdminRoute";
 import { PartnerRoute } from "@/components/PartnerRoute";
 import { InlineLoading } from "@/components/ui/loading";
 import { performanceMonitor } from "@/lib/performance";
+import { preloadLogoAssets } from "@/lib/assets";
 
 // Public pages - loaded immediately for better UX
 import Index from "./pages/Index";
@@ -81,6 +82,12 @@ const App = () => {
     } else {
       window.addEventListener('load', reportInitialMetrics);
     }
+  }, []);
+
+  // Preload logo assets for better UX
+  useEffect(() => {
+    preloadLogoAssets();
+  }, []);
 
     return () => {
       window.removeEventListener('load', reportInitialMetrics);

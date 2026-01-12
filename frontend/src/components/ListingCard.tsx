@@ -103,12 +103,14 @@ export function ListingCard({ listing, variant = "premium" }: ListingCardProps) 
               className={cn(
                 "glass shadow-lg animate-slide-in-right",
                 listing.availabilityStatus === "available" && "!bg-emerald-500/90 !text-white !hover:bg-emerald-500/90",
+                listing.availabilityStatus === "unavailable" && "!bg-red-500/90 !text-white !hover:bg-red-500/90",
                 listing.availabilityStatus === "limited" && "!bg-amber-500/90 !text-white !hover:bg-amber-500/90",
                 listing.availabilityStatus === "waitlist" && "!bg-slate-500/90 !text-white !hover:bg-slate-500/90"
               )}
               style={{ animationDelay: '0.3s' }}
             >
               {listing.availabilityStatus === "available" && "Available"}
+              {listing.availabilityStatus === "unavailable" && "Unavailable"}
               {listing.availabilityStatus === "limited" && "Limited"}
               {listing.availabilityStatus === "waitlist" && "Waitlist"}
             </Badge>

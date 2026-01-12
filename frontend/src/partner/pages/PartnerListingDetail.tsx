@@ -11,7 +11,9 @@ import {
   Building,
   Star,
   Eye,
-  MessageSquare
+  MessageSquare,
+  ToggleLeft,
+  ToggleRight
 } from "lucide-react";
 import { getAmenityIcon } from "@/lib/amenity-icons";
 import { Button } from "@/components/ui/button";
@@ -22,12 +24,16 @@ import { Separator } from "@/components/ui/separator";
 import { ListingBuilder } from "@/components/ListingBuilder";
 import { AdminNotesPanel } from "@/components/AdminNotesPanel";
 import { usePartnerListing } from "@/hooks/useAuth";
+import { api } from "@/lib/api";
+import { useState } from "react";
+import { toast } from "sonner";
 
 export function PartnerListingDetail() {
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const isEdit = searchParams.get('edit') === 'true';
+  const [isUpdatingAvailability, setIsUpdatingAvailability] = useState(false);
 
   console.log("PartnerListingDetail debug:", {
     id,
@@ -36,7 +42,25 @@ export function PartnerListingDetail() {
     searchParams: Object.fromEntries(searchParams.entries())
   });
 
-  const { data: listing, isLoading, error } = usePartnerListing(id || '');
+  const { data: listing, isLoading, error, refetch } = usePartnerListing(id || '');
+
+  const handleAvailabilityToggle = async () => {
+    if (!listing || !id) return;
+    
+    setIsUpdatingAvailability(true);
+    try {
+      const newStatus = listing.availabilityStatus === 'available' ? 'unavailable' : 'available';
+      await api.partner.updateAvailability(id, newStatus);
+      
+      toast.success(`Workspace marked as ${newStatus}`);
+      refetch(); // Refresh the listing data
+    } catch (error) {
+      console.error('Failed to update availability:', error);
+      toast.error('Failed to update availability status');
+    } finally {
+      setIsUpdatingAvailability(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -122,6 +146,30 @@ export function PartnerListingDetail() {
         </div>
         <div className="flex items-center gap-3">
           <StatusBadge status={listing.verificationStatus} />
+          
+          {/* Availability Toggle - only show for approved listings */}
+          {(listing.verificationStatus === "APPROVED" || listing.verificationStatus === "APPROVED_VERIFIED") && (
+            <Button
+              variant={listing.availabilityStatus === 'available' ? "default" : "secondary"}
+              size="sm"
+              onClick={handleAvailabilityToggle}
+              disabled={isUpdatingAvailability}
+              className="flex items-center gap-2"
+            >
+              {listing.availabilityStatus === 'available' ? (
+                <>
+                  <ToggleRight className="h-4 w-4" />
+                  Available
+                </>
+              ) : (
+                <>
+                  <ToggleLeft className="h-4 w-4" />
+                  Unavailable
+                </>
+              )}
+            </Button>
+          )}
+          
           {canEdit && (
             <Button onClick={() => navigate(`/partner/listings/${id}?edit=true`)}>
               <Edit className="h-4 w-4" />
@@ -350,6 +398,15 @@ export function PartnerListingDetail() {
               <div>
                 <p className="text-sm text-muted-foreground">Status</p>
                 <StatusBadge status={listing.verificationStatus} />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Availability</p>
+                <Badge 
+                  variant={listing.availabilityStatus === 'available' ? 'default' : 'secondary'}
+                  className={listing.availabilityStatus === 'available' ? 'bg-green-500 hover:bg-green-600' : 'bg-red-500 hover:bg-red-600 text-white'}
+                >
+                  {listing.availabilityStatus === 'available' ? 'Available' : 'Unavailable'}
+                </Badge>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Published</p>

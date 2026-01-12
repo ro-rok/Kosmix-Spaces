@@ -1,5 +1,6 @@
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { PageLoadingAnimation } from "@/components/LoadingAnimation";
 import { useEffect } from "react";
 
 interface AdminRouteProps {
@@ -29,14 +30,7 @@ export function AdminRoute({ children }: AdminRouteProps) {
   // If loading, show loading state
   if (isLoading) {
     console.log("AdminRoute - Loading auth state");
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
-          <p className="text-muted-foreground">Verifying authentication...</p>
-        </div>
-      </div>
-    );
+    return <PageLoadingAnimation text="Verifying authentication..." />;
   }
 
   // If not authenticated or wrong user type, redirect to login

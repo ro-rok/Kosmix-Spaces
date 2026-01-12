@@ -437,6 +437,17 @@ export const api = {
         totalViews: number;
         totalEnquiries: number;
       }>("/partner/listings/stats", {}, "partner-listings-stats", 300000),
+
+    // Update listing availability status
+    updateAvailability: (listingId: string, availabilityStatus: string) =>
+      apiRequest<{
+        ok: boolean;
+        message: string;
+        listing: any;
+      }>(`/partner/listings/${listingId}/availability`, {
+        method: "PUT",
+        body: JSON.stringify({ availability_status: availabilityStatus }),
+      }),
   },
 
   // Admin endpoints

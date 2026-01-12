@@ -925,3 +925,62 @@ async def cleanup_old_temporary_photos(
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Cleanup failed: {str(e)}")
+
+
+@router.put("/listings/{listing_id}/availability")
+async def update_listing_availability(
+    listing_id: str,
+    request: dict,
+    current_user: dict = Depends(require_partner)
+):
+    """Update listing availability status (available/unavailable)."""
+    partner_id = current_user["partnerId"]
+    
+    availability_status = request.get("availability_status")
+    if not availability_status:
+        raise HTTPException(status_code=400, detail="availability_status is required")
+    
+    # Validate availability status
+    valid_statuses = ["available", "unavailable", "limited", "waitlist"]
+    if availability_status not in valid_statuses:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Invalid availability status. Must be one of: {', '.join(valid_statuses)}"
+        )
+    
+    try:
+        from app.db.mongodb import get_database
+        from datetime import datetime
+        
+        db = get_database()
+        
+        # Update the listing's availability status
+        result = await db.premium_listings.update_one(
+            {
+                "_id": ObjectId(listing_id),
+                "partnerId": ObjectId(partner_id)
+            },
+            {
+                "$set": {
+                    "availabilityStatus": availability_status,
+                    "updatedAt": datetime.utcnow()
+                }
+            }
+        )
+        
+        if result.matched_count == 0:
+            raise HTTPException(status_code=404, detail="Listing not found")
+        
+        # Get updated listing
+        listing = await get_premium_listing(listing_id, partner_id)
+        
+        return {
+            "ok": True,
+            "message": f"Availability status updated to {availability_status}",
+            "listing": listing_to_public_response(listing)
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update availability: {str(e)}")

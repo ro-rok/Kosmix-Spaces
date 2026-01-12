@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { api } from "@/lib/api";
+import { InlineLoadingAnimation } from "@/components/LoadingAnimation";
 import { cn } from "@/lib/utils";
 import { 
   Search, 
@@ -291,9 +292,11 @@ export default function AdminLocalities() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-8 w-8 animate-spin" />
-            </div>
+            <InlineLoadingAnimation 
+              isLoading={loading}
+              text="Loading localities..."
+              size="md"
+            />
           ) : localities.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               No localities found matching your criteria

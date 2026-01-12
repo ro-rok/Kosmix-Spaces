@@ -588,8 +588,8 @@ def listing_to_public_response(listing: dict) -> dict:
     public_listing["seatCapacityMin"] = min_seats or 1
     public_listing["seatCapacityMax"] = max_seats or min_seats or 10
     
-    # Set default availability status
-    public_listing["availabilityStatus"] = "available"
+    # Set availability status from listing or default to available
+    public_listing["availabilityStatus"] = listing.get("availabilityStatus", "available")
     
     # Set default values for missing fields
     public_listing["dealTags"] = []

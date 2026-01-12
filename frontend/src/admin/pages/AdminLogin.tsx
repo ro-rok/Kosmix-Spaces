@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
+import { OverlayLoadingAnimation } from "@/components/LoadingAnimation";
+import { Logo } from "@/components/Logo";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
 
@@ -64,14 +66,16 @@ export function AdminLogin() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4">
+    <>
+      <OverlayLoadingAnimation 
+        isLoading={isLoading}
+        text="Signing you in..."
+      />
+      
+      <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4">
       <div className="w-full max-w-md rounded-xl border border-border bg-card p-8 shadow-lg">
         <div className="flex items-center justify-center gap-2 mb-6">
-          <img 
-            src="/favicon-32x32.png" 
-            alt="Kosmix Spaces" 
-            className="h-8 w-8"
-          />
+          <Logo size="medium" showFallbackText />
           <h1 className="font-display text-2xl font-bold">Admin Login</h1>
         </div>
         
@@ -130,6 +134,6 @@ export function AdminLogin() {
           </p>
         </div>
       </div>
-    </div>
+    </>
   );
 }

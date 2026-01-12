@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { InlineLoadingAnimation } from "@/components/LoadingAnimation";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -373,11 +374,11 @@ export function ListingBuilder({ listingId, isEdit = false }: ListingBuilderProp
 
   if (isLoadingListing) {
     return (
-      <div className="space-y-6">
-        <div className="text-center py-8">
-          <p className="text-muted-foreground">Loading listing...</p>
-        </div>
-      </div>
+      <InlineLoadingAnimation 
+        isLoading={isLoadingListing}
+        text="Loading listing details..."
+        size="lg"
+      />
     );
   }
 

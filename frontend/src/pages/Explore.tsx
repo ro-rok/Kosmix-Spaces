@@ -10,6 +10,7 @@ import { SearchPagination } from "@/components/SearchPagination";
 import { AppliedFilters } from "@/components/AppliedFilters";
 import { SearchEmptyState } from "@/components/SearchEmptyState";
 import { StickyCTA } from "@/components/StickyCTA";
+import { InlineLoadingAnimation } from "@/components/LoadingAnimation";
 import { SearchFilters } from "@/types/models";
 import { useSearchWithCache } from "@/hooks/useSearchWithCache";
 import { useUrlSync } from "@/hooks/useUrlSync";
@@ -396,7 +397,11 @@ export default function Explore() {
 
         {/* Content */}
         {isLoading ? (
-          <ListingGridSkeleton count={12} />
+          <InlineLoadingAnimation 
+            isLoading={isLoading}
+            text="Finding the perfect workspaces for you..."
+            size="lg"
+          />
         ) : listings.length > 0 ? (
           <>
             {/* Listings Grid */}

@@ -7,7 +7,7 @@ export type PartnerStatus = "PENDING" | "ACTIVE" | "SUSPENDED";
 export type LeadStatus = "NEW" | "IN_PROGRESS" | "CONVERTED" | "CLOSED" | "VISIT_REQUESTED";
 export type VisitStatus = "REQUESTED" | "CONFIRMED" | "COMPLETED" | "CANCELLED";
 
-export type AvailabilityStatus = "available" | "limited" | "waitlist";
+export type AvailabilityStatus = "available" | "unavailable" | "limited" | "waitlist";
 
 // Enhanced offering types for the new system
 export type OfferingType = "private-offices" | "dedicated-desks" | "hot-desks" | "meeting-rooms" | "event-spaces";

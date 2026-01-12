@@ -3,6 +3,8 @@ import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { Building2, FileText, Plus, Menu, X, LogOut, LayoutDashboard, BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
+import { PageLoadingAnimation } from "@/components/LoadingAnimation";
+import { Logo } from "@/components/Logo";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -23,11 +25,7 @@ export function PartnerLayout() {
   };
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-muted-foreground">Loading...</p>
-      </div>
-    );
+    return <PageLoadingAnimation text="Loading your workspace..." />;
   }
 
   if (!user) {
@@ -42,11 +40,7 @@ export function PartnerLayout() {
           <Menu className="h-5 w-5" />
         </Button>
         <div className="flex items-center gap-2">
-          <img 
-            src="/favicon-32x32.png" 
-            alt="Kosmix Spaces" 
-            className="h-5 w-5"
-          />
+          <Logo size="small" showFallbackText />
           <span className="font-display font-semibold text-sm truncate max-w-[120px]">
             {user.workspaceBrandName || 'Partner'}
           </span>
@@ -60,11 +54,7 @@ export function PartnerLayout() {
         {/* Sidebar - Desktop */}
         <aside className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0 border-r border-border bg-card">
           <div className="flex h-14 items-center gap-2 border-b border-border px-6">
-            <img 
-              src="/favicon-32x32.png" 
-              alt="Kosmix Spaces" 
-              className="h-5 w-5"
-            />
+            <Logo size="small" showFallbackText />
             <span className="font-display font-semibold truncate">{user.workspaceBrandName || 'Partner Portal'}</span>
           </div>
           <nav className="flex-1 space-y-1 p-4">
@@ -108,11 +98,7 @@ export function PartnerLayout() {
             <aside className="fixed inset-y-0 left-0 w-64 bg-card border-r border-border">
               <div className="flex h-14 items-center justify-between border-b border-border px-4">
                 <div className="flex items-center gap-2">
-                  <img 
-                    src="/favicon-32x32.png" 
-                    alt="Kosmix Spaces" 
-                    className="h-5 w-5"
-                  />
+                  <Logo size="small" showFallbackText />
                   <span className="font-display font-semibold text-sm truncate">
                     {user.workspaceBrandName || 'Partner'}
                   </span>

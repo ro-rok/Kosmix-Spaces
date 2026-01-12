@@ -14,6 +14,8 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  // Ensure public assets are properly copied
+  publicDir: 'public',
   build: {
     // Optimize bundle splitting for better performance
     rollupOptions: {
