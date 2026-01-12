@@ -16,6 +16,7 @@ import {
   ChevronUp,
   ExternalLink,
 } from "lucide-react";
+import { getAmenityIcon } from "@/lib/amenity-icons";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
@@ -124,14 +125,14 @@ export default function PremiumSpaceDetail() {
 
   // Analytics tracking handlers
   const handleWhatsAppClick = () => {
-    trackWhatsAppClick(listing.slug, slug, {
+    trackWhatsAppClick(listing.slug, {
       locality: listing.locality,
       verificationStatus: listing.verificationStatus
     });
   };
 
   const handleCallClick = () => {
-    trackCallClick(listing.slug, slug, {
+    trackCallClick(listing.slug, {
       locality: listing.locality,
       verificationStatus: listing.verificationStatus
     });
@@ -266,7 +267,7 @@ export default function PremiumSpaceDetail() {
               {/* Verification Badge */}
               {(listing.verificationStatus === "APPROVED_VERIFIED") && (
                 <div className="absolute left-4 top-4">
-                  <Badge className="bg-success text-success-foreground shadow-lg">
+                  <Badge className="!bg-success !text-success-foreground shadow-lg !hover:bg-success">
                     <BadgeCheck className="h-4 w-4 mr-1" />
                     Verified
                   </Badge>
@@ -543,14 +544,17 @@ export default function PremiumSpaceDetail() {
               <h2 className="font-display text-2xl font-semibold text-foreground">Amenities</h2>
               
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {listing.amenities.map((amenity, index) => (
-                  <div key={index} className="flex items-center gap-3 p-3 rounded-lg border border-border/50">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
-                      <Shield className="h-4 w-4 text-primary" />
+                {listing.amenities.map((amenity, index) => {
+                  const IconComponent = getAmenityIcon(amenity);
+                  return (
+                    <div key={index} className="flex items-center gap-3 p-3 rounded-lg border border-border/50">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+                        <IconComponent className="h-4 w-4 text-primary" />
+                      </div>
+                      <span className="text-sm font-medium text-foreground">{amenity}</span>
                     </div>
-                    <span className="text-sm font-medium text-foreground">{amenity}</span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               {listing.meetingRoomsAddon && (
@@ -594,9 +598,9 @@ export default function PremiumSpaceDetail() {
                       <p className="text-sm text-muted-foreground">Starting from</p>
                       <p className="font-display text-2xl font-bold text-primary">
                         {enabledOfferings.length > 0 ? formatPrice({
-                          startingPrice: enabledOfferings[0]?.startingPrice,
-                          unit: enabledOfferings[0]?.unit,
-                          budgetBand: enabledOfferings[0]?.budgetBand,
+                          startingPrice: (enabledOfferings[0] as any)?.startingPrice,
+                          unit: (enabledOfferings[0] as any)?.unit,
+                          budgetBand: (enabledOfferings[0] as any)?.budgetBand,
                         }) : "Contact for pricing"}
                       </p>
                       <p className="text-sm text-muted-foreground mt-1">
@@ -669,9 +673,9 @@ export default function PremiumSpaceDetail() {
                     <Badge
                       variant={listing.availabilityStatus === "available" ? "default" : "secondary"}
                       className={cn(
-                        listing.availabilityStatus === "available" && "bg-success text-success-foreground",
-                        listing.availabilityStatus === "limited" && "bg-accent text-accent-foreground",
-                        listing.availabilityStatus === "waitlist" && "bg-muted text-muted-foreground"
+                        listing.availabilityStatus === "available" && "!bg-success !text-success-foreground !hover:bg-success",
+                        listing.availabilityStatus === "limited" && "!bg-accent !text-accent-foreground !hover:bg-accent",
+                        listing.availabilityStatus === "waitlist" && "!bg-muted !text-muted-foreground !hover:bg-muted"
                       )}
                     >
                       {listing.availabilityStatus === "available" && "Available Now"}

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Check, ChevronDown, X } from 'lucide-react';
+import { Check, ChevronDown, X, type LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '@/components/ui/command';
@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 interface Option {
   value: string;
   label: string;
+  icon?: LucideIcon;
 }
 
 interface MultiSelectFilterProps {
@@ -81,6 +82,9 @@ export function MultiSelectFilter({
                     value.includes(option.value) ? "opacity-100" : "opacity-0"
                   )}
                 />
+                {option.icon && (
+                  <option.icon className="mr-2 h-4 w-4 text-muted-foreground" />
+                )}
                 {option.label}
               </CommandItem>
             ))}
@@ -108,6 +112,7 @@ export function FilterChips({ selectedOptions, onRemove, className }: FilterChip
           variant="secondary"
           className="gap-1 pr-1"
         >
+          {option.icon && <option.icon className="h-3 w-3" />}
           {option.label}
           <Button
             variant="ghost"

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Filter, X, Train, Car, Zap, FileText, MapPin, Users, DollarSign } from "lucide-react";
+import { getAmenityIcon } from "@/lib/amenity-icons";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
@@ -15,18 +16,18 @@ interface FilterDrawerProps {
   onClear: () => void;
 }
 
-// Common amenities for multi-select
+// Common amenities for multi-select with icons
 const commonAmenities = [
-  { value: 'wifi', label: 'High-Speed WiFi' },
-  { value: 'parking', label: 'Parking' },
-  { value: 'cafeteria', label: 'Cafeteria' },
-  { value: 'printer', label: 'Printer/Scanner' },
-  { value: 'reception', label: '24/7 Reception' },
-  { value: 'security', label: 'Security' },
-  { value: 'cleaning', label: 'Housekeeping' },
-  { value: 'lounge', label: 'Lounge Area' },
-  { value: 'phone-booth', label: 'Phone Booths' },
-  { value: 'lockers', label: 'Lockers' },
+  { value: 'wifi', label: 'High-Speed WiFi', icon: getAmenityIcon('wifi') },
+  { value: 'parking', label: 'Parking', icon: getAmenityIcon('parking') },
+  { value: 'cafeteria', label: 'Cafeteria', icon: getAmenityIcon('cafeteria') },
+  { value: 'printer', label: 'Printer/Scanner', icon: getAmenityIcon('printer') },
+  { value: 'reception', label: '24/7 Reception', icon: getAmenityIcon('reception') },
+  { value: 'security', label: 'Security', icon: getAmenityIcon('security') },
+  { value: 'cleaning', label: 'Housekeeping', icon: getAmenityIcon('cleaning') },
+  { value: 'lounge', label: 'Lounge Area', icon: getAmenityIcon('lounge') },
+  { value: 'phone-booth', label: 'Phone Booths', icon: getAmenityIcon('phone-booth') },
+  { value: 'lockers', label: 'Lockers', icon: getAmenityIcon('lockers') },
 ];
 
 export function FilterDrawer({ filters, onChange, onClear }: FilterDrawerProps) {
@@ -69,11 +70,11 @@ export function FilterDrawer({ filters, onChange, onClear }: FilterDrawerProps) 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <Button variant="outline" className="gap-2 btn-premium">
+        <Button variant="outline" size="sm" className="gap-2 btn-premium">
           <Filter className="h-4 w-4" />
-          <span className="hidden sm:inline">Filters</span>
+          <span className="hidden sm:inline text-sm">Filters</span>
           {activeCount > 0 && (
-            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground animate-scale-in">
+            <span className="flex h-4 w-4 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground animate-scale-in">
               {activeCount}
             </span>
           )}

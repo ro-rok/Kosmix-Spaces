@@ -3,7 +3,6 @@ import {
   BadgeCheck, 
   Phone, 
   MessageCircle, 
-  Eye, 
   MapPin, 
   Users, 
   Star,
@@ -26,99 +25,10 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ShortlistButton } from "@/components/ShortlistButton";
 import { Listing, budgetBandLabels, workspaceTypeLabels } from "@/types/models";
 import { buildWhatsAppLink, buildCallLink } from "@/lib/whatsapp";
 import { cn } from "@/lib/utils";
-
-// Amenity icon mapping
-const amenityIcons: Record<string, any> = {
-  "High-speed WiFi": Wifi,
-  "WiFi": Wifi,
-  "Internet": Wifi,
-  "Reception": Users2,
-  "Receptionist": Users2,
-  "Front Desk": Users2,
-  "Gym Access": Dumbbell,
-  "Gym": Dumbbell,
-  "Fitness Center": Dumbbell,
-  "Cleaning Services": Shield,
-  "Housekeeping": Shield,
-  "Maintenance": Shield,
-  "Parking": Car,
-  "Car Parking": Car,
-  "Vehicle Parking": Car,
-  "Near Metro Station": MapPin,
-  "Metro": MapPin,
-  "Transport": MapPin,
-  "Onsite Staff": Users2,
-  "Staff": Users2,
-  "Support Staff": Users2,
-  "Tea/Coffee": Coffee,
-  "Coffee": Coffee,
-  "Beverages": Coffee,
-  "Refreshments": Coffee,
-  "Power Backup": Zap,
-  "UPS": Zap,
-  "Generator": Zap,
-  "Backup Power": Zap,
-  "Air Conditioning": TreePine,
-  "AC": TreePine,
-  "Climate Control": TreePine,
-  "HVAC": TreePine,
-  "Meeting Rooms": Building,
-  "Conference Room": Building,
-  "Discussion Room": Building,
-  "Boardroom": Building,
-  "Printing": Printer,
-  "Scanner": Printer,
-  "Photocopying": Printer,
-  "Print Services": Printer,
-  "Cafeteria": Utensils,
-  "Food Court": Utensils,
-  "Dining": Utensils,
-  "Restaurant": Utensils,
-  "CCTV": Camera,
-  "Security Camera": Camera,
-  "Surveillance": Camera,
-  "Security": Shield,
-  "Lounge": Home,
-  "Rest Area": Home,
-  "Relaxation Zone": Home,
-  "Break Room": Home,
-  "Phone Booth": Headphones,
-  "Call Booth": Headphones,
-  "Private Calls": Headphones,
-  "Terrace": TreePine,
-  "Rooftop": TreePine,
-  "Outdoor Space": TreePine,
-  "Garden": TreePine,
-  "Lockers": Briefcase,
-  "Storage": Briefcase,
-  "Personal Storage": Briefcase,
-  "24/7 Access": Clock,
-  "Round the Clock": Clock,
-  "Always Open": Clock
-};
-
-// Function to get icon for amenity
-const getAmenityIcon = (amenity: string) => {
-  // Try exact match first
-  if (amenityIcons[amenity]) {
-    return amenityIcons[amenity];
-  }
-  
-  // Try partial matches
-  const lowerAmenity = amenity.toLowerCase();
-  for (const [key, icon] of Object.entries(amenityIcons)) {
-    if (lowerAmenity.includes(key.toLowerCase()) || key.toLowerCase().includes(lowerAmenity)) {
-      return icon;
-    }
-  }
-  
-  // Default icon
-  return Star;
-};
+import { getAmenityIcon } from "@/lib/amenity-icons";
 
 interface ListingCardProps {
   listing: Listing;
@@ -134,12 +44,15 @@ export function ListingCard({ listing, variant = "premium" }: ListingCardProps) 
   const isPremium = variant === "premium";
 
   return (
-    <div className={cn(
-      "group overflow-hidden card-hover animate-fade-in",
-      isPremium 
-        ? "card-premium" 
-        : "rounded-xl border bg-card shadow-sm"
-    )}>
+    <Link 
+      to={`/spaces/${listing.slug.replace('/listing/', '')}`}
+      className={cn(
+        "group overflow-hidden card-hover animate-fade-in block",
+        isPremium 
+          ? "card-premium" 
+          : "rounded-xl border bg-card shadow-sm"
+      )}
+    >
       {/* Image */}
       <div className="relative aspect-[16/10] overflow-hidden bg-muted">
         {/* Get the first photo URL - handle both regular and premium listing structures */}
@@ -176,7 +89,7 @@ export function ListingCard({ listing, variant = "premium" }: ListingCardProps) 
         {/* Top Badges - Only Verified */}
         <div className="absolute left-3 top-3 flex flex-wrap gap-2">
           {listing.verificationStatus === "APPROVED_VERIFIED" && (
-            <Badge className="glass bg-emerald-500/90 text-white shadow-lg animate-slide-in-right">
+            <Badge className="glass !bg-emerald-500/90 !text-white shadow-lg animate-slide-in-right !hover:bg-emerald-500/90">
               <BadgeCheck className="h-3 w-3 mr-1" />
               Verified
             </Badge>
@@ -185,14 +98,13 @@ export function ListingCard({ listing, variant = "premium" }: ListingCardProps) 
 
         {/* Top Right Actions */}
         <div className="absolute right-3 top-3 flex flex-col gap-2">
-          <ShortlistButton slug={listing.slug} listingName={listing.displayName} />
           {listing.availabilityStatus && (
             <Badge
               className={cn(
                 "glass shadow-lg animate-slide-in-right",
-                listing.availabilityStatus === "available" && "bg-emerald-500/90 text-white",
-                listing.availabilityStatus === "limited" && "bg-amber-500/90 text-white",
-                listing.availabilityStatus === "waitlist" && "bg-slate-500/90 text-white"
+                listing.availabilityStatus === "available" && "!bg-emerald-500/90 !text-white !hover:bg-emerald-500/90",
+                listing.availabilityStatus === "limited" && "!bg-amber-500/90 !text-white !hover:bg-amber-500/90",
+                listing.availabilityStatus === "waitlist" && "!bg-slate-500/90 !text-white !hover:bg-slate-500/90"
               )}
               style={{ animationDelay: '0.3s' }}
             >
@@ -208,16 +120,6 @@ export function ListingCard({ listing, variant = "premium" }: ListingCardProps) 
           <div className="absolute bottom-3 left-3">
             <Badge className="glass bg-primary/90 text-primary-foreground shadow-lg animate-bounce-gentle">
               {listing.dealTags[0]}
-            </Badge>
-          </div>
-        )}
-
-        {/* Premium Rating Badge */}
-        {isPremium && (
-          <div className="absolute bottom-3 right-3">
-            <Badge className="glass bg-black/60 text-white shadow-lg">
-              <Star className="h-3 w-3 mr-1 fill-current" />
-              4.8
             </Badge>
           </div>
         )}
@@ -326,7 +228,6 @@ export function ListingCard({ listing, variant = "premium" }: ListingCardProps) 
             )}>
               {listing.budgetBand ? budgetBandLabels[listing.budgetBand] : "On Enquiry"}
             </p>
-            <p className="text-xs text-muted-premium">per seat/month</p>
           </div>
           <p className="text-xs text-muted-premium mt-0.5">
             Final pricing on enquiry
@@ -340,6 +241,7 @@ export function ListingCard({ listing, variant = "premium" }: ListingCardProps) 
             size="sm" 
             className="flex-1 btn-premium" 
             asChild
+            onClick={(e) => e.stopPropagation()}
           >
             <a href={whatsappLink} target="_blank" rel="noopener noreferrer">
               <MessageCircle className="h-4 w-4" />
@@ -351,24 +253,15 @@ export function ListingCard({ listing, variant = "premium" }: ListingCardProps) 
             size="sm" 
             className="flex-1 btn-premium" 
             asChild
+            onClick={(e) => e.stopPropagation()}
           >
             <a href={buildCallLink()}>
               <Phone className="h-4 w-4" />
               Call
             </a>
           </Button>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="px-3 btn-premium"
-            asChild
-          >
-            <Link to={`/spaces/${listing.slug.replace('/listing/', '')}`}>
-              <Eye className="h-4 w-4" />
-            </Link>
-          </Button>
         </div>
       </div>
-    </div>
+    </Link>
   );
 }

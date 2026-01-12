@@ -11,10 +11,9 @@ import {
   Building,
   Star,
   Eye,
-  MessageSquare,
-  Wifi,
-  Coffee
+  MessageSquare
 } from "lucide-react";
+import { getAmenityIcon } from "@/lib/amenity-icons";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -323,20 +322,17 @@ export function PartnerListingDetail() {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                  {listing.amenities.map((amenity: string) => (
-                    <div key={amenity} className="flex items-center gap-2">
-                      <div className="flex h-6 w-6 items-center justify-center rounded bg-primary/10">
-                        {amenity.toLowerCase().includes("wifi") ? (
-                          <Wifi className="h-3 w-3 text-primary" />
-                        ) : amenity.toLowerCase().includes("cafe") ? (
-                          <Coffee className="h-3 w-3 text-primary" />
-                        ) : (
-                          <CheckCircle className="h-3 w-3 text-primary" />
-                        )}
+                  {listing.amenities.map((amenity: string) => {
+                    const IconComponent = getAmenityIcon(amenity);
+                    return (
+                      <div key={amenity} className="flex items-center gap-2">
+                        <div className="flex h-6 w-6 items-center justify-center rounded bg-primary/10">
+                          <IconComponent className="h-3 w-3 text-primary" />
+                        </div>
+                        <span className="text-sm">{amenity}</span>
                       </div>
-                      <span className="text-sm">{amenity}</span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>

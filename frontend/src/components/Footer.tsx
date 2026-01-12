@@ -20,9 +20,11 @@ export function Footer() {
           {/* Brand */}
           <div className="space-y-4">
             <Link to="/" className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-                <span className="font-display text-sm font-bold text-primary-foreground">K</span>
-              </div>
+              <img 
+                src="/favicon-32x32.png" 
+                alt="Kosmix Spaces" 
+                className="h-8 w-8"
+              />
               <span className="font-display text-lg font-bold">
                 Kosmix<span className="text-primary">Spaces</span>
               </span>

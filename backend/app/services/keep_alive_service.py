@@ -21,8 +21,9 @@ class KeepAliveService:
     
     def __init__(self):
         self.is_running = False
-        self.ping_interval = settings.KEEP_ALIVE_PING_INTERVAL
-        self.health_check_interval = settings.KEEP_ALIVE_HEALTH_CHECK_INTERVAL
+        # Use environment variables with sensible defaults
+        self.ping_interval = settings.KEEP_ALIVE_PING_INTERVAL  # 30 minutes default
+        self.health_check_interval = settings.KEEP_ALIVE_HEALTH_CHECK_INTERVAL  # 1 hour default
         self.last_ping = None
         self.last_health_check = None
         self.stats = {
@@ -41,9 +42,24 @@ class KeepAliveService:
         self.is_running = True
         logger.info("Starting keep-alive service")
         
-        # Start background tasks
-        asyncio.create_task(self._ping_loop())
-        asyncio.create_task(self._health_check_loop())
+        # Start background tasks with initial delay to allow server startup
+        asyncio.create_task(self._ping_loop_with_delay())
+        asyncio.create_task(self._health_check_loop_with_delay())
+        
+    async def _ping_loop_with_delay(self):
+        """Ping loop with initial startup delay."""
+        # Wait for server to be fully ready before starting pings
+        logger.info("Keep-alive service waiting for server startup...")
+        await asyncio.sleep(30)  # Wait 30 seconds for server to be ready
+        logger.info("Keep-alive ping loop starting...")
+        await self._ping_loop()
+        
+    async def _health_check_loop_with_delay(self):
+        """Health check loop with initial startup delay."""
+        # Wait for server to be fully ready before starting health checks
+        await asyncio.sleep(35)  # Wait 35 seconds, slightly after ping loop
+        logger.info("Keep-alive health check loop starting...")
+        await self._health_check_loop()
         
     async def stop(self):
         """Stop the keep-alive service."""
@@ -85,12 +101,21 @@ class KeepAliveService:
                     if response.status == 200:
                         self.last_ping = datetime.utcnow()
                         self.stats["total_pings"] += 1
-                        logger.debug("Keep-alive ping successful")
+                        logger.info("Keep-alive service: ping successful")
+                        # Clear any previous error on successful ping
+                        if self.stats["last_error"]:
+                            logger.info("Keep-alive service recovered from previous errors")
+                            self.stats["last_error"] = None
                     else:
-                        logger.warning(f"Keep-alive ping returned status: {response.status}")
+                        logger.warning(f"Keep-alive service: ping returned status {response.status}")
                         
         except Exception as e:
-            logger.error(f"Keep-alive ping failed: {e}")
+            # Only log as error if server should be ready (after initial startup)
+            uptime = datetime.utcnow() - self.stats["uptime_start"]
+            if uptime.total_seconds() > 60:  # After 1 minute of uptime
+                logger.error(f"Keep-alive service: ping failed - {e}")
+            else:
+                logger.debug(f"Keep-alive service: ping failed during startup - {e}")
             raise
     
     async def _perform_health_check(self):
@@ -104,10 +129,10 @@ class KeepAliveService:
             self.last_health_check = datetime.utcnow()
             self.stats["total_health_checks"] += 1
             
-            logger.debug("Health check completed successfully")
+            logger.info("Keep-alive service: health check completed successfully")
             
         except Exception as e:
-            logger.error(f"Health check failed: {e}")
+            logger.error(f"Keep-alive service: health check failed - {e}")
             raise
     
     async def _check_database_health(self, db: AsyncIOMotorDatabase):
@@ -124,7 +149,7 @@ class KeepAliveService:
                 logger.debug(f"Collection {collection_name}: {count} documents")
                 
         except Exception as e:
-            logger.error(f"Database health check failed: {e}")
+            logger.error(f"Keep-alive service: database health check failed - {e}")
             raise 
    
     def get_stats(self) -> Dict[str, Any]:

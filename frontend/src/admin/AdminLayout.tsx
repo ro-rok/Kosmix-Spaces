@@ -39,7 +39,11 @@ export function AdminLayout() {
           <Menu className="h-5 w-5" />
         </Button>
         <div className="flex items-center gap-2">
-          <Shield className="h-5 w-5 text-primary" />
+          <img 
+            src="/favicon-32x32.png" 
+            alt="Kosmix Spaces" 
+            className="h-5 w-5"
+          />
           <span className="font-display font-semibold">Admin</span>
         </div>
         <Button variant="ghost" size="icon" onClick={logout}>
@@ -51,7 +55,11 @@ export function AdminLayout() {
         {/* Sidebar - Desktop */}
         <aside className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0 border-r border-border bg-card">
           <div className="flex h-14 items-center gap-2 border-b border-border px-6">
-            <Shield className="h-5 w-5 text-primary" />
+            <img 
+              src="/favicon-32x32.png" 
+              alt="Kosmix Spaces" 
+              className="h-5 w-5"
+            />
             <span className="font-display font-semibold">Kosmix Admin</span>
           </div>
           <nav className="flex-1 space-y-1 p-4">
@@ -91,7 +99,11 @@ export function AdminLayout() {
             <aside className="fixed inset-y-0 left-0 w-64 bg-card border-r border-border">
               <div className="flex h-14 items-center justify-between border-b border-border px-4">
                 <div className="flex items-center gap-2">
-                  <Shield className="h-5 w-5 text-primary" />
+                  <img 
+                    src="/favicon-32x32.png" 
+                    alt="Kosmix Spaces" 
+                    className="h-5 w-5"
+                  />
                   <span className="font-display font-semibold">Admin</span>
                 </div>
                 <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(false)}>

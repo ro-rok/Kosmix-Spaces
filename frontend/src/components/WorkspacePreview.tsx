@@ -1,5 +1,6 @@
 import { Listing, budgetBandLabels, workspaceTypeLabels } from "@/types/models";
-import { Train, Zap, Car, Clock, FileText, Users, Wifi, Coffee, Shield, MapPin } from "lucide-react";
+import { Train, Zap, Car, Clock, FileText, Users, MapPin } from "lucide-react";
+import { getAmenityIcon } from "@/lib/amenity-icons";
 import { cn } from "@/lib/utils";
 
 interface WorkspacePreviewProps {
@@ -119,20 +120,17 @@ export function WorkspacePreview({ listing, showActions = false }: WorkspacePrev
       <div className="space-y-3">
         <h2 className="font-display text-lg font-semibold text-foreground">Amenities</h2>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          {listing.amenities.map((amenity) => (
-            <div key={amenity} className="flex items-center gap-2">
-              <div className="flex h-6 w-6 items-center justify-center rounded bg-primary/10">
-                {amenity.toLowerCase().includes("wifi") ? (
-                  <Wifi className="h-3 w-3 text-primary" />
-                ) : amenity.toLowerCase().includes("cafe") ? (
-                  <Coffee className="h-3 w-3 text-primary" />
-                ) : (
-                  <Shield className="h-3 w-3 text-primary" />
-                )}
+          {listing.amenities.map((amenity) => {
+            const IconComponent = getAmenityIcon(amenity);
+            return (
+              <div key={amenity} className="flex items-center gap-2">
+                <div className="flex h-6 w-6 items-center justify-center rounded bg-primary/10">
+                  <IconComponent className="h-3 w-3 text-primary" />
+                </div>
+                <span className="text-sm text-foreground">{amenity}</span>
               </div>
-              <span className="text-sm text-foreground">{amenity}</span>
-            </div>
-          ))}
+            );
+          })}
         </div>
         {listing.meetingRoomsAddon && (
           <p className="text-sm text-muted-foreground mt-2">

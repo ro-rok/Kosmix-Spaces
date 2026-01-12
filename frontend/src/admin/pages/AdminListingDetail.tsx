@@ -10,8 +10,6 @@ import {
   Clock,
   Car,
   Zap,
-  Wifi,
-  Coffee,
   Camera,
   Building,
   Calendar,
@@ -23,6 +21,7 @@ import {
   Eye,
   MessageSquare
 } from "lucide-react";
+import { getAmenityIcon } from "@/lib/amenity-icons";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -131,11 +130,11 @@ export function AdminListingDetail() {
   }
 
   // Get enabled offerings
-  const enabledOfferings = Object.entries(listing.offerings || {}).filter(([_, offering]) => offering.enabled);
+  const enabledOfferings = Object.entries(listing.offerings || {}).filter(([_, offering]) => (offering as any).enabled);
   
   // Get all photos count
   const heroPhotosCount = listing.heroPhotos?.length || 0;
-  const offeringPhotosCount = enabledOfferings.reduce((total, [_, offering]) => total + (offering.photos?.length || 0), 0);
+  const offeringPhotosCount = enabledOfferings.reduce((total, [_, offering]) => total + ((offering as any).photos?.length || 0), 0);
   const totalPhotos = heroPhotosCount + offeringPhotosCount;
 
   return (
@@ -224,31 +223,31 @@ export function AdminListingDetail() {
                   <div key={offeringType} className="border rounded-lg p-4 space-y-4">
                     <div className="flex items-start justify-between">
                       <div>
-                        <h4 className="font-semibold text-lg">{offering.title}</h4>
+                        <h4 className="font-semibold text-lg">{(offering as any).title}</h4>
                         <p className="text-sm text-muted-foreground capitalize">{offeringType.replace('-', ' ')}</p>
                       </div>
                       <div className="text-right">
-                        {offering.startingPrice && (
+                        {(offering as any).startingPrice && (
                           <div className="font-semibold text-lg">
-                            ₹{offering.startingPrice.toLocaleString()}
-                            {offering.unit && <span className="text-sm text-muted-foreground">/{offering.unit}</span>}
+                            ₹{(offering as any).startingPrice.toLocaleString()}
+                            {(offering as any).unit && <span className="text-sm text-muted-foreground">/{(offering as any).unit}</span>}
                           </div>
                         )}
-                        {offering.budgetBand && (
-                          <Badge variant="outline">{offering.budgetBand}</Badge>
+                        {(offering as any).budgetBand && (
+                          <Badge variant="outline">{(offering as any).budgetBand}</Badge>
                         )}
                       </div>
                     </div>
 
-                    {offering.description && (
-                      <p className="text-muted-foreground">{offering.description}</p>
+                    {(offering as any).description && (
+                      <p className="text-muted-foreground">{(offering as any).description}</p>
                     )}
 
-                    {offering.features && offering.features.length > 0 && (
+                    {(offering as any).features && (offering as any).features.length > 0 && (
                       <div>
                         <h5 className="font-medium mb-2">Features</h5>
                         <div className="flex flex-wrap gap-2">
-                          {offering.features.map((feature, idx) => (
+                          {(offering as any).features.map((feature: string, idx: number) => (
                             <Badge key={idx} variant="secondary" className="text-xs">
                               {feature}
                             </Badge>
@@ -257,31 +256,31 @@ export function AdminListingDetail() {
                       </div>
                     )}
 
-                    {offering.capacity && (
+                    {(offering as any).capacity && (
                       <div>
                         <h5 className="font-medium mb-2">Capacity</h5>
                         <div className="text-sm text-muted-foreground">
-                          {JSON.stringify(offering.capacity, null, 2)}
+                          {JSON.stringify((offering as any).capacity, null, 2)}
                         </div>
                       </div>
                     )}
 
-                    {offering.availability && (
+                    {(offering as any).availability && (
                       <div>
                         <h5 className="font-medium mb-2">Availability</h5>
-                        <p className="text-sm text-muted-foreground">{offering.availability}</p>
+                        <p className="text-sm text-muted-foreground">{(offering as any).availability}</p>
                       </div>
                     )}
 
-                    {offering.photos && offering.photos.length > 0 && (
+                    {(offering as any).photos && (offering as any).photos.length > 0 && (
                       <div>
-                        <h5 className="font-medium mb-2">Photos ({offering.photos.length})</h5>
+                        <h5 className="font-medium mb-2">Photos ({(offering as any).photos.length})</h5>
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                          {offering.photos.map((photo, idx) => (
+                          {(offering as any).photos.map((photo: any, idx: number) => (
                             <div key={idx} className="relative group">
                               <img
                                 src={photo.url}
-                                alt={`${offering.title} photo ${idx + 1}`}
+                                alt={`${(offering as any).title} photo ${idx + 1}`}
                                 className="w-full h-32 object-cover rounded border"
                               />
                               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors rounded" />
@@ -409,20 +408,17 @@ export function AdminListingDetail() {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                  {listing.amenities.map((amenity) => (
-                    <div key={amenity} className="flex items-center gap-2">
-                      <div className="flex h-6 w-6 items-center justify-center rounded bg-primary/10">
-                        {amenity.toLowerCase().includes("wifi") ? (
-                          <Wifi className="h-3 w-3 text-primary" />
-                        ) : amenity.toLowerCase().includes("cafe") ? (
-                          <Coffee className="h-3 w-3 text-primary" />
-                        ) : (
-                          <CheckCircle className="h-3 w-3 text-primary" />
-                        )}
+                  {listing.amenities.map((amenity) => {
+                    const IconComponent = getAmenityIcon(amenity);
+                    return (
+                      <div key={amenity} className="flex items-center gap-2">
+                        <div className="flex h-6 w-6 items-center justify-center rounded bg-primary/10">
+                          <IconComponent className="h-3 w-3 text-primary" />
+                        </div>
+                        <span className="text-sm">{amenity}</span>
                       </div>
-                      <span className="text-sm">{amenity}</span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>

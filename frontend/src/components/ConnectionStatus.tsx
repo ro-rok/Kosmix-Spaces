@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AlertCircle, CheckCircle, Loader2 } from "lucide-react";
+import { AlertCircle, Loader2 } from "lucide-react";
 import { api } from "@/lib/api";
 
 export function ConnectionStatus() {
@@ -18,13 +18,23 @@ export function ConnectionStatus() {
       }
     };
 
+    // Initial check
     checkConnection();
     
-    // Check connection every 30 seconds
-    const interval = setInterval(checkConnection, 30000);
+    // Only poll when disconnected, and reduce frequency
+    let interval: NodeJS.Timeout;
+    if (status === 'disconnected') {
+      // Check every 5 minutes when disconnected
+      interval = setInterval(checkConnection, 300000);
+    } else if (status === 'checking') {
+      // Check every 30 seconds when initially checking
+      interval = setInterval(checkConnection, 30000);
+    }
     
-    return () => clearInterval(interval);
-  }, []);
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [status]);
 
   if (status === 'connected') {
     return null; // Don't show anything when connected

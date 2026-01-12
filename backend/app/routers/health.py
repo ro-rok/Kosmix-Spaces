@@ -1,18 +1,24 @@
 """Health check endpoint."""
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from datetime import datetime
 import asyncio
+import logging
 
 from app.core.config import get_settings
 
 router = APIRouter()
 settings = get_settings()
+logger = logging.getLogger(__name__)
 
 
 @router.get("/health")
-async def health_check():
+async def health_check(request: Request):
     """Health check endpoint with system status."""
     try:
+        # Check if this is from keep-alive service (localhost/127.0.0.1)
+        client_host = request.client.host if request.client else "unknown"
+        is_keep_alive = client_host in ["127.0.0.1", "localhost", "::1"]
+        
         # Basic health check
         health_data = {
             "status": "ok",
@@ -31,13 +37,19 @@ async def health_check():
         except Exception as db_error:
             health_data["database"] = f"error: {str(db_error)}"
             health_data["status"] = "degraded"
+            # Log database errors regardless of source
+            logger.error(f"Database health check failed: {db_error}")
+        
+        # Log keep-alive calls differently
+        if is_keep_alive:
+            logger.debug(f"Keep-alive service health check: {health_data['status']}")
+        else:
+            logger.info(f"External health check from {client_host}: {health_data['status']}")
         
         return health_data
         
     except Exception as e:
         # Log the error for debugging
-        import logging
-        logger = logging.getLogger(__name__)
         logger.error(f"Health check error: {e}", exc_info=True)
         
         raise HTTPException(

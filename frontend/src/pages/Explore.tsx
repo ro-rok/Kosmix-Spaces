@@ -272,8 +272,8 @@ export default function Explore() {
     <div className="pb-20 md:pb-0">
       {/* Header */}
       <div className="border-b border-border/60 glass sticky-top-safe z-40">
-        <div className="container section-spacing py-4">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="container py-3">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             {/* Search */}
             <div className="flex-1 max-w-md animate-slide-up">
               <SearchBar
@@ -308,7 +308,7 @@ export default function Explore() {
 
               {/* Sort */}
               <Select value={sort} onValueChange={handleSortChange}>
-                <SelectTrigger className="w-[180px] btn-premium">
+                <SelectTrigger className="w-[140px] btn-premium text-sm">
                   <SelectValue placeholder="Sort by" />
                 </SelectTrigger>
                 <SelectContent className="glass">
@@ -327,24 +327,26 @@ export default function Explore() {
             </div>
           </div>
 
-          {/* Applied Filters */}
-          <AppliedFilters
-            filters={filters}
-            onRemoveFilter={handleRemoveFilter}
-            onClearAll={clearAllFilters}
-            className="mt-3 animate-slide-up"
-            style={{ animationDelay: '0.2s' }}
-          />
+          {/* Applied Filters - More compact */}
+          {activeFilterCount > 0 && (
+            <AppliedFilters
+              filters={filters}
+              onRemoveFilter={handleRemoveFilter}
+              onClearAll={clearAllFilters}
+              className="mt-2 animate-slide-up"
+              style={{ animationDelay: '0.2s' }}
+            />
+          )}
         </div>
       </div>
 
       {/* Results */}
       <div className="container section-spacing">
-        {/* Results Header */}
-        <div className="mb-6 animate-fade-in">
+        {/* Results Header - More compact */}
+        <div className="mb-4 animate-fade-in">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="font-display text-2xl font-bold text-foreground">
+              <h1 className="font-display text-xl md:text-2xl font-bold text-foreground">
                 {searchQuery ? (
                   `Search results for "${searchQuery}"`
                 ) : filters.city.length === 3 && 
@@ -365,7 +367,7 @@ export default function Explore() {
                 )}
               </h1>
               <div className="flex items-center gap-4 mt-1">
-                <p className="text-muted-premium">
+                <p className="text-sm text-muted-premium">
                   {isLoading ? (
                     <span className="flex items-center gap-2">
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -376,15 +378,15 @@ export default function Explore() {
                   )}
                 </p>
                 {activeFilterCount > 0 && (
-                  <p className="text-sm text-muted-premium">
+                  <p className="text-xs text-muted-premium">
                     {activeFilterCount} filter{activeFilterCount !== 1 ? 's' : ''} applied
                   </p>
                 )}
               </div>
             </div>
             
-            {/* Sort indicator */}
-            <div className="hidden md:block text-sm text-muted-premium">
+            {/* Sort indicator - More compact */}
+            <div className="hidden md:block text-xs text-muted-premium">
               Sorted by: {sort === 'recommended' ? 'Recommended' : 
                         sort === 'most-enquired' ? 'Most Enquired' : 
                         'Budget: Low → High'}
