@@ -106,6 +106,35 @@ export default function PremiumSpaceDetail() {
     };
   }, [listing]);
 
+  // Get all photos for the image carousel (hero photos + offering photos)
+  const allPhotos = listing ? [
+    ...(listing.heroPhotos || []),
+    ...Object.values(listing.offerings || {}).flatMap((offering: any) => offering.photos || [])
+  ] : [];
+
+  // Auto-scroll functionality for carousel
+  useEffect(() => {
+    if (allPhotos.length <= 1 || isCarouselPaused) return;
+
+    const startAutoScroll = () => {
+      autoScrollRef.current = setInterval(() => {
+        setCurrentImage(prev => (prev + 1) % allPhotos.length);
+      }, 4000); // Change photo every 4 seconds
+    };
+
+    const stopAutoScroll = () => {
+      if (autoScrollRef.current) {
+        clearInterval(autoScrollRef.current);
+        autoScrollRef.current = null;
+      }
+    };
+
+    startAutoScroll();
+
+    return () => stopAutoScroll();
+  }, [allPhotos.length, isCarouselPaused]);
+
+  // Handle loading and error states - AFTER all hooks
   if (isLoading) {
     return (
       <div className="container py-8">
@@ -147,56 +176,8 @@ export default function PremiumSpaceDetail() {
     });
   };
 
-  // Handle loading and error states
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
-  }
-
-  if (error || !listing) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-2">Listing not found</h1>
-          <p className="text-muted-foreground">The listing you're looking for doesn't exist or has been removed.</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Get all photos for the image carousel (hero photos + offering photos)
-  const allPhotos = [
-    ...(listing.heroPhotos || []),
-    ...Object.values(listing.offerings || {}).flatMap((offering: any) => offering.photos || [])
-  ];
-
   // Ensure currentImage is within bounds
   const safeCurrentImage = Math.min(currentImage, Math.max(0, allPhotos.length - 1));
-
-  // Auto-scroll functionality for carousel
-  useEffect(() => {
-    if (allPhotos.length <= 1 || isCarouselPaused) return;
-
-    const startAutoScroll = () => {
-      autoScrollRef.current = setInterval(() => {
-        setCurrentImage(prev => (prev + 1) % allPhotos.length);
-      }, 4000); // Change photo every 4 seconds
-    };
-
-    const stopAutoScroll = () => {
-      if (autoScrollRef.current) {
-        clearInterval(autoScrollRef.current);
-        autoScrollRef.current = null;
-      }
-    };
-
-    startAutoScroll();
-
-    return () => stopAutoScroll();
-  }, [allPhotos.length, isCarouselPaused]);
 
   const nextImage = () => {
     setCurrentImage((prev) => (prev + 1) % allPhotos.length);

@@ -205,12 +205,14 @@ export function StaggerAnimation({
       // If animations are disabled, ensure all elements are in final state
       if (containerRef.current) {
         const childElements = Array.from(containerRef.current.children) as HTMLElement[];
-        gsap.set(childElements, {
-          opacity: 1,
-          y: 0,
-          scale: 1,
-          clearProps: 'all',
-        });
+        if (childElements.length > 0) {
+          gsap.set(childElements, {
+            opacity: 1,
+            y: 0,
+            scale: 1,
+            clearProps: 'all',
+          });
+        }
       }
       return;
     }

@@ -8,6 +8,8 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { AnimationProvider } from "@/contexts/AnimationContext";
 import { AnimationAccessibilityProvider } from "@/components/AnimationAccessibilityProvider";
 import { SmoothScrollProvider } from "@/components/SmoothScrollProvider";
+import { GestureProvider } from "@/components/GestureProvider";
+import { GestureIndicator, GestureHelp } from "@/components/GestureIndicator";
 import { PageTransition } from "@/components/PageTransition";
 import { RouteTransition } from "@/components/RouteTransition";
 import { SessionExpiryHandler } from "@/components/SessionExpiryHandler";
@@ -283,7 +285,17 @@ const App = () => {
                     v7_relativeSplatPath: true,
                   }}
                 >
-                  <AnimatedRoutes />
+                  <GestureProvider
+                    enableKeyboardShortcuts={true}
+                    enableTouchGestures={true}
+                    enableDebugMode={process.env.NODE_ENV === 'development'}
+                  >
+                    <AnimatedRoutes />
+                    
+                    {/* Gesture UI Components */}
+                    <GestureIndicator position="bottom-right" />
+                    <GestureHelp />
+                  </GestureProvider>
                 </BrowserRouter>
                 
                 {/* Vercel Analytics and Speed Insights */}
