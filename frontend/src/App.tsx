@@ -55,7 +55,7 @@ const queryClient = new QueryClient({
         return failureCount < 3;
       },
       staleTime: 1000 * 60 * 5, // 5 minutes cache for better performance
-      cacheTime: 1000 * 60 * 10, // 10 minutes cache retention
+      gcTime: 1000 * 60 * 10, // 10 minutes cache retention (renamed from cacheTime)
     },
   },
 });
@@ -68,8 +68,8 @@ const RouteLoadingFallback = ({ text = "Loading..." }: { text?: string }) => (
 );
 
 const App = () => {
-  // Initialize performance monitoring
-  React.useEffect(() => {
+  // Initialize performance monitoring and preload assets
+  useEffect(() => {
     // Report initial metrics
     const reportInitialMetrics = () => {
       setTimeout(() => {
@@ -82,12 +82,9 @@ const App = () => {
     } else {
       window.addEventListener('load', reportInitialMetrics);
     }
-  }, []);
 
-  // Preload logo assets for better UX
-  useEffect(() => {
+    // Preload logo assets for better UX
     preloadLogoAssets();
-  }, []);
 
     return () => {
       window.removeEventListener('load', reportInitialMetrics);

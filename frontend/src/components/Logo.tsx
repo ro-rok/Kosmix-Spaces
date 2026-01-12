@@ -30,8 +30,9 @@ export function Logo({
   const [fallbackIndex, setFallbackIndex] = useState(0);
 
   const fallbackSources = [
-    LOGO_ASSETS.favicon32,
     LOGO_ASSETS.logo,
+    LOGO_ASSETS.favicon32,
+    LOGO_ASSETS.favicon16,
     LOGO_ASSETS.faviconIco,
     LOGO_ASSETS.appleTouchIcon
   ];
