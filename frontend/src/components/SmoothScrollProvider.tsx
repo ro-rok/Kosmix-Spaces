@@ -70,10 +70,16 @@ export function SmoothScrollProvider({
       };
       rafRef.current = requestAnimationFrame(raf);
 
-      // Add event listeners for debugging and monitoring
+      // Add event listeners for debugging and monitoring (only in development)
       if (process.env.NODE_ENV === 'development') {
+        // Throttle debug logging to avoid performance impact
+        let lastLogTime = 0;
         lenis.on('scroll', ({ scroll, limit, velocity, direction, progress }) => {
-          console.debug('Lenis scroll:', { scroll, limit, velocity, direction, progress });
+          const now = Date.now();
+          if (now - lastLogTime > 1000) { // Log only once per second
+            console.debug('Lenis scroll:', { scroll, limit, velocity, direction, progress });
+            lastLogTime = now;
+          }
         });
       }
 

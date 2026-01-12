@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { useState, useEffect, useRef } from "react";
 import { 
   BadgeCheck, 
   Phone, 
@@ -46,12 +47,73 @@ export function ListingCard({
   enableScrollAnimation = true,
   animationDelay = 0 
 }: ListingCardProps) {
+  const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
+  const autoScrollRef = useRef<NodeJS.Timeout | null>(null);
+  const isHoveredRef = useRef(false);
+
   const whatsappLink = buildWhatsAppLink({
     listingName: listing.displayName,
     locality: listing.locality,
   });
 
   const isPremium = variant === "premium";
+
+  // Get all available photos
+  const allPhotos = (() => {
+    const photos: string[] = [];
+    
+    // Premium listings have heroPhotos array with objects
+    if (listing.heroPhotos && listing.heroPhotos.length > 0) {
+      listing.heroPhotos.forEach(photo => {
+        const photoUrl = typeof photo === 'string' ? photo : photo?.url;
+        if (photoUrl) photos.push(photoUrl);
+      });
+    }
+    // Regular listings have photos array with strings
+    else if (listing.photos && listing.photos.length > 0) {
+      photos.push(...listing.photos);
+    }
+    
+    return photos;
+  })();
+
+  // Auto-scroll functionality
+  useEffect(() => {
+    if (allPhotos.length <= 1) return;
+
+    const startAutoScroll = () => {
+      autoScrollRef.current = setInterval(() => {
+        if (!isHoveredRef.current) {
+          setCurrentPhotoIndex(prev => (prev + 1) % allPhotos.length);
+        }
+      }, 3000); // Change photo every 3 seconds
+    };
+
+    const stopAutoScroll = () => {
+      if (autoScrollRef.current) {
+        clearInterval(autoScrollRef.current);
+        autoScrollRef.current = null;
+      }
+    };
+
+    startAutoScroll();
+
+    return () => stopAutoScroll();
+  }, [allPhotos.length]);
+
+  // Handle mouse events for pausing auto-scroll
+  const handleMouseEnter = () => {
+    isHoveredRef.current = true;
+  };
+
+  const handleMouseLeave = () => {
+    isHoveredRef.current = false;
+  };
+
+  // Handle click to scroll to top
+  const handleCardClick = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   // Animation configuration for scroll-triggered reveal
   const scrollAnimation = {
@@ -76,35 +138,43 @@ export function ListingCard({
           : "rounded-xl border bg-card shadow-sm"
       )}
     >
-      {/* Image */}
-      <div className="relative aspect-[16/10] overflow-hidden bg-muted">
-        {/* Get the first photo URL - handle both regular and premium listing structures */}
-        {(() => {
-          let photoUrl = "";
-          
-          // Premium listings have heroPhotos array with objects
-          if (listing.heroPhotos && listing.heroPhotos.length > 0) {
-            const firstPhoto = listing.heroPhotos[0];
-            photoUrl = typeof firstPhoto === 'string' ? firstPhoto : firstPhoto?.url;
-          }
-          // Regular listings have photos array with strings
-          else if (listing.photos && listing.photos.length > 0) {
-            photoUrl = listing.photos[0];
-          }
-          
-          return photoUrl ? (
+      {/* Image with Auto-Scrolling Carousel */}
+      <div 
+        className="relative aspect-[16/10] overflow-hidden bg-muted"
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
+        {allPhotos.length > 0 ? (
+          <>
             <img
-              src={photoUrl}
-              alt={listing.displayName}
+              src={allPhotos[currentPhotoIndex]}
+              alt={`${listing.displayName} - Photo ${currentPhotoIndex + 1}`}
               className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
               loading="lazy"
             />
-          ) : (
-            <div className="h-full w-full bg-muted flex items-center justify-center">
-              <span className="text-muted-foreground text-sm">No image</span>
-            </div>
-          );
-        })()}
+            
+            {/* Photo indicators - only show if multiple photos */}
+            {allPhotos.length > 1 && (
+              <div className="absolute bottom-2 right-2 flex gap-1">
+                {allPhotos.map((_, index) => (
+                  <div
+                    key={index}
+                    className={cn(
+                      "h-1.5 w-1.5 rounded-full transition-all duration-300",
+                      index === currentPhotoIndex 
+                        ? "bg-white scale-125" 
+                        : "bg-white/60"
+                    )}
+                  />
+                ))}
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="h-full w-full bg-muted flex items-center justify-center">
+            <span className="text-muted-foreground text-sm">No image</span>
+          </div>
+        )}
         
         {/* Premium gradient overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
@@ -265,27 +335,29 @@ export function ListingCard({
             variant="whatsapp" 
             size="sm" 
             className="flex-1 btn-premium" 
-            asChild
             intensity="subtle"
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              window.open(whatsappLink, '_blank', 'noopener,noreferrer');
+            }}
           >
-            <a href={whatsappLink} target="_blank" rel="noopener noreferrer">
-              <MessageCircle className="h-4 w-4" />
-              WhatsApp
-            </a>
+            <MessageCircle className="h-4 w-4" />
+            WhatsApp
           </AnimatedButton>
           <AnimatedButton 
             variant="call" 
             size="sm" 
             className="flex-1 btn-premium" 
-            asChild
             intensity="subtle"
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              window.open(buildCallLink(), '_self');
+            }}
           >
-            <a href={buildCallLink()}>
-              <Phone className="h-4 w-4" />
-              Call
-            </a>
+            <Phone className="h-4 w-4" />
+            Call
           </AnimatedButton>
         </div>
       </div>
@@ -297,6 +369,7 @@ export function ListingCard({
     <Link 
       to={`/spaces/${listing.slug.replace('/listing/', '')}`}
       className="block h-full"
+      onClick={handleCardClick}
     >
       {cardContent}
     </Link>

@@ -60,14 +60,20 @@ export function AnimationProvider({
   } = useAnimationPerformance({
     autoStart: true,
     onPerformanceDegradation: (metrics) => {
-      console.warn('Animation performance degraded:', metrics);
+      // Only log if not during initial load (first 5 seconds)
+      if (Date.now() - performance.timeOrigin > 5000) {
+        console.warn('Animation performance degraded:', metrics);
+      }
       // Automatically switch to performance preset if performance is bad
       if (metrics.fps < 20) {
         resetToPreset('performance');
       }
     },
     onPerformanceRecovery: (metrics) => {
-      console.log('Animation performance recovered:', metrics);
+      // Only log recovery after initial load
+      if (Date.now() - performance.timeOrigin > 5000) {
+        console.log('Animation performance recovered:', metrics);
+      }
     },
   });
   
@@ -167,19 +173,6 @@ export function AnimationProvider({
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [lenis, pauseAnimations, resumeAnimations]);
   
-  // Update animation registry when device profile changes
-  useEffect(() => {
-    if ('updateDeviceProfile' in animationRegistry) {
-      (animationRegistry as any).updateDeviceProfile(deviceProfile);
-    }
-    
-    // Auto-adjust config based on device performance
-    if (deviceProfile.tier === 'low' && config !== animationPresets.performance) {
-      console.log('Switching to performance preset due to low device tier');
-      resetToPreset('performance');
-    }
-  }, [deviceProfile, animationRegistry, config, resetToPreset]);
-  
   // Update configuration function
   const updateConfig = useCallback((updates: Partial<AnimationConfig>) => {
     setConfig(prevConfig => {
@@ -227,6 +220,19 @@ export function AnimationProvider({
     
     console.log(`Animation preset changed to: ${preset}`);
   }, [animationRegistry]);
+  
+  // Update animation registry when device profile changes
+  useEffect(() => {
+    if ('updateDeviceProfile' in animationRegistry) {
+      (animationRegistry as any).updateDeviceProfile(deviceProfile);
+    }
+    
+    // Auto-adjust config based on device performance
+    if (deviceProfile.tier === 'low' && config !== animationPresets.performance) {
+      console.log('Switching to performance preset due to low device tier');
+      resetToPreset('performance');
+    }
+  }, [deviceProfile, animationRegistry, config, resetToPreset]);
   
   // Set Lenis instance (will be called by SmoothScrollProvider)
   const setLenisInstance = useCallback((lenisInstance: Lenis | null) => {

@@ -11,7 +11,7 @@ import { useLocalities, useCreateLead } from "@/hooks/useApi";
 import { budgetBandLabels, workspaceTypeLabels, teamSizeBands } from "@/types/models";
 import { buildWhatsAppLink } from "@/lib/whatsapp";
 import { transparencyLines } from "@/config/contact";
-import { AnimatedForm } from "@/components/AnimatedForm";
+import { AnimatedInput, AnimatedTextarea, AnimatedFormField, AnimatedForm } from "@/components/AnimatedForm";
 import { AnimatedButton } from "@/components/AnimatedButton";
 import { ScrollTriggerAnimation } from "@/components/ScrollTriggerAnimation";
 

@@ -110,7 +110,7 @@ export function LoadingSpinner({
       transition: {
         duration: animationDuration,
         repeat: Infinity,
-        ease: 'linear',
+        ease: "linear" as const,
       },
     });
 
@@ -182,7 +182,7 @@ export function LoadingSpinner({
       transition: {
         duration: animationDuration,
         repeat: Infinity,
-        ease: 'easeInOut',
+        ease: "easeInOut" as const,
       },
     });
 
@@ -252,7 +252,7 @@ export function LoadingSpinner({
       transition: {
         duration: animationDuration,
         repeat: Infinity,
-        ease: 'linear',
+        ease: "linear" as const,
       },
     });
 
@@ -303,7 +303,7 @@ export function LoadingSpinner({
     transition: {
       duration: 2,
       repeat: Infinity,
-      ease: 'easeInOut',
+      ease: "easeInOut" as const,
     },
   });
 

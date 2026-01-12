@@ -56,20 +56,20 @@ export function StaggerAnimation({
     const baseStagger = stagger || config.scrollAnimations.staggerDelay;
     
     if (typeof from === 'number') {
-      return { amount: baseStagger, from };
+      return { amount: baseStagger, from: from as number };
     }
     
     switch (from) {
       case 'center':
-        return { amount: baseStagger, from: 'center' };
+        return { amount: baseStagger, from: 'center' as const };
       case 'end':
-        return { amount: baseStagger, from: 'end' };
+        return { amount: baseStagger, from: 'end' as const };
       case 'edges':
-        return { amount: baseStagger, from: 'edges' };
+        return { amount: baseStagger, from: 'edges' as const };
       case 'random':
-        return { amount: baseStagger, from: 'random' };
+        return { amount: baseStagger, from: 'random' as const };
       default:
-        return { amount: baseStagger, from: 'start' };
+        return { amount: baseStagger, from: 'start' as const };
     }
   }, [stagger, from, config.scrollAnimations.staggerDelay]);
   
@@ -90,13 +90,22 @@ export function StaggerAnimation({
     
     // Get all child elements that should be animated
     const childElements = containerRef.current.children;
-    if (childElements.length === 0) return;
+    if (childElements.length === 0) {
+      console.warn('StaggerAnimation: No child elements found to animate');
+      return;
+    }
     
     // Convert HTMLCollection to Array for easier manipulation
     const elementsArray = Array.from(childElements) as HTMLElement[];
     
     // Apply direction if reverse
     const targetElements = direction === 'reverse' ? elementsArray.reverse() : elementsArray;
+    
+    // Additional safety check
+    if (targetElements.length === 0) {
+      console.warn('StaggerAnimation: No target elements after processing');
+      return;
+    }
     
     // Create new timeline
     const timeline = gsap.timeline({ paused: true });
@@ -135,51 +144,41 @@ export function StaggerAnimation({
     
     // Create ScrollTrigger using optimized utility
     if (!scrub) {
-      const scrollTriggerInstance = createOptimizedScrollTrigger(
-        `${animationId}-trigger`,
-        {
-          trigger: trigger || containerRef.current,
-          start,
-          end,
-          animation: timeline,
-          onEnter: () => timeline.play(),
-          onLeave: () => {
-            // Only reverse if triggerOnce is false
-            if (!config.scrollAnimations.triggerOnce) {
-              timeline.reverse();
-            }
-          },
-          onEnterBack: () => timeline.play(),
-          onLeaveBack: () => {
-            if (!config.scrollAnimations.triggerOnce) {
-              timeline.reverse();
-            }
-          },
+      const scrollTriggerInstance = ScrollTrigger.create({
+        trigger: trigger || containerRef.current,
+        start,
+        end,
+        animation: timeline,
+        onEnter: () => timeline.play(),
+        onLeave: () => {
+          // Only reverse if triggerOnce is false
+          if (!config.scrollAnimations.triggerOnce) {
+            timeline.reverse();
+          }
         },
-        {
-          respectReducedMotion: config.accessibility.respectReducedMotion,
-          autoCleanup: true,
-        }
-      );
+        onEnterBack: () => timeline.play(),
+        onLeaveBack: () => {
+          if (!config.scrollAnimations.triggerOnce) {
+            timeline.reverse();
+          }
+        },
+      });
       
+      // Register for cleanup
+      gsapRegistry.registerScrollTrigger(`${animationId}-trigger`, scrollTriggerInstance);
       scrollTriggerRef.current = scrollTriggerInstance;
     } else {
       // Create scrub animation
-      const scrollTriggerInstance = createOptimizedScrollTrigger(
-        `${animationId}-scrub-trigger`,
-        {
-          trigger: trigger || containerRef.current,
-          start,
-          end,
-          scrub: typeof scrub === 'boolean' ? true : scrub,
-          animation: timeline,
-        },
-        {
-          respectReducedMotion: config.accessibility.respectReducedMotion,
-          autoCleanup: true,
-        }
-      );
+      const scrollTriggerInstance = ScrollTrigger.create({
+        trigger: trigger || containerRef.current,
+        start,
+        end,
+        scrub: typeof scrub === 'boolean' ? true : scrub,
+        animation: timeline,
+      });
       
+      // Register for cleanup
+      gsapRegistry.registerScrollTrigger(`${animationId}-scrub-trigger`, scrollTriggerInstance);
       scrollTriggerRef.current = scrollTriggerInstance;
     }
     
@@ -216,8 +215,8 @@ export function StaggerAnimation({
       return;
     }
     
-    // Small delay to ensure DOM is ready and children are rendered
-    const timeoutId = setTimeout(createStaggerAnimation, 100);
+    // Longer delay to ensure DOM is ready and reduce initial load impact
+    const timeoutId = setTimeout(createStaggerAnimation, 200);
     
     return () => {
       clearTimeout(timeoutId);

@@ -1,10 +1,14 @@
 import React, { forwardRef, useState } from 'react';
 import { motion, MotionProps } from 'framer-motion';
-import { Input, InputProps } from '@/components/ui/input';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useAnimation, useConditionalAnimation } from '@/contexts/AnimationContext';
 import { cn } from '@/lib/utils';
+
+type InputProps = React.ComponentProps<"input">;
+type TextareaProps = React.ComponentProps<"textarea">;
+type FormProps = React.ComponentProps<"form">;
 
 interface AnimatedInputProps extends InputProps {
   /**
@@ -91,18 +95,18 @@ export const AnimatedInput = forwardRef<HTMLInputElement, AnimatedInputProps>(
         scale: 1.01,
         transition: {
           duration: config.microInteractions.duration,
-          ease: config.microInteractions.easing,
+          ease: [0.4, 0, 0.2, 1] as const,
         },
-        ...animationOverrides.focus,
+        ...((animationOverrides.focus as any) || {}),
       } : undefined,
       
       whileHover: {
         borderColor: getValidationColor(),
         transition: {
           duration: config.microInteractions.duration * 0.5,
-          ease: config.microInteractions.easing,
+          ease: [0.4, 0, 0.2, 1] as const,
         },
-        ...animationOverrides.hover,
+        ...((animationOverrides.hover as any) || {}),
       },
       
       initial: animationOverrides.initial || {},
@@ -110,8 +114,8 @@ export const AnimatedInput = forwardRef<HTMLInputElement, AnimatedInputProps>(
       
       transition: {
         duration: config.microInteractions.duration,
-        ease: config.microInteractions.easing,
-        ...animationOverrides.transition,
+        ease: [0.4, 0, 0.2, 1] as const,
+        ...(animationOverrides.transition || {}),
       },
     });
 
@@ -161,7 +165,7 @@ export const AnimatedInput = forwardRef<HTMLInputElement, AnimatedInputProps>(
             }}
             transition={{
               duration: config.microInteractions.duration,
-              ease: config.microInteractions.easing,
+              ease: [0.4, 0, 0.2, 1] as const,
             }}
           >
             <Label className="bg-background px-1">
@@ -195,7 +199,7 @@ AnimatedInput.displayName = 'AnimatedInput';
 /**
  * AnimatedTextarea component with similar animations to AnimatedInput
  */
-interface AnimatedTextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
+interface AnimatedTextareaProps extends TextareaProps {
   animationOverrides?: AnimatedInputProps['animationOverrides'];
   disableAnimation?: boolean;
   floatingLabel?: boolean;
@@ -247,18 +251,18 @@ export const AnimatedTextarea = forwardRef<HTMLTextAreaElement, AnimatedTextarea
         scale: 1.01,
         transition: {
           duration: config.microInteractions.duration,
-          ease: config.microInteractions.easing,
+          ease: [0.4, 0, 0.2, 1] as const,
         },
-        ...animationOverrides.focus,
+        ...((animationOverrides.focus as any) || {}),
       } : undefined,
       
       whileHover: {
         borderColor: getValidationColor(),
         transition: {
           duration: config.microInteractions.duration * 0.5,
-          ease: config.microInteractions.easing,
+          ease: [0.4, 0, 0.2, 1] as const,
         },
-        ...animationOverrides.hover,
+        ...((animationOverrides.hover as any) || {}),
       },
     });
 
@@ -307,7 +311,7 @@ export const AnimatedTextarea = forwardRef<HTMLTextAreaElement, AnimatedTextarea
             }}
             transition={{
               duration: config.microInteractions.duration,
-              ease: config.microInteractions.easing,
+              ease: [0.4, 0, 0.2, 1] as const,
             }}
           >
             <Label className="bg-background px-1">
@@ -388,7 +392,7 @@ export function AnimatedFormField({
           exit="exit"
           transition={{
             duration: config.microInteractions.duration,
-            ease: config.microInteractions.easing,
+            ease: [0.4, 0, 0.2, 1] as const,
           }}
         >
           {error && (
@@ -424,3 +428,108 @@ export function AnimatedFormField({
 }
 
 export default AnimatedInput;
+
+/**
+ * AnimatedForm component with form-level animations and loading states
+ */
+interface AnimatedFormProps extends Omit<FormProps, 
+  'onDrag' | 'onDragEnd' | 'onDragStart' | 'onAnimationStart' | 'onAnimationEnd'
+> {
+  /**
+   * Enable focus animations for form fields
+   */
+  enableFocusAnimations?: boolean;
+  /**
+   * Show loading state with disabled interactions
+   */
+  enableLoadingState?: boolean;
+  /**
+   * Custom animation overrides for the form container
+   */
+  animationOverrides?: {
+    initial?: MotionProps['initial'];
+    animate?: MotionProps['animate'];
+    exit?: MotionProps['exit'];
+    transition?: MotionProps['transition'];
+  };
+  /**
+   * Disable all animations for this form
+   */
+  disableAnimation?: boolean;
+}
+
+export const AnimatedForm = forwardRef<HTMLFormElement, AnimatedFormProps>(
+  ({ 
+    children,
+    className,
+    enableFocusAnimations = true,
+    enableLoadingState = false,
+    animationOverrides = {},
+    disableAnimation = false,
+    ...props 
+  }, ref) => {
+    const { config, isReducedMotion } = useAnimation();
+
+    // Define form animation properties
+    const formVariants = {
+      initial: {
+        opacity: 0,
+        y: 20,
+        ...((animationOverrides.initial as any) || {}),
+      },
+      animate: {
+        opacity: 1,
+        y: 0,
+        ...((animationOverrides.animate as any) || {}),
+      },
+      exit: {
+        opacity: 0,
+        y: -20,
+        ...((animationOverrides.exit as any) || {}),
+      },
+    };
+
+    const transition = {
+      duration: config.transitions.defaultDuration,
+      ease: [0.4, 0, 0.2, 1] as const,
+      ...(animationOverrides.transition || {}),
+    };
+
+    // Skip animations if disabled or reduced motion
+    if (disableAnimation || (isReducedMotion && config.accessibility.fallbackToInstant)) {
+      return (
+        <form
+          ref={ref}
+          className={cn(
+            enableLoadingState && 'pointer-events-none opacity-75',
+            className
+          )}
+          {...props}
+        >
+          {children}
+        </form>
+      );
+    }
+
+    return (
+      <motion.form
+        ref={ref}
+        variants={formVariants}
+        initial="initial"
+        animate="animate"
+        exit="exit"
+        transition={transition}
+        className={cn(
+          'transform-gpu',
+          enableLoadingState && 'pointer-events-none opacity-75',
+          className
+        )}
+        {...props}
+      >
+        {children}
+      </motion.form>
+    );
+  }
+);
+
+AnimatedForm.displayName = 'AnimatedForm';

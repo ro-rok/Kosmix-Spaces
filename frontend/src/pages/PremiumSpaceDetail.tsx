@@ -55,6 +55,8 @@ export default function PremiumSpaceDetail() {
   const [enquiryDialogOpen, setEnquiryDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
   const [expandedOffering, setExpandedOffering] = useState<OfferingType | null>(null);
+  const [isCarouselPaused, setIsCarouselPaused] = useState(false);
+  const autoScrollRef = useRef<NodeJS.Timeout | null>(null);
   
   // Refs for scroll-spy
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
@@ -174,12 +176,47 @@ export default function PremiumSpaceDetail() {
   // Ensure currentImage is within bounds
   const safeCurrentImage = Math.min(currentImage, Math.max(0, allPhotos.length - 1));
 
+  // Auto-scroll functionality for carousel
+  useEffect(() => {
+    if (allPhotos.length <= 1 || isCarouselPaused) return;
+
+    const startAutoScroll = () => {
+      autoScrollRef.current = setInterval(() => {
+        setCurrentImage(prev => (prev + 1) % allPhotos.length);
+      }, 4000); // Change photo every 4 seconds
+    };
+
+    const stopAutoScroll = () => {
+      if (autoScrollRef.current) {
+        clearInterval(autoScrollRef.current);
+        autoScrollRef.current = null;
+      }
+    };
+
+    startAutoScroll();
+
+    return () => stopAutoScroll();
+  }, [allPhotos.length, isCarouselPaused]);
+
   const nextImage = () => {
     setCurrentImage((prev) => (prev + 1) % allPhotos.length);
+    // Pause auto-scroll temporarily when user manually navigates
+    setIsCarouselPaused(true);
+    setTimeout(() => setIsCarouselPaused(false), 10000); // Resume after 10 seconds
   };
 
   const prevImage = () => {
     setCurrentImage((prev) => (prev - 1 + allPhotos.length) % allPhotos.length);
+    // Pause auto-scroll temporarily when user manually navigates
+    setIsCarouselPaused(true);
+    setTimeout(() => setIsCarouselPaused(false), 10000); // Resume after 10 seconds
+  };
+
+  const goToImage = (index: number) => {
+    setCurrentImage(index);
+    // Pause auto-scroll temporarily when user manually navigates
+    setIsCarouselPaused(true);
+    setTimeout(() => setIsCarouselPaused(false), 10000); // Resume after 10 seconds
   };
 
   const scrollToSection = (sectionId: string) => {
