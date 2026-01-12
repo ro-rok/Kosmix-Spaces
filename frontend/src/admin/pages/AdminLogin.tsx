@@ -134,6 +134,7 @@ export function AdminLogin() {
           </p>
         </div>
       </div>
+      </div>
     </>
   );
 }

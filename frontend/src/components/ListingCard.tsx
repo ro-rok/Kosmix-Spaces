@@ -29,13 +29,23 @@ import { Listing, budgetBandLabels, workspaceTypeLabels } from "@/types/models";
 import { buildWhatsAppLink, buildCallLink } from "@/lib/whatsapp";
 import { cn } from "@/lib/utils";
 import { getAmenityIcon } from "@/lib/amenity-icons";
+import { AnimatedCard } from "@/components/AnimatedCard";
+import { AnimatedButton } from "@/components/AnimatedButton";
+import { ScrollTriggerAnimation } from "@/components/ScrollTriggerAnimation";
 
 interface ListingCardProps {
   listing: Listing;
   variant?: "default" | "premium";
+  enableScrollAnimation?: boolean;
+  animationDelay?: number;
 }
 
-export function ListingCard({ listing, variant = "premium" }: ListingCardProps) {
+export function ListingCard({ 
+  listing, 
+  variant = "premium", 
+  enableScrollAnimation = true,
+  animationDelay = 0 
+}: ListingCardProps) {
   const whatsappLink = buildWhatsAppLink({
     listingName: listing.displayName,
     locality: listing.locality,
@@ -43,11 +53,24 @@ export function ListingCard({ listing, variant = "premium" }: ListingCardProps) 
 
   const isPremium = variant === "premium";
 
-  return (
-    <Link 
-      to={`/spaces/${listing.slug.replace('/listing/', '')}`}
+  // Animation configuration for scroll-triggered reveal
+  const scrollAnimation = {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    duration: 0.6,
+    ease: "power2.out",
+  };
+
+  const cardContent = (
+    <AnimatedCard
+      elevateOnHover={true}
+      tiltOnHover={false}
+      glowOnHover={false}
+      intensity="normal"
+      clickable={true}
       className={cn(
-        "group overflow-hidden card-hover animate-fade-in block",
+        "group overflow-hidden block h-full",
         isPremium 
           ? "card-premium" 
           : "rounded-xl border bg-card shadow-sm"
@@ -238,32 +261,60 @@ export function ListingCard({ listing, variant = "premium" }: ListingCardProps) 
 
         {/* CTAs */}
         <div className="flex gap-2">
-          <Button 
+          <AnimatedButton 
             variant="whatsapp" 
             size="sm" 
             className="flex-1 btn-premium" 
             asChild
+            intensity="subtle"
             onClick={(e) => e.stopPropagation()}
           >
             <a href={whatsappLink} target="_blank" rel="noopener noreferrer">
               <MessageCircle className="h-4 w-4" />
               WhatsApp
             </a>
-          </Button>
-          <Button 
+          </AnimatedButton>
+          <AnimatedButton 
             variant="call" 
             size="sm" 
             className="flex-1 btn-premium" 
             asChild
+            intensity="subtle"
             onClick={(e) => e.stopPropagation()}
           >
             <a href={buildCallLink()}>
               <Phone className="h-4 w-4" />
               Call
             </a>
-          </Button>
+          </AnimatedButton>
         </div>
       </div>
+    </AnimatedCard>
+  );
+
+  // Wrap with Link for navigation
+  const linkedCard = (
+    <Link 
+      to={`/spaces/${listing.slug.replace('/listing/', '')}`}
+      className="block h-full"
+    >
+      {cardContent}
     </Link>
   );
+
+  // Conditionally wrap with scroll animation
+  if (enableScrollAnimation) {
+    return (
+      <ScrollTriggerAnimation
+        animation={scrollAnimation}
+        start="top 85%"
+        end="bottom 15%"
+        className="h-full"
+      >
+        {linkedCard}
+      </ScrollTriggerAnimation>
+    );
+  }
+
+  return linkedCard;
 }

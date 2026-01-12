@@ -3,8 +3,13 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { AnimationProvider } from "@/contexts/AnimationContext";
+import { AnimationAccessibilityProvider } from "@/components/AnimationAccessibilityProvider";
+import { SmoothScrollProvider } from "@/components/SmoothScrollProvider";
+import { PageTransition } from "@/components/PageTransition";
+import { RouteTransition } from "@/components/RouteTransition";
 import { SessionExpiryHandler } from "@/components/SessionExpiryHandler";
 import { Layout } from "@/components/Layout";
 import { ConnectionStatus } from "@/components/ConnectionStatus";
@@ -62,12 +67,169 @@ const queryClient = new QueryClient({
   },
 });
 
-// Loading fallback component for lazy-loaded routes
-const RouteLoadingFallback = ({ text = "Loading..." }: { text?: string }) => (
-  <div className="min-h-screen flex items-center justify-center">
-    <InlineLoading text={text} />
-  </div>
-);
+// Loading fallback component for lazy-loaded routes with animations
+const RouteLoadingFallback = ({ text = "Loading..." }: { text?: string }) => {
+  return (
+    <RouteTransition>
+      <div className="min-h-screen flex items-center justify-center">
+        <InlineLoading text={text} />
+      </div>
+    </RouteTransition>
+  );
+};
+
+// Wrapper component to handle page transitions
+const AnimatedRoutes = () => {
+  return (
+    <PageTransition>
+      <Routes>
+        {/* Public Routes - No lazy loading for better UX */}
+        <Route element={<Layout />}>
+          <Route path="/" element={<Index />} />
+          <Route path="/explore" element={<Explore />} />
+          <Route path="/spaces/*" element={<PremiumSpaceDetail />} />
+          <Route path="/how-it-works" element={<HowItWorks />} />
+          <Route path="/trust" element={<Trust />} />
+          <Route path="/partners" element={<Partners />} />
+          <Route path="/contact" element={<Contact />} />
+          <Route path="/api-test" element={<ApiTest />} />
+        </Route>
+
+        {/* Admin Routes - Lazy loaded */}
+        <Route 
+          path="/admin/login" 
+          element={
+            <Suspense fallback={<RouteLoadingFallback text="Loading admin login..." />}>
+              <AdminLogin />
+            </Suspense>
+          } 
+        />
+        <Route 
+          path="/admin" 
+          element={
+            <AdminRoute>
+              <Suspense fallback={<RouteLoadingFallback text="Loading admin panel..." />}>
+                <AdminLayout />
+              </Suspense>
+            </AdminRoute>
+          }
+        >
+          <Route 
+            index 
+            element={
+              <Suspense fallback={<InlineLoading text="Loading dashboard..." />}>
+                <AdminDashboard />
+              </Suspense>
+            } 
+          />
+          <Route 
+            path="listings" 
+            element={
+              <Suspense fallback={<InlineLoading text="Loading listings..." />}>
+                <AdminListings />
+              </Suspense>
+            } 
+          />
+          <Route 
+            path="listings/:listingId" 
+            element={
+              <Suspense fallback={<InlineLoading text="Loading listing details..." />}>
+                <AdminListingDetail />
+              </Suspense>
+            } 
+          />
+          <Route 
+            path="partners" 
+            element={
+              <Suspense fallback={<InlineLoading text="Loading partners..." />}>
+                <AdminPartners />
+              </Suspense>
+            } 
+          />
+          <Route 
+            path="localities" 
+            element={
+              <Suspense fallback={<InlineLoading text="Loading localities..." />}>
+                <AdminLocalities />
+              </Suspense>
+            } 
+          />
+          <Route 
+            path="leads" 
+            element={
+              <Suspense fallback={<InlineLoading text="Loading leads..." />}>
+                <AdminLeads />
+              </Suspense>
+            } 
+          />
+          <Route 
+            path="visits" 
+            element={
+              <Suspense fallback={<InlineLoading text="Loading visits..." />}>
+                <AdminVisits />
+              </Suspense>
+            } 
+          />
+        </Route>
+
+        {/* Partner Routes - Lazy loaded */}
+        <Route 
+          path="/partner/login" 
+          element={
+            <Suspense fallback={<RouteLoadingFallback text="Loading partner login..." />}>
+              <PartnerLogin />
+            </Suspense>
+          } 
+        />
+        <Route
+          path="/partner"
+          element={
+            <PartnerRoute>
+              <Suspense fallback={<RouteLoadingFallback text="Loading partner portal..." />}>
+                <PartnerLayout />
+              </Suspense>
+            </PartnerRoute>
+          }
+        >
+          <Route 
+            index 
+            element={
+              <Suspense fallback={<InlineLoading text="Loading dashboard..." />}>
+                <PartnerDashboard />
+              </Suspense>
+            } 
+          />
+          <Route 
+            path="listings" 
+            element={
+              <Suspense fallback={<InlineLoading text="Loading listings..." />}>
+                <PartnerListings />
+              </Suspense>
+            } 
+          />
+          <Route 
+            path="listings/new" 
+            element={
+              <Suspense fallback={<InlineLoading text="Loading listing builder..." />}>
+                <SubmitListing />
+              </Suspense>
+            } 
+          />
+          <Route 
+            path="listings/:id" 
+            element={
+              <Suspense fallback={<InlineLoading text="Loading listing details..." />}>
+                <PartnerListingDetail />
+              </Suspense>
+            } 
+          />
+        </Route>
+
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </PageTransition>
+  );
+};
 
 const App = () => {
   // Initialize performance monitoring and preload assets
@@ -97,168 +259,40 @@ const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <ConnectionStatus />
-          <SessionExpiryHandler />
-          <BrowserRouter
-            future={{
-              v7_startTransition: true,
-              v7_relativeSplatPath: true,
+        <AnimationProvider initialPreset="standard">
+          <AnimationAccessibilityProvider
+            errorRecoveryStrategy={{
+              fallbackToCSS: true,
+              disableAnimations: false,
+              retryAttempts: 3,
+              reportError: process.env.NODE_ENV === 'development',
+              gracefulDegradation: true,
             }}
+            developmentMode={process.env.NODE_ENV === 'development'}
+            testingMode={false}
           >
-            <Routes>
-              {/* Public Routes - No lazy loading for better UX */}
-              <Route element={<Layout />}>
-                <Route path="/" element={<Index />} />
-                <Route path="/explore" element={<Explore />} />
-                <Route path="/spaces/*" element={<PremiumSpaceDetail />} />
-                <Route path="/how-it-works" element={<HowItWorks />} />
-                <Route path="/trust" element={<Trust />} />
-                <Route path="/partners" element={<Partners />} />
-                <Route path="/contact" element={<Contact />} />
-                <Route path="/api-test" element={<ApiTest />} />
-              </Route>
-
-              {/* Admin Routes - Lazy loaded */}
-              <Route 
-                path="/admin/login" 
-                element={
-                  <Suspense fallback={<RouteLoadingFallback text="Loading admin login..." />}>
-                    <AdminLogin />
-                  </Suspense>
-                } 
-              />
-              <Route 
-                path="/admin" 
-                element={
-                  <AdminRoute>
-                    <Suspense fallback={<RouteLoadingFallback text="Loading admin panel..." />}>
-                      <AdminLayout />
-                    </Suspense>
-                  </AdminRoute>
-                }
-              >
-                <Route 
-                  index 
-                  element={
-                    <Suspense fallback={<InlineLoading text="Loading dashboard..." />}>
-                      <AdminDashboard />
-                    </Suspense>
-                  } 
-                />
-                <Route 
-                  path="listings" 
-                  element={
-                    <Suspense fallback={<InlineLoading text="Loading listings..." />}>
-                      <AdminListings />
-                    </Suspense>
-                  } 
-                />
-                <Route 
-                  path="listings/:listingId" 
-                  element={
-                    <Suspense fallback={<InlineLoading text="Loading listing details..." />}>
-                      <AdminListingDetail />
-                    </Suspense>
-                  } 
-                />
-                <Route 
-                  path="partners" 
-                  element={
-                    <Suspense fallback={<InlineLoading text="Loading partners..." />}>
-                      <AdminPartners />
-                    </Suspense>
-                  } 
-                />
-                <Route 
-                  path="localities" 
-                  element={
-                    <Suspense fallback={<InlineLoading text="Loading localities..." />}>
-                      <AdminLocalities />
-                    </Suspense>
-                  } 
-                />
-                <Route 
-                  path="leads" 
-                  element={
-                    <Suspense fallback={<InlineLoading text="Loading leads..." />}>
-                      <AdminLeads />
-                    </Suspense>
-                  } 
-                />
-                <Route 
-                  path="visits" 
-                  element={
-                    <Suspense fallback={<InlineLoading text="Loading visits..." />}>
-                      <AdminVisits />
-                    </Suspense>
-                  } 
-                />
-              </Route>
-
-              {/* Partner Routes - Lazy loaded */}
-              <Route 
-                path="/partner/login" 
-                element={
-                  <Suspense fallback={<RouteLoadingFallback text="Loading partner login..." />}>
-                    <PartnerLogin />
-                  </Suspense>
-                } 
-              />
-              <Route
-                path="/partner"
-                element={
-                  <PartnerRoute>
-                    <Suspense fallback={<RouteLoadingFallback text="Loading partner portal..." />}>
-                      <PartnerLayout />
-                    </Suspense>
-                  </PartnerRoute>
-                }
-              >
-                <Route 
-                  index 
-                  element={
-                    <Suspense fallback={<InlineLoading text="Loading dashboard..." />}>
-                      <PartnerDashboard />
-                    </Suspense>
-                  } 
-                />
-                <Route 
-                  path="listings" 
-                  element={
-                    <Suspense fallback={<InlineLoading text="Loading listings..." />}>
-                      <PartnerListings />
-                    </Suspense>
-                  } 
-                />
-                <Route 
-                  path="listings/new" 
-                  element={
-                    <Suspense fallback={<InlineLoading text="Loading listing builder..." />}>
-                      <SubmitListing />
-                    </Suspense>
-                  } 
-                />
-                <Route 
-                  path="listings/:id" 
-                  element={
-                    <Suspense fallback={<InlineLoading text="Loading listing details..." />}>
-                      <PartnerListingDetail />
-                    </Suspense>
-                  } 
-                />
-              </Route>
-
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
-          
-          {/* Vercel Analytics and Speed Insights */}
-          <Analytics />
-          <SpeedInsights />
-        </TooltipProvider>
+            <SmoothScrollProvider>
+              <TooltipProvider>
+                <Toaster />
+                <Sonner />
+                <ConnectionStatus />
+                <SessionExpiryHandler />
+                <BrowserRouter
+                  future={{
+                    v7_startTransition: true,
+                    v7_relativeSplatPath: true,
+                  }}
+                >
+                  <AnimatedRoutes />
+                </BrowserRouter>
+                
+                {/* Vercel Analytics and Speed Insights */}
+                <Analytics />
+                <SpeedInsights />
+              </TooltipProvider>
+            </SmoothScrollProvider>
+          </AnimationAccessibilityProvider>
+        </AnimationProvider>
       </AuthProvider>
     </QueryClientProvider>
   );

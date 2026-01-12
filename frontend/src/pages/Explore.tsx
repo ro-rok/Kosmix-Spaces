@@ -11,6 +11,7 @@ import { AppliedFilters } from "@/components/AppliedFilters";
 import { SearchEmptyState } from "@/components/SearchEmptyState";
 import { StickyCTA } from "@/components/StickyCTA";
 import { InlineLoadingAnimation } from "@/components/LoadingAnimation";
+import { StaggerAnimation } from "@/components/StaggerAnimation";
 import { SearchFilters } from "@/types/models";
 import { useSearchWithCache } from "@/hooks/useSearchWithCache";
 import { useUrlSync } from "@/hooks/useUrlSync";
@@ -404,26 +405,33 @@ export default function Explore() {
           />
         ) : listings.length > 0 ? (
           <>
-            {/* Listings Grid */}
-            <div className={cn(
-              "grid gap-6 animate-fade-in",
-              viewMode === 'grid' 
-                ? "sm:grid-cols-2 lg:grid-cols-3" 
-                : "grid-cols-1 max-w-4xl"
-            )}>
+            {/* Listings Grid with Staggered Animation */}
+            <StaggerAnimation
+              stagger={0.1}
+              from="start"
+              animation={{
+                opacity: 1,
+                y: 0,
+                scale: 1,
+                duration: 0.6,
+                ease: "power2.out",
+              }}
+              className={cn(
+                "grid gap-6",
+                viewMode === 'grid' 
+                  ? "sm:grid-cols-2 lg:grid-cols-3" 
+                  : "grid-cols-1 max-w-4xl"
+              )}
+            >
               {listings.map((listing, index) => (
-                <div 
+                <ListingCard 
                   key={listing.slug}
-                  className="animate-slide-up"
-                  style={{ animationDelay: `${index * 0.05}s` }}
-                >
-                  <ListingCard 
-                    listing={listing} 
-                    variant="premium"
-                  />
-                </div>
+                  listing={listing} 
+                  variant="premium"
+                  enableScrollAnimation={false} // Disable individual scroll animation since we're using stagger
+                />
               ))}
-            </div>
+            </StaggerAnimation>
 
             {/* Pagination */}
             {totalPages > 1 && (

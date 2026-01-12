@@ -5,6 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { buildWhatsAppLink } from "@/lib/whatsapp";
+import { AnimatedModal } from "@/components/AnimatedModal";
+import { AnimatedButton } from "@/components/AnimatedButton";
+import { AnimatedForm } from "@/components/AnimatedForm";
 import { z } from "zod";
 
 const visitSchema = z.object({
@@ -113,7 +116,7 @@ Visitors: ${formData.visitorCount}`;
 
   if (step === "success") {
     return (
-      <Dialog open={open} onOpenChange={handleClose}>
+      <AnimatedModal open={open} onOpenChange={handleClose}>
         <DialogContent className="max-w-md">
           <div className="text-center py-6">
             <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-success/10">
@@ -126,31 +129,31 @@ Visitors: ${formData.visitorCount}`;
               WhatsApp us with your visit details for immediate confirmation.
             </p>
             <div className="mt-6 flex flex-col gap-3">
-              <Button variant="whatsapp" asChild>
+              <AnimatedButton variant="whatsapp" asChild intensity="enhanced">
                 <a href={whatsappLink} target="_blank" rel="noopener noreferrer">
                   <MessageCircle className="h-4 w-4" />
                   Send Visit Request via WhatsApp
                 </a>
-              </Button>
-              <Button variant="outline" onClick={handleClose}>
+              </AnimatedButton>
+              <AnimatedButton variant="outline" onClick={handleClose} intensity="subtle">
                 Done
-              </Button>
+              </AnimatedButton>
             </div>
           </div>
         </DialogContent>
-      </Dialog>
+      </AnimatedModal>
     );
   }
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
+    <AnimatedModal open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-display">Request a Visit</DialogTitle>
           <p className="text-sm text-muted-foreground">{listingName}</p>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
+        <AnimatedForm className="space-y-6 py-4" enableFocusAnimations={true}>
           {/* Contact Info */}
           <div className="space-y-4">
             <div>
@@ -199,18 +202,17 @@ Visitors: ${formData.visitorCount}`;
                 const isSelected = formData.preferredDates.includes(date);
                 const dateObj = new Date(date);
                 return (
-                  <button
+                  <AnimatedButton
                     key={date}
                     type="button"
+                    variant={isSelected ? "default" : "outline"}
+                    size="sm"
                     onClick={() => toggleDate(date)}
-                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      isSelected
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted text-muted-foreground hover:bg-muted/80"
-                    }`}
+                    intensity="subtle"
+                    className="text-sm"
                   >
                     {dateObj.toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
-                  </button>
+                  </AnimatedButton>
                 );
               })}
             </div>
@@ -224,18 +226,17 @@ Visitors: ${formData.visitorCount}`;
             </Label>
             <div className="flex gap-2">
               {(["morning", "afternoon", "evening"] as const).map((time) => (
-                <button
+                <AnimatedButton
                   key={time}
                   type="button"
+                  variant={formData.timeWindow === time ? "default" : "outline"}
+                  size="sm"
                   onClick={() => setFormData({ ...formData, timeWindow: time })}
-                  className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    formData.timeWindow === time
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-muted-foreground hover:bg-muted/80"
-                  }`}
+                  className="flex-1 text-sm"
+                  intensity="subtle"
                 >
                   {time.charAt(0).toUpperCase() + time.slice(1)}
-                </button>
+                </AnimatedButton>
               ))}
             </div>
           </div>
@@ -247,40 +248,42 @@ Visitors: ${formData.visitorCount}`;
               Visitors
             </Label>
             <div className="flex items-center gap-3">
-              <Button
+              <AnimatedButton
                 type="button"
                 variant="outline"
                 size="sm"
                 onClick={() =>
                   setFormData({ ...formData, visitorCount: Math.max(1, formData.visitorCount - 1) })
                 }
+                intensity="subtle"
               >
                 -
-              </Button>
+              </AnimatedButton>
               <span className="w-8 text-center font-medium">{formData.visitorCount}</span>
-              <Button
+              <AnimatedButton
                 type="button"
                 variant="outline"
                 size="sm"
                 onClick={() =>
                   setFormData({ ...formData, visitorCount: Math.min(10, formData.visitorCount + 1) })
                 }
+                intensity="subtle"
               >
                 +
-              </Button>
+              </AnimatedButton>
             </div>
           </div>
 
-          <Button onClick={handleSubmit} className="w-full" size="lg">
+          <AnimatedButton onClick={handleSubmit} className="w-full" size="lg" intensity="enhanced">
             <Calendar className="h-4 w-4" />
             Continue to WhatsApp
-          </Button>
+          </AnimatedButton>
 
           <p className="text-xs text-muted-foreground text-center">
             We'll confirm your visit via WhatsApp within 3 hours.
           </p>
-        </div>
+        </AnimatedForm>
       </DialogContent>
-    </Dialog>
+    </AnimatedModal>
   );
 }

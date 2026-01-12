@@ -26,6 +26,9 @@ export default defineConfig(({ mode }) => ({
           'ui-vendor': ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-select'],
           'query-vendor': ['@tanstack/react-query'],
           
+          // Animation libraries chunk
+          'animation-vendor': ['lenis', 'framer-motion', 'gsap'],
+          
           // Performance chunk
           'performance': ['./src/lib/performance', './src/lib/image-compression']
         }
@@ -48,7 +51,11 @@ export default defineConfig(({ mode }) => ({
       'react-router-dom',
       '@tanstack/react-query',
       'sonner',
-      'lucide-react'
+      'lucide-react',
+      // Animation libraries
+      'lenis',
+      'framer-motion',
+      'gsap'
     ],
     exclude: ['@vite/client', '@vite/env']
   },

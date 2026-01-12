@@ -7,6 +7,9 @@ import { ListingCard } from "@/components/ListingCard";
 import { TrustStrip } from "@/components/TrustStrip";
 import { FAQAccordion } from "@/components/FAQAccordion";
 import { ShortlistDrawer } from "@/components/ShortlistDrawer";
+import { StaggerAnimation } from "@/components/StaggerAnimation";
+import { ScrollTriggerAnimation } from "@/components/ScrollTriggerAnimation";
+import { AnimatedButton } from "@/components/AnimatedButton";
 import { useListings, useLocalities } from "@/hooks/useApi";
 import { teamSizeBands, BudgetBand, budgetBandLabels } from "@/types/models";
 import { buildWhatsAppLink } from "@/lib/whatsapp";
@@ -198,16 +201,28 @@ const testimonials = [
 
                 {/* CTAs */}
                 <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
-                  <Button variant="cta" size="lg" asChild className="flex-1 sm:flex-none">
+                  <AnimatedButton 
+                    variant="cta" 
+                    size="lg" 
+                    asChild 
+                    className="flex-1 sm:flex-none"
+                    intensity="enhanced"
+                  >
                     <a href={whatsappLink} target="_blank" rel="noopener noreferrer">
                       <MessageCircle className="h-5 w-5" />
                       WhatsApp for Best Options
                     </a>
-                  </Button>
-                  <Button variant="outline" size="lg" onClick={handleBrowse} className="flex-1 sm:flex-none">
+                  </AnimatedButton>
+                  <AnimatedButton 
+                    variant="outline" 
+                    size="lg" 
+                    onClick={handleBrowse} 
+                    className="flex-1 sm:flex-none"
+                    intensity="normal"
+                  >
                     Browse Verified Spaces
                     <ArrowRight className="h-4 w-4" />
-                  </Button>
+                  </AnimatedButton>
                 </div>
               </div>
 
@@ -277,18 +292,33 @@ const testimonials = [
             </div>
           </div>
 
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <StaggerAnimation
+            stagger={0.15}
+            from="start"
+            animation={{
+              opacity: 1,
+              y: 0,
+              scale: 1,
+              duration: 0.7,
+              ease: "power2.out",
+            }}
+            className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3"
+          >
             {featuredListings.map((listing) => (
-              <ListingCard key={listing.slug} listing={listing} />
+              <ListingCard 
+                key={listing.slug} 
+                listing={listing}
+                enableScrollAnimation={false} // Disable individual scroll animation since we're using stagger
+              />
             ))}
-          </div>
+          </StaggerAnimation>
 
           <div className="mt-8 text-center sm:hidden">
-            <Button variant="outline" asChild>
+            <AnimatedButton variant="outline" asChild intensity="normal">
               <Link to="/explore">
                 View All Spaces <ArrowRight className="h-4 w-4" />
               </Link>
-            </Button>
+            </AnimatedButton>
           </div>
         </div>
       </section>
@@ -306,7 +336,18 @@ const testimonials = [
           </div>
 
           <div className="mx-auto max-w-4xl">
-            <div className="grid gap-6 md:grid-cols-3">
+            <StaggerAnimation
+              stagger={0.2}
+              from="start"
+              animation={{
+                opacity: 1,
+                y: 0,
+                scale: 1,
+                duration: 0.8,
+                ease: "power2.out",
+              }}
+              className="grid gap-6 md:grid-cols-3"
+            >
               {[
                 { 
                   step: "1", 
@@ -335,7 +376,7 @@ const testimonials = [
                   <p className="mt-2 text-sm text-muted-foreground">{item.desc}</p>
                 </div>
               ))}
-            </div>
+            </StaggerAnimation>
           </div>
 
           <div className="mt-8 text-center">
@@ -358,7 +399,18 @@ const testimonials = [
             </p>
           </div>
           
-          <div className="grid gap-6 md:grid-cols-3">
+          <StaggerAnimation
+            stagger={0.15}
+            from="start"
+            animation={{
+              opacity: 1,
+              y: 0,
+              scale: 1,
+              duration: 0.7,
+              ease: "power2.out",
+            }}
+            className="grid gap-6 md:grid-cols-3"
+          >
             {testimonials.map((testimonial, index) => (
               <div
                 key={index}
@@ -378,7 +430,7 @@ const testimonials = [
                 </div>
               </div>
             ))}
-          </div>
+          </StaggerAnimation>
         </div>
       </section>
 
@@ -397,30 +449,41 @@ const testimonials = [
       {/* CTA */}
       <section className="py-12 md:py-16">
         <div className="container">
-          <div className="overflow-hidden rounded-2xl bg-gradient-to-br from-primary to-primary-glow p-8 text-center text-primary-foreground md:p-12">
-            <h2 className="font-display text-2xl font-bold md:text-3xl">
-              Ready to Find Your Workspace?
-            </h2>
-            <p className="mx-auto mt-4 max-w-xl opacity-90">
-              WhatsApp us with your requirements and we'll shortlist the best options for you within 3 hours.
-            </p>
-            <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
-              <Button variant="hero-outline" size="lg" asChild>
-                <a href={buildWhatsAppLink()} target="_blank" rel="noopener noreferrer">
-                  <MessageCircle className="h-5 w-5" />
-                  WhatsApp Us Now
-                </a>
-              </Button>
-              <Button variant="hero-outline" size="lg" asChild>
-                <Link to="/explore">
-                  Browse All Spaces <ArrowRight className="h-4 w-4" />
-                </Link>
-              </Button>
+          <ScrollTriggerAnimation
+            animation={{
+              opacity: 1,
+              y: 0,
+              scale: 1,
+              duration: 0.8,
+              ease: "power2.out",
+            }}
+            start="top 80%"
+          >
+            <div className="overflow-hidden rounded-2xl bg-gradient-to-br from-primary to-primary-glow p-8 text-center text-primary-foreground md:p-12">
+              <h2 className="font-display text-2xl font-bold md:text-3xl">
+                Ready to Find Your Workspace?
+              </h2>
+              <p className="mx-auto mt-4 max-w-xl opacity-90">
+                WhatsApp us with your requirements and we'll shortlist the best options for you within 3 hours.
+              </p>
+              <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
+                <AnimatedButton variant="hero-outline" size="lg" asChild intensity="enhanced">
+                  <a href={buildWhatsAppLink()} target="_blank" rel="noopener noreferrer">
+                    <MessageCircle className="h-5 w-5" />
+                    WhatsApp Us Now
+                  </a>
+                </AnimatedButton>
+                <AnimatedButton variant="hero-outline" size="lg" asChild intensity="enhanced">
+                  <Link to="/explore">
+                    Browse All Spaces <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </AnimatedButton>
+              </div>
+              <p className="mt-6 text-sm opacity-75">
+                {transparencyLines.partnerFee}
+              </p>
             </div>
-            <p className="mt-6 text-sm opacity-75">
-              {transparencyLines.partnerFee}
-            </p>
-          </div>
+          </ScrollTriggerAnimation>
         </div>
       </section>
     </div>

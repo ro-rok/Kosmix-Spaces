@@ -10,6 +10,10 @@ import { useToast } from "@/hooks/use-toast";
 import { useCreateSiteVisit } from "@/hooks/useApi";
 import { buildWhatsAppLink } from "@/lib/whatsapp";
 import { transparencyLines } from "@/config/contact";
+import { AnimatedForm } from "@/components/AnimatedForm";
+import { AnimatedButton } from "@/components/AnimatedButton";
+import { AnimatedCard } from "@/components/AnimatedCard";
+import { ScrollTriggerAnimation } from "@/components/ScrollTriggerAnimation";
 
 interface VisitRequestFormProps {
   listingSlug?: string;
@@ -152,33 +156,48 @@ export function VisitRequestForm({ listingSlug, listingName, locality }: VisitRe
 
   if (submitted) {
     return (
-      <div className="rounded-xl border border-success/30 bg-success/5 p-6 text-center">
-        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-success/20">
-          <Calendar className="h-6 w-6 text-success" />
+      <ScrollTriggerAnimation
+        animation={{
+          opacity: 1,
+          y: 0,
+          scale: 1,
+          duration: 0.6,
+          ease: "power2.out",
+        }}
+      >
+        <div className="rounded-xl border border-success/30 bg-success/5 p-6 text-center">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-success/20">
+            <Calendar className="h-6 w-6 text-success" />
+          </div>
+          <h3 className="font-display text-xl font-semibold text-foreground">Visit Scheduled!</h3>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {transparencyLines.slaPromise}
+          </p>
+          <AnimatedButton variant="whatsapp" className="mt-4" asChild intensity="enhanced">
+            <a
+              href={buildWhatsAppLink({
+                listingName,
+                locality,
+              })}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <MessageCircle className="h-4 w-4" />
+              WhatsApp for Updates
+            </a>
+          </AnimatedButton>
         </div>
-        <h3 className="font-display text-xl font-semibold text-foreground">Visit Scheduled!</h3>
-        <p className="mt-2 text-sm text-muted-foreground">
-          {transparencyLines.slaPromise}
-        </p>
-        <Button variant="whatsapp" className="mt-4" asChild>
-          <a
-            href={buildWhatsAppLink({
-              listingName,
-              locality,
-            })}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <MessageCircle className="h-4 w-4" />
-            WhatsApp for Updates
-          </a>
-        </Button>
-      </div>
+      </ScrollTriggerAnimation>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <AnimatedForm 
+      onSubmit={handleSubmit} 
+      className="space-y-6"
+      enableFocusAnimations={true}
+      enableLoadingState={createSiteVisit.isPending}
+    >
       {/* Basic Information */}
       <div className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
@@ -310,7 +329,7 @@ export function VisitRequestForm({ listingSlug, listingName, locality }: VisitRe
 
         {/* Add Selected Slot Button */}
         {selectedDate && selectedTime && (
-          <Button
+          <AnimatedButton
             type="button"
             variant="outline"
             onClick={() => {
@@ -320,9 +339,10 @@ export function VisitRequestForm({ listingSlug, listingName, locality }: VisitRe
             }}
             disabled={formData.preferredSlots.length >= 3}
             className="w-full"
+            intensity="normal"
           >
             Add Time Slot
-          </Button>
+          </AnimatedButton>
         )}
 
         {/* Quick Add Buttons */}
@@ -330,12 +350,12 @@ export function VisitRequestForm({ listingSlug, listingName, locality }: VisitRe
           <Label className="text-sm font-medium">Quick Add Popular Slots:</Label>
           <div className="grid gap-2 sm:grid-cols-2">
             {getNextSevenDays().slice(0, 3).map((day) => (
-              <Card key={day.value} className="cursor-pointer hover:bg-muted/50 transition-colors">
+              <AnimatedCard key={day.value} className="cursor-pointer" elevateOnHover={true} intensity="subtle">
                 <CardContent className="p-3">
                   <div className="text-sm font-medium mb-2">{day.label}</div>
                   <div className="grid gap-1">
                     {timeSlots.slice(0, 3).map((slot) => (
-                      <Button
+                      <AnimatedButton
                         key={`${day.value}-${slot}`}
                         type="button"
                         variant="ghost"
@@ -343,14 +363,15 @@ export function VisitRequestForm({ listingSlug, listingName, locality }: VisitRe
                         className="justify-start h-auto py-1 px-2 text-xs"
                         onClick={() => addTimeSlot(day.value, slot)}
                         disabled={formData.preferredSlots.length >= 3}
+                        intensity="subtle"
                       >
                         <Clock className="h-3 w-3 mr-1" />
                         {slot}
-                      </Button>
+                      </AnimatedButton>
                     ))}
                   </div>
                 </CardContent>
-              </Card>
+              </AnimatedCard>
             ))}
           </div>
         </div>
@@ -361,7 +382,14 @@ export function VisitRequestForm({ listingSlug, listingName, locality }: VisitRe
       </div>
 
       {/* Submit */}
-      <Button type="submit" size="lg" className="w-full" disabled={createSiteVisit.isPending}>
+      <AnimatedButton 
+        type="submit" 
+        size="lg" 
+        className="w-full" 
+        disabled={createSiteVisit.isPending}
+        intensity="enhanced"
+        disableAnimation={createSiteVisit.isPending}
+      >
         {createSiteVisit.isPending ? (
           <>
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -373,11 +401,11 @@ export function VisitRequestForm({ listingSlug, listingName, locality }: VisitRe
             Schedule Visit
           </>
         )}
-      </Button>
+      </AnimatedButton>
 
       <p className="text-center text-xs text-muted-foreground">
         {transparencyLines.partnerFee}
       </p>
-    </form>
+    </AnimatedForm>
   );
 }

@@ -11,6 +11,9 @@ import { useLocalities, useCreateLead } from "@/hooks/useApi";
 import { budgetBandLabels, workspaceTypeLabels, teamSizeBands } from "@/types/models";
 import { buildWhatsAppLink } from "@/lib/whatsapp";
 import { transparencyLines } from "@/config/contact";
+import { AnimatedForm } from "@/components/AnimatedForm";
+import { AnimatedButton } from "@/components/AnimatedButton";
+import { ScrollTriggerAnimation } from "@/components/ScrollTriggerAnimation";
 
 interface EnquiryFormProps {
   listingSlug?: string;
@@ -147,38 +150,53 @@ export function EnquiryForm({ listingSlug, listingName, locality, source = "cont
 
   if (submitted) {
     return (
-      <div className="rounded-xl border border-success/30 bg-success/5 p-6 text-center">
-        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-success/20">
-          <svg className="h-6 w-6 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-          </svg>
+      <ScrollTriggerAnimation
+        animation={{
+          opacity: 1,
+          y: 0,
+          scale: 1,
+          duration: 0.6,
+          ease: "power2.out",
+        }}
+      >
+        <div className="rounded-xl border border-success/30 bg-success/5 p-6 text-center">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-success/20">
+            <svg className="h-6 w-6 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <h3 className="font-display text-xl font-semibold text-foreground">Got it!</h3>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {transparencyLines.slaPromise}
+          </p>
+          <AnimatedButton variant="whatsapp" className="mt-4" asChild intensity="enhanced">
+            <a
+              href={buildWhatsAppLink({
+                listingName,
+                locality: formData.preferredLocality,
+                teamSize: formData.teamSize,
+                budgetBand: formData.budgetBand,
+                spaceType: formData.spaceType,
+              })}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <MessageCircle className="h-4 w-4" />
+              WhatsApp for Faster Response
+            </a>
+          </AnimatedButton>
         </div>
-        <h3 className="font-display text-xl font-semibold text-foreground">Got it!</h3>
-        <p className="mt-2 text-sm text-muted-foreground">
-          {transparencyLines.slaPromise}
-        </p>
-        <Button variant="whatsapp" className="mt-4" asChild>
-          <a
-            href={buildWhatsAppLink({
-              listingName,
-              locality: formData.preferredLocality,
-              teamSize: formData.teamSize,
-              budgetBand: formData.budgetBand,
-              spaceType: formData.spaceType,
-            })}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <MessageCircle className="h-4 w-4" />
-            WhatsApp for Faster Response
-          </a>
-        </Button>
-      </div>
+      </ScrollTriggerAnimation>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <AnimatedForm
+      onSubmit={handleSubmit}
+      className="space-y-4"
+      enableFocusAnimations={true}
+      enableLoadingState={createLead.isPending}
+    >
       {/* Essential Fields */}
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
@@ -394,7 +412,14 @@ export function EnquiryForm({ listingSlug, listingName, locality, source = "cont
       )}
 
       {/* Submit */}
-      <Button type="submit" size="lg" className="w-full" disabled={createLead.isPending}>
+      <AnimatedButton 
+        type="submit" 
+        size="lg" 
+        className="w-full" 
+        disabled={createLead.isPending}
+        intensity="enhanced"
+        disableAnimation={createLead.isPending}
+      >
         {createLead.isPending ? (
           <>
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -403,11 +428,11 @@ export function EnquiryForm({ listingSlug, listingName, locality, source = "cont
         ) : (
           "Submit Enquiry"
         )}
-      </Button>
+      </AnimatedButton>
 
       <p className="text-center text-xs text-muted-foreground">
         {transparencyLines.partnerFee}
       </p>
-    </form>
+    </AnimatedForm>
   );
 }
