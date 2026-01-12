@@ -25,7 +25,8 @@ from app.routers import (
     analytics,
     design_system,
     performance,
-    locations
+    locations,
+    keep_alive
 )
 
 settings = get_settings()
@@ -40,10 +41,15 @@ async def lifespan(app: FastAPI):
     
     # Initialize performance monitoring
     from app.services.performance_service import cleanup_cache_task, DatabaseOptimizer
+    from app.services.keep_alive_service import start_keep_alive_service, stop_keep_alive_service
     import asyncio
     
     # Start background cache cleanup task
     cleanup_task = asyncio.create_task(cleanup_cache_task())
+    
+    # Start keep-alive service if enabled
+    if settings.KEEP_ALIVE_ENABLED:
+        await start_keep_alive_service()
     
     # Initialize database optimization
     try:
@@ -60,6 +66,8 @@ async def lifespan(app: FastAPI):
     
     # Shutdown
     cleanup_task.cancel()
+    if settings.KEEP_ALIVE_ENABLED:
+        await stop_keep_alive_service()
     await close_mongo_connection()
 
 
@@ -189,6 +197,9 @@ app.include_router(design_system.router, prefix="/api/design-system", tags=["Des
 # Performance monitoring routes
 app.include_router(performance.router, prefix="/api/performance", tags=["Performance"])
 
+# Keep-alive service routes
+app.include_router(keep_alive.router, prefix="/api/keep-alive", tags=["Keep Alive"])
+
 
 @app.get("/")
 async def root():
@@ -202,7 +213,8 @@ async def root():
             "Premium offering management",
             "Advanced photo management",
             "Enhanced authentication",
-            "Comprehensive analytics"
+            "Comprehensive analytics",
+            "Keep-alive service"
         ],
         "docs": "/docs"
     }

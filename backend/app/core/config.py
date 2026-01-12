@@ -37,6 +37,11 @@ class Settings(BaseSettings):
     ADMIN_EMAIL: str = "admin@kosmix.com"
     ADMIN_PASSWORD_HASH: str  # bcrypt hash
     
+    # Keep Alive Service
+    KEEP_ALIVE_ENABLED: bool = True
+    KEEP_ALIVE_PING_INTERVAL: int = 840  # 14 minutes
+    KEEP_ALIVE_HEALTH_CHECK_INTERVAL: int = 60  # 1 minute
+    
     model_config = SettingsConfigDict(
         env_file=".env",
         case_sensitive=True
