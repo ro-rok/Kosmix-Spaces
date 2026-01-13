@@ -20,7 +20,7 @@ import { AdminRoute } from "@/components/AdminRoute";
 import { PartnerRoute } from "@/components/PartnerRoute";
 import { InlineLoading } from "@/components/ui/loading";
 import { performanceMonitor } from "@/lib/performance";
-import { preloadLogoAssets } from "@/lib/assets";
+// import { preloadLogoAssets } from "@/lib/assets";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 
@@ -251,6 +251,23 @@ const App = () => {
     }
 
     // Preload logo assets for better UX
+    const preloadLogoAssets = () => {
+      const LOGO_VERSION = 'v2';
+      const assets = [
+        `/favicon-32x32.png?${LOGO_VERSION}`,
+        `/favicon-16x16.png?${LOGO_VERSION}`,
+        `/favicon.ico?${LOGO_VERSION}`,
+        `/logo.png?${LOGO_VERSION}`,
+        `/apple-touch-icon.png?${LOGO_VERSION}`,
+      ];
+      assets.forEach(src => {
+        const link = document.createElement('link');
+        link.rel = 'preload';
+        link.as = 'image';
+        link.href = src;
+        document.head.appendChild(link);
+      });
+    };
     preloadLogoAssets();
 
     return () => {

@@ -1,6 +1,28 @@
 import React, { useState } from 'react';
-import { getLogoSrc, LOGO_ASSETS } from '@/lib/assets';
 import { cn } from '@/lib/utils';
+
+// Logo assets with cache busting
+const LOGO_VERSION = 'v2';
+const LOGO_ASSETS = {
+  favicon32: `/favicon-32x32.png?${LOGO_VERSION}`,
+  favicon16: `/favicon-16x16.png?${LOGO_VERSION}`,
+  faviconIco: `/favicon.ico?${LOGO_VERSION}`,
+  logo: `/logo.png?${LOGO_VERSION}`,
+  appleTouchIcon: `/apple-touch-icon.png?${LOGO_VERSION}`,
+} as const;
+
+function getLogoSrc(preferredSize: 'small' | 'medium' | 'large' = 'small'): string {
+  switch (preferredSize) {
+    case 'small':
+      return LOGO_ASSETS.favicon32;
+    case 'medium':
+      return LOGO_ASSETS.logo;
+    case 'large':
+      return LOGO_ASSETS.logo;
+    default:
+      return LOGO_ASSETS.favicon32;
+  }
+}
 
 interface LogoProps {
   /** Size of the logo */
