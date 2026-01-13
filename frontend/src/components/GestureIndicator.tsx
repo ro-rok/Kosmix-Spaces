@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Keyboard, Hand, Zap } from 'lucide-react';
+import { Hand, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useTouchGesturesContext, useKeyboardShortcutsContext } from '@/components/GestureProvider';
+import { useTouchGesturesContext } from '@/components/GestureProvider';
 
 interface GestureIndicatorProps {
   showOnHover?: boolean;
@@ -15,9 +15,7 @@ export function GestureIndicator({
   className 
 }: GestureIndicatorProps) {
   const [isVisible, setIsVisible] = useState(false);
-  const [showKeyboard, setShowKeyboard] = useState(false);
   const touchGestures = useTouchGesturesContext();
-  const keyboardShortcuts = useKeyboardShortcutsContext();
 
   // Show indicator when gesture is active
   useEffect(() => {
@@ -28,20 +26,6 @@ export function GestureIndicator({
     }
   }, [touchGestures.isGestureActive]);
 
-  // Show keyboard shortcuts on key press
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.ctrlKey && event.shiftKey) {
-        setShowKeyboard(true);
-        const timer = setTimeout(() => setShowKeyboard(false), 3000);
-        return () => clearTimeout(timer);
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, []);
-
   const positionClasses = {
     'top-left': 'top-4 left-4',
     'top-right': 'top-4 right-4',
@@ -49,7 +33,7 @@ export function GestureIndicator({
     'bottom-right': 'bottom-4 right-4',
   };
 
-  if (!isVisible && !showKeyboard && showOnHover) {
+  if (!isVisible && showOnHover) {
     return null;
   }
 
@@ -71,28 +55,8 @@ export function GestureIndicator({
         </div>
       )}
 
-      {/* Keyboard Shortcut Indicator */}
-      {showKeyboard && (
-        <div className="bg-black/80 text-white px-3 py-2 rounded-lg shadow-lg animate-slide-up">
-          <div className="flex items-center gap-2 text-sm mb-2">
-            <Keyboard className="h-4 w-4" />
-            <span>Keyboard Shortcuts</span>
-          </div>
-          <div className="text-xs space-y-1">
-            {Object.entries(keyboardShortcuts.shortcuts).map(([key, shortcut]) => (
-              shortcut && (
-                <div key={key} className="flex justify-between gap-4">
-                  <span className="capitalize">{key}:</span>
-                  <code className="bg-white/20 px-1 rounded">{shortcut}</code>
-                </div>
-              )
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Gesture Guide (always visible on hover) */}
-      {showOnHover && !isVisible && !showKeyboard && (
+      {showOnHover && !isVisible && (
         <div 
           className="bg-black/60 text-white px-2 py-1 rounded text-xs opacity-0 hover:opacity-100 transition-opacity duration-300"
           onMouseEnter={() => setIsVisible(true)}
@@ -146,16 +110,6 @@ export function GestureHelp() {
                   <li>→ Right: Previous page</li>
                   <li>↑ Up: Admin portal</li>
                   <li>↓ Down: Partner portal</li>
-                </ul>
-              </div>
-              
-              <div>
-                <h4 className="font-medium mb-2 flex items-center gap-2">
-                  <Keyboard className="h-4 w-4" />
-                  Keyboard Shortcuts
-                </h4>
-                <ul className="space-y-1 text-muted-foreground ml-6">
-                  <li><code className="bg-muted px-1 rounded">Ctrl+Shift+A</code> Admin</li>
                 </ul>
               </div>
             </div>

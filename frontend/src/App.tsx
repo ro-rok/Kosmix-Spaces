@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { AnimationProvider } from "@/contexts/AnimationContext";
 import { AnimationAccessibilityProvider } from "@/components/AnimationAccessibilityProvider";
@@ -15,6 +15,7 @@ import { RouteTransition } from "@/components/RouteTransition";
 import { SessionExpiryHandler } from "@/components/SessionExpiryHandler";
 import { Layout } from "@/components/Layout";
 import { ConnectionStatus } from "@/components/ConnectionStatus";
+import { ScrollToTop } from "@/components/ScrollToTop";
 import { AdminRoute } from "@/components/AdminRoute";
 import { PartnerRoute } from "@/components/PartnerRoute";
 import { InlineLoading } from "@/components/ui/loading";
@@ -285,6 +286,7 @@ const App = () => {
                     v7_relativeSplatPath: true,
                   }}
                 >
+                  <ScrollToTop />
                   <GestureProvider
                     enableKeyboardShortcuts={true}
                     enableTouchGestures={true}

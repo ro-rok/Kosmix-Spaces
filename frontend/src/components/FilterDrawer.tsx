@@ -18,16 +18,16 @@ interface FilterDrawerProps {
 
 // Common amenities for multi-select with icons
 const commonAmenities = [
-  { value: 'wifi', label: 'High-Speed WiFi', icon: getAmenityIcon('wifi') },
-  { value: 'parking', label: 'Parking', icon: getAmenityIcon('parking') },
-  { value: 'cafeteria', label: 'Cafeteria', icon: getAmenityIcon('cafeteria') },
-  { value: 'printer', label: 'Printer/Scanner', icon: getAmenityIcon('printer') },
-  { value: 'reception', label: '24/7 Reception', icon: getAmenityIcon('reception') },
-  { value: 'security', label: 'Security', icon: getAmenityIcon('security') },
-  { value: 'cleaning', label: 'Housekeeping', icon: getAmenityIcon('cleaning') },
-  { value: 'lounge', label: 'Lounge Area', icon: getAmenityIcon('lounge') },
-  { value: 'phone-booth', label: 'Phone Booths', icon: getAmenityIcon('phone-booth') },
-  { value: 'lockers', label: 'Lockers', icon: getAmenityIcon('lockers') },
+  { value: 'High-speed WiFi', label: 'High-Speed WiFi', icon: getAmenityIcon('High-speed WiFi') },
+  { value: 'Parking', label: 'Parking', icon: getAmenityIcon('Parking') },
+  { value: 'Cafeteria', label: 'Cafeteria', icon: getAmenityIcon('Cafeteria') },
+  { value: 'Printer/Scanner', label: 'Printer/Scanner', icon: getAmenityIcon('Printer/Scanner') },
+  { value: '24/7 Reception', label: '24/7 Reception', icon: getAmenityIcon('24/7 Reception') },
+  { value: 'Security', label: 'Security', icon: getAmenityIcon('Security') },
+  { value: 'Housekeeping', label: 'Housekeeping', icon: getAmenityIcon('Housekeeping') },
+  { value: 'Lounge Area', label: 'Lounge Area', icon: getAmenityIcon('Lounge Area') },
+  { value: 'Phone Booths', label: 'Phone Booths', icon: getAmenityIcon('Phone Booths') },
+  { value: 'Lockers', label: 'Lockers', icon: getAmenityIcon('Lockers') },
 ];
 
 export function FilterDrawer({ filters, onChange, onClear }: FilterDrawerProps) {

@@ -221,77 +221,74 @@ export function ListingCard({
       </div>
 
       {/* Content */}
-      <div className={cn("p-4", isPremium && "p-5")}>
+      <div className={cn("p-4 space-y-3", isPremium && "p-5 space-y-4")}>
         {/* Title & Location */}
-        <div className="mb-3">
+        <div>
           <h3 className={cn(
-            "font-display font-semibold text-foreground line-clamp-1 transition-colors group-hover:text-primary",
-            isPremium ? "text-lg" : "text-base"
+            "font-display font-semibold text-foreground line-clamp-2 leading-tight transition-colors group-hover:text-primary",
+            isPremium ? "text-lg mb-1" : "text-base mb-0.5"
           )}>
             {listing.displayName}
           </h3>
-          <div className="flex items-center gap-1 mt-1">
-            <MapPin className="h-3 w-3 text-muted-foreground" />
-            <p className="text-sm text-muted-premium">
+          <div className="flex items-center gap-1">
+            <MapPin className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+            <p className="text-sm text-muted-premium truncate">
               {listing.locality}, {listing.city}
             </p>
           </div>
         </div>
 
-        {/* Capacity & Workspace Types */}
-        <div className="flex items-center justify-between mb-3">
+        {/* Capacity & Workspace Types - Compact Row */}
+        <div className="flex items-center justify-between gap-2">
           {(listing.seatCapacityMin || listing.seatCapacityMax) && (
-            <div className="flex items-center gap-1 text-sm text-muted-premium">
+            <div className="flex items-center gap-1 text-sm text-muted-premium flex-shrink-0">
               <Users className="h-3 w-3" />
-              <span>
+              <span className="font-medium">
                 {listing.seatCapacityMin === listing.seatCapacityMax
-                  ? `${listing.seatCapacityMax} seats`
-                  : `${listing.seatCapacityMin || 0}-${listing.seatCapacityMax || 0} seats`}
+                  ? `${listing.seatCapacityMax}`
+                  : `${listing.seatCapacityMin || 0}-${listing.seatCapacityMax || 0}`}
               </span>
             </div>
           )}
-          <div className="flex flex-wrap gap-1">
+          <div className="flex flex-wrap gap-1 justify-end">
             {listing.workspaceTypes && listing.workspaceTypes.slice(0, 2).map((type) => (
               <Badge
                 key={type}
                 variant="outline"
-                className="text-xs px-2 py-0.5 border-border/60 hover:border-primary/50 transition-colors"
+                className="text-xs px-1.5 py-0.5 border-border/60 hover:border-primary/50 transition-colors"
               >
-                {workspaceTypeLabels[type]}
+                {workspaceTypeLabels[type].split(' ')[0]} {/* Show first word only */}
               </Badge>
             ))}
             {listing.workspaceTypes && listing.workspaceTypes.length > 2 && (
-              <Badge variant="outline" className="text-xs px-2 py-0.5 border-border/60">
+              <Badge variant="outline" className="text-xs px-1.5 py-0.5 border-border/60">
                 +{listing.workspaceTypes.length - 2}
               </Badge>
             )}
           </div>
         </div>
 
-        {/* Amenities with Icons */}
+        {/* Amenities with Icons - More Compact */}
         {listing.amenities && listing.amenities.length > 0 && (
-          <div className="mb-3">
+          <div>
             <div className="flex flex-wrap gap-1">
-              {listing.amenities.slice(0, 4).map((amenity) => {
+              {listing.amenities.slice(0, 6).map((amenity) => {
                 const IconComponent = getAmenityIcon(amenity);
                 return (
-                  <Badge
+                  <div
                     key={amenity}
-                    variant="secondary"
-                    className="text-xs px-2 py-1 bg-muted/50 hover:bg-muted transition-colors flex items-center gap-1"
+                    className="flex items-center gap-1 text-xs text-muted-foreground bg-muted/30 rounded px-1.5 py-0.5 hover:bg-muted/50 transition-colors"
+                    title={amenity}
                   >
-                    <IconComponent className="h-3 w-3" />
-                    {amenity}
-                  </Badge>
+                    <IconComponent className="h-3 w-3 flex-shrink-0" />
+                    <span className="truncate max-w-[60px]">{amenity.split(' ')[0]}</span>
+                  </div>
                 );
               })}
-              {listing.amenities.length > 4 && (
-                <Badge 
-                  variant="secondary" 
-                  className="text-xs px-2 py-1 bg-muted/50 hover:bg-muted transition-colors"
-                >
-                  +{listing.amenities.length - 4} more
-                </Badge>
+              {listing.amenities.length > 6 && (
+                <div className="flex items-center text-xs text-muted-foreground bg-muted/30 rounded px-1.5 py-0.5">
+                  +{listing.amenities.length - 6}
+                </div>
               )}
             </div>
           </div>
@@ -299,9 +296,9 @@ export function ListingCard({
 
         {/* Premium Highlights (fallback if no amenities) */}
         {isPremium && (!listing.amenities || listing.amenities.length === 0) && listing.highlights && listing.highlights.length > 0 && (
-          <div className="mb-3">
+          <div>
             <div className="flex flex-wrap gap-1">
-              {listing.highlights.slice(0, 3).map((highlight) => (
+              {listing.highlights.slice(0, 4).map((highlight) => (
                 <Badge
                   key={highlight}
                   variant="secondary"
@@ -314,51 +311,51 @@ export function ListingCard({
           </div>
         )}
 
-        {/* Pricing */}
-        <div className="mb-4">
-          <div className="flex items-baseline gap-2">
+        {/* Pricing & CTAs Combined Row */}
+        <div className="flex items-end justify-between gap-3">
+          <div className="flex-1 min-w-0">
             <p className={cn(
-              "font-display font-bold text-primary",
-              isPremium ? "text-lg" : "text-base"
+              "font-display font-bold text-primary leading-none",
+              isPremium ? "text-base" : "text-sm"
             )}>
               {listing.budgetBand ? budgetBandLabels[listing.budgetBand] : "On Enquiry"}
             </p>
+            <p className="text-xs text-muted-premium mt-0.5 truncate">
+              Final pricing on enquiry
+            </p>
           </div>
-          <p className="text-xs text-muted-premium mt-0.5">
-            Final pricing on enquiry
-          </p>
-        </div>
-
-        {/* CTAs */}
-        <div className="flex gap-2">
-          <AnimatedButton 
-            variant="whatsapp" 
-            size="sm" 
-            className="flex-1 btn-premium" 
-            intensity="subtle"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              window.open(whatsappLink, '_blank', 'noopener,noreferrer');
-            }}
-          >
-            <MessageCircle className="h-4 w-4" />
-            WhatsApp
-          </AnimatedButton>
-          <AnimatedButton 
-            variant="call" 
-            size="sm" 
-            className="flex-1 btn-premium" 
-            intensity="subtle"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              window.open(buildCallLink(), '_self');
-            }}
-          >
-            <Phone className="h-4 w-4" />
-            Call
-          </AnimatedButton>
+          
+          {/* Compact CTAs */}
+          <div className="flex gap-1.5 flex-shrink-0">
+            <AnimatedButton 
+              variant="whatsapp" 
+              size="sm" 
+              className="px-3 py-1.5 btn-premium text-xs" 
+              intensity="subtle"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                window.open(whatsappLink, '_blank', 'noopener,noreferrer');
+              }}
+            >
+              <MessageCircle className="h-3 w-3" />
+              <span className="hidden sm:inline ml-1">WhatsApp</span>
+            </AnimatedButton>
+            <AnimatedButton 
+              variant="call" 
+              size="sm" 
+              className="px-3 py-1.5 btn-premium text-xs" 
+              intensity="subtle"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                window.open(buildCallLink(), '_self');
+              }}
+            >
+              <Phone className="h-3 w-3" />
+              <span className="hidden sm:inline ml-1">Call</span>
+            </AnimatedButton>
+          </div>
         </div>
       </div>
     </AnimatedCard>

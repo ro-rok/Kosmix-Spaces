@@ -45,10 +45,6 @@ export function useTouchGestures(config: TouchGestureConfig = {}) {
   const handleSwipe = useCallback((swipe: SwipeResult) => {
     if (!enableNavigation || swipe.fingers !== gestureConfig.requiredFingers) return;
 
-    if (enableDebug) {
-      console.log('Swipe detected:', swipe);
-    }
-
     const currentPath = location.pathname;
     let navigationTarget = '';
     let navigationDescription = '';
@@ -123,7 +119,7 @@ export function useTouchGestures(config: TouchGestureConfig = {}) {
       success: !!navigationTarget,
       timestamp: Date.now(),
     });
-  }, [navigate, location.pathname, enableNavigation, gestureConfig.requiredFingers, enableDebug]);
+  }, [navigate, location.pathname, enableNavigation, gestureConfig.requiredFingers]);
 
   useEffect(() => {
     const handleTouchStart = (event: TouchEvent) => {
@@ -135,13 +131,6 @@ export function useTouchGestures(config: TouchGestureConfig = {}) {
           timestamp: Date.now(),
           identifier: touch.identifier,
         }));
-        
-        // Create visual feedback
-        if (enableDebug) {
-          Array.from(event.touches).forEach(touch => {
-            createGestureRipple(touch.clientX, touch.clientY);
-          });
-        }
         
         // Prevent default to avoid scrolling during gesture
         event.preventDefault();

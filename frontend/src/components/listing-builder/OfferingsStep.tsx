@@ -169,6 +169,12 @@ export function OfferingsStep({
       if (!offering.description?.trim()) {
         issues.push('Description required');
       }
+      if (!offering.capacity?.min || !offering.capacity?.max) {
+        issues.push('Capacity range required');
+      }
+      if (offering.capacity?.min && offering.capacity?.max && offering.capacity.min > offering.capacity.max) {
+        issues.push('Min capacity cannot be greater than max capacity');
+      }
     }
 
     return { isValid: issues.length === 0, issues };
@@ -268,6 +274,45 @@ export function OfferingsStep({
                     {feature}
                   </Button>
                 ))}
+              </div>
+            </div>
+
+            {/* Capacity */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Min Capacity</Label>
+                <Input
+                  type="number"
+                  value={offering.capacity?.min || ''}
+                  onChange={(e) => updateOfferingData(type, { 
+                    capacity: {
+                      ...offering.capacity,
+                      min: e.target.value ? Number(e.target.value) : 1,
+                      max: offering.capacity?.max || 1
+                    }
+                  })}
+                  placeholder="e.g., 1"
+                  min={1}
+                  disabled={disabled}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label>Max Capacity</Label>
+                <Input
+                  type="number"
+                  value={offering.capacity?.max || ''}
+                  onChange={(e) => updateOfferingData(type, { 
+                    capacity: {
+                      min: offering.capacity?.min || 1,
+                      ...offering.capacity,
+                      max: e.target.value ? Number(e.target.value) : 1
+                    }
+                  })}
+                  placeholder="e.g., 50"
+                  min={offering.capacity?.min || 1}
+                  disabled={disabled}
+                />
               </div>
             </div>
 

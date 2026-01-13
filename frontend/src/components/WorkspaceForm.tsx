@@ -56,8 +56,8 @@ const workspaceFormSchema = z.object({
   displayName: z.string().min(1, "Display name is required").max(100),
   localityId: z.string().min(1, "Locality is required"),
   workspaceTypes: z.array(z.enum(["dedicated-desk", "private-cabin", "managed-office"])).min(1, "Select at least one workspace type"),
-  seatCapacityMin: z.number().min(1, "Minimum capacity must be at least 1"),
-  seatCapacityMax: z.number().min(1, "Maximum capacity must be at least 1"),
+  seatCapacityMin: z.number().min(1, "Minimum capacity must be at least 1").max(1000, "Minimum capacity cannot exceed 1000"),
+  seatCapacityMax: z.number().min(1, "Maximum capacity must be at least 1").max(1000, "Maximum capacity cannot exceed 1000"),
   availabilityStatus: z.enum(["available", "limited", "waitlist"]),
   budgetBand: z.enum(["5k-10k", "10k-20k", "20k-40k", "40k-80k", "80k+"]),
   budgetDisplayText: z.string().optional(),
@@ -78,6 +78,9 @@ const workspaceFormSchema = z.object({
   houseRules: z.string().optional(),
   // Photos are handled separately, not in form validation
   photos: z.array(z.any()).optional(),
+}).refine((data) => data.seatCapacityMax >= data.seatCapacityMin, {
+  message: "Maximum capacity must be greater than or equal to minimum capacity",
+  path: ["seatCapacityMax"],
 });
 
 type WorkspaceFormData = z.infer<typeof workspaceFormSchema>;
@@ -139,7 +142,7 @@ export function WorkspaceForm({ onSubmit, initialData, isLoading = false }: Work
       localityId: initialData?.localityId || "",
       workspaceTypes: initialData?.workspaceTypes || [],
       seatCapacityMin: initialData?.seatCapacityMin || 1,
-      seatCapacityMax: initialData?.seatCapacityMax || 10,
+      seatCapacityMax: initialData?.seatCapacityMax || 50,
       availabilityStatus: initialData?.availabilityStatus || "available",
       budgetBand: initialData?.budgetBand || "10k-20k",
       budgetDisplayText: initialData?.budgetDisplayText || "",
@@ -463,9 +466,13 @@ export function WorkspaceForm({ onSubmit, initialData, isLoading = false }: Work
               type="number"
               {...register("seatCapacityMin", { valueAsNumber: true })}
               min={1}
+              max={1000}
+              step={1}
+              placeholder="e.g., 1"
               className={errors.seatCapacityMin ? "border-destructive" : ""}
             />
             {errors.seatCapacityMin && <p className="text-xs text-destructive">{errors.seatCapacityMin.message}</p>}
+            <p className="text-xs text-muted-foreground">Minimum number of seats available</p>
           </div>
           <div className="space-y-2">
             <Label htmlFor="seatCapacityMax">Max Capacity *</Label>
@@ -474,9 +481,13 @@ export function WorkspaceForm({ onSubmit, initialData, isLoading = false }: Work
               type="number"
               {...register("seatCapacityMax", { valueAsNumber: true })}
               min={1}
+              max={1000}
+              step={1}
+              placeholder="e.g., 50"
               className={errors.seatCapacityMax ? "border-destructive" : ""}
             />
             {errors.seatCapacityMax && <p className="text-xs text-destructive">{errors.seatCapacityMax.message}</p>}
+            <p className="text-xs text-muted-foreground">Maximum number of seats available</p>
           </div>
         </div>
 

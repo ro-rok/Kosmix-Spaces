@@ -105,6 +105,11 @@ export interface OfferingData {
   budgetBand?: string;
   photos: PhotoData[];
   enabled: boolean;
+  // Capacity information for each offering
+  capacity?: {
+    min: number;
+    max: number;
+  };
 }
 
 // Offering form data with upload progress tracking
@@ -184,6 +189,7 @@ export interface BasicInfoData {
   amenities: string[];
   accessHours?: string;
   weekendAccess?: boolean;
+  heroPhotos?: PhotoData[];
 }
 
 // Search state interface

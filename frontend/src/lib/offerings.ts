@@ -15,7 +15,31 @@ export function createDefaultOffering(type: OfferingType): OfferingData {
     features: [],
     photos: [],
     enabled: false,
+    capacity: {
+      min: 1,
+      max: getDefaultMaxCapacity(type)
+    }
   };
+}
+
+/**
+ * Get default max capacity based on offering type
+ */
+function getDefaultMaxCapacity(type: OfferingType): number {
+  switch (type) {
+    case 'private-offices':
+      return 20;
+    case 'dedicated-desks':
+      return 50;
+    case 'hot-desks':
+      return 100;
+    case 'meeting-rooms':
+      return 12;
+    case 'event-spaces':
+      return 200;
+    default:
+      return 10;
+  }
 }
 
 /**
@@ -55,7 +79,7 @@ export function getEnabledOfferings(offerings: Record<OfferingType, OfferingData
 
 /**
  * Check if offerings meet submission requirements
- * Each enabled offering must have at least 1 photo
+ * Each enabled offering must have at least 1 photo, description, and capacity
  */
 export function validateOfferingsForSubmission(offerings: Record<OfferingType, OfferingData>): {
   isValid: boolean;
@@ -71,6 +95,15 @@ export function validateOfferingsForSubmission(offerings: Record<OfferingType, O
   enabledOfferings.forEach(offering => {
     if (!offering.photos || offering.photos.length === 0) {
       errors.push(`${offering.title} must have at least 1 photo`);
+    }
+    if (!offering.description?.trim()) {
+      errors.push(`${offering.title} must have a description`);
+    }
+    if (!offering.capacity?.min || !offering.capacity?.max) {
+      errors.push(`${offering.title} must have capacity information`);
+    }
+    if (offering.capacity?.min && offering.capacity?.max && offering.capacity.min > offering.capacity.max) {
+      errors.push(`${offering.title} min capacity cannot be greater than max capacity`);
     }
   });
   

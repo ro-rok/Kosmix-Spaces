@@ -60,25 +60,6 @@ export function GestureProvider({
   return (
     <GestureContext.Provider value={contextValue}>
       {children}
-      
-      {/* Debug overlay */}
-      {enableDebugMode && (
-        <div className="fixed bottom-4 left-4 z-50 bg-black/80 text-white p-3 rounded-lg text-xs font-mono max-w-xs">
-          <div className="mb-2 font-semibold">Gesture Debug</div>
-          <div>Keyboard Shortcuts:</div>
-          <ul className="ml-2 mb-2">
-            {Object.entries(keyboardShortcuts.shortcuts).map(([key, shortcut]) => (
-              shortcut && <li key={key}>{key}: {shortcut}</li>
-            ))}
-          </ul>
-          <div>Touch Gestures:</div>
-          <ul className="ml-2">
-            <li>3-finger swipe enabled</li>
-            <li>Active: {touchGestures.isGestureActive ? 'Yes' : 'No'}</li>
-            <li>Min distance: {touchGestures.config.minDistance}px</li>
-          </ul>
-        </div>
-      )}
     </GestureContext.Provider>
   );
 }

@@ -125,14 +125,6 @@ export function AdminLogin() {
             ← Back to main site
           </Link>
         </div>
-        
-        <div className="mt-4 p-3 bg-muted/50 rounded-lg">
-          <p className="text-xs text-muted-foreground text-center">
-            Demo credentials:<br />
-            Email: swatikapoor@kosmixspaces.in<br />
-            Password: Kosmix@30
-          </p>
-        </div>
       </div>
       </div>
     </>

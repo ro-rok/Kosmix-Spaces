@@ -5,11 +5,11 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { BasicInfoData } from "@/types/models";
-import { useLocalities } from "@/hooks/useApi";
+import { BasicInfoData, PhotoData } from "@/types/models";
+import { useLocalities, useUploadPhoto, useDeletePhoto } from "@/hooks/useApi";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { Loader2, Plus, Check, AlertCircle } from "lucide-react";
+import { Loader2, Plus, Check, AlertCircle, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 
 interface BasicInfoStepProps {
@@ -65,6 +65,11 @@ export function BasicInfoStep({ data, onChange, errors, disabled = false }: Basi
   const [customLocalityValue, setCustomLocalityValue] = useState("");
   const [isAddingLocality, setIsAddingLocality] = useState(false);
   const [localitySubmissionStatus, setLocalitySubmissionStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
+
+  // Photo upload hooks
+  const uploadPhotoMutation = useUploadPhoto();
+  const deletePhotoMutation = useDeletePhoto();
+  const [uploadingPhotos, setUploadingPhotos] = useState<Record<string, boolean>>({});
 
   const handleInputChange = (field: keyof BasicInfoData, value: any) => {
     onChange({ [field]: value });
@@ -153,6 +158,63 @@ export function BasicInfoStep({ data, onChange, errors, disabled = false }: Basi
     
     onChange({ amenities: newAmenities });
   };
+
+  // Hero photo upload functionality
+  const handleHeroPhotoUpload = async (files: FileList) => {
+    if (disabled) return;
+
+    for (const file of Array.from(files)) {
+      if (!file.type.startsWith('image/')) {
+        toast.error(`${file.name} is not an image file`);
+        continue;
+      }
+
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error(`${file.name} is too large. Maximum size is 10MB`);
+        continue;
+      }
+
+      const uploadKey = `hero-${file.name}`;
+      setUploadingPhotos(prev => ({ ...prev, [uploadKey]: true }));
+
+      try {
+        // Upload as hero photo (no offering type)
+        const result = await uploadPhotoMutation.mutateAsync({ file });
+        
+        // Add photo to hero photos
+        const currentPhotos = data.heroPhotos || [];
+        onChange({ heroPhotos: [...currentPhotos, result.photo] });
+        
+        toast.success(`Hero photo uploaded`);
+      } catch (error: any) {
+        toast.error(`Failed to upload ${file.name}: ${error.message}`);
+      } finally {
+        setUploadingPhotos(prev => ({ ...prev, [uploadKey]: false }));
+      }
+    }
+  };
+
+  // Remove hero photo
+  const removeHeroPhoto = async (photoIndex: number) => {
+    if (disabled) return;
+
+    const photos = data.heroPhotos || [];
+    const photo = photos[photoIndex];
+    if (!photo) return;
+
+    try {
+      await deletePhotoMutation.mutateAsync(photo.publicId);
+      const updatedPhotos = photos.filter((_, i) => i !== photoIndex);
+      onChange({ heroPhotos: updatedPhotos });
+      toast.success('Hero photo removed');
+    } catch (error: any) {
+      toast.error(`Failed to remove photo: ${error.message}`);
+    }
+  };
+
+  const isUploadingHeroPhotos = Object.keys(uploadingPhotos).some(key => 
+    key.startsWith('hero-') && uploadingPhotos[key]
+  );
 
   return (
     <div className="space-y-6">
@@ -321,6 +383,70 @@ export function BasicInfoStep({ data, onChange, errors, disabled = false }: Basi
         {errors.overview && (
           <p className="text-xs text-destructive">{errors.overview}</p>
         )}
+      </div>
+
+      {/* Hero Photos */}
+      <div className="space-y-4">
+        <div>
+          <Label>Hero Photos (Optional)</Label>
+          <p className="text-xs text-muted-foreground mt-1">
+            Upload main photos that represent your workspace. If no hero photos are uploaded, we'll use photos from your offerings.
+          </p>
+        </div>
+
+        {/* Photo upload */}
+        {!disabled && (
+          <div>
+            <Input
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={(e) => {
+                if (e.target.files) handleHeroPhotoUpload(e.target.files);
+              }}
+              className="hidden"
+              id="hero-photo-upload"
+            />
+            <Label
+              htmlFor="hero-photo-upload"
+              className={cn(
+                "flex items-center justify-center gap-2 p-6 border-2 border-dashed rounded-lg cursor-pointer transition-colors",
+                "hover:bg-muted border-muted-foreground/25 hover:border-muted-foreground/50",
+                isUploadingHeroPhotos && "opacity-50 cursor-not-allowed"
+              )}
+            >
+              <Upload className="h-5 w-5" />
+              {isUploadingHeroPhotos ? 'Uploading...' : 'Upload Hero Photos'}
+            </Label>
+          </div>
+        )}
+
+        {/* Photo grid */}
+        {data.heroPhotos && data.heroPhotos.length > 0 && (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {data.heroPhotos.map((photo, index) => (
+              <div key={index} className="relative group">
+                <img
+                  src={photo.url}
+                  alt={`Hero photo ${index + 1}`}
+                  className="w-full h-32 object-cover rounded-lg border"
+                />
+                {!disabled && (
+                  <button
+                    onClick={() => removeHeroPhoto(index)}
+                    className="absolute top-2 right-2 p-1 bg-destructive text-destructive-foreground rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        <p className="text-xs text-muted-foreground">
+          {data.heroPhotos?.length || 0} hero photo(s) uploaded
+        </p>
       </div>
 
       {/* Access Hours */}

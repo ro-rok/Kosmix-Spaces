@@ -84,6 +84,7 @@ class AnalyticsClient {
   private flushInterval = 5000; // 5 seconds
   private flushTimer: NodeJS.Timeout | null = null;
   private sessionId: string;
+  private backendAvailable: boolean | null = null; // Cache backend availability
 
   constructor() {
     // Generate or retrieve session ID
@@ -97,9 +98,23 @@ class AnalyticsClient {
   }
 
   /**
+   * Check if backend is available (cached result)
+   */
+  private isBackendAvailable(): boolean {
+    // If we haven't checked yet, assume it's available
+    // The first failed request will set this to false
+    return this.backendAvailable !== false;
+  }
+
+  /**
    * Track an analytics event with privacy-compliant structure
    */
   track(eventName: EventName, metadata?: EventMetadata): void {
+    // Skip analytics in development if backend is not available
+    if (import.meta.env.DEV && !this.isBackendAvailable()) {
+      return;
+    }
+
     const event: AnalyticsEvent = {
       eventId: this.generateEventId(),
       eventName,
@@ -138,14 +153,28 @@ class AnalyticsClient {
     this.eventQueue = [];
 
     try {
-      // TODO: Replace with real API call when POST /analytics/events is available
       await this.sendEventsToBackend(events);
       
-      console.log(`✅ Flushed ${events.length} analytics events`);
+      // Mark backend as available on success
+      this.backendAvailable = true;
+      
+      if (import.meta.env.DEV) {
+        console.log(`✅ Flushed ${events.length} analytics events`);
+      }
     } catch (error) {
-      console.error('❌ Failed to flush analytics events:', error);
-      // Re-queue events on failure (with limit to prevent memory issues)
-      if (this.eventQueue.length < 100) {
+      // Mark backend as unavailable on network errors
+      const isNetworkError = error instanceof TypeError && error.message.includes('fetch');
+      if (isNetworkError) {
+        this.backendAvailable = false;
+      }
+      
+      // Only log in development mode to reduce console noise
+      if (import.meta.env.DEV) {
+        console.warn('⚠️ Analytics backend unavailable - events will be skipped');
+      }
+      
+      // Don't re-queue events if it's a persistent network error
+      if (!isNetworkError && this.eventQueue.length < 100) {
         this.eventQueue.unshift(...events);
       }
     }
@@ -237,14 +266,20 @@ class AnalyticsClient {
       // Use the same API base URL as other API calls
       const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
       
-      // Send to backend
+      // Send to backend with timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+      
       const response = await fetch(`${API_BASE_URL}/api/analytics/events`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ events: backendEvents })
+        body: JSON.stringify({ events: backendEvents }),
+        signal: controller.signal
       });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -253,7 +288,10 @@ class AnalyticsClient {
       const result = await response.json();
       console.log(`✅ Successfully tracked ${result.eventsTracked} events`);
     } catch (error) {
-      console.error('❌ Failed to send events to backend:', error);
+      // Only log detailed errors in development
+      if (import.meta.env.DEV) {
+        console.warn('⚠️ Analytics events could not be sent to backend:', error instanceof Error ? error.message : 'Unknown error');
+      }
       throw error;
     }
   }
