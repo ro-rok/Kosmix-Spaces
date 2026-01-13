@@ -95,3 +95,23 @@ export function useCreateSiteVisit() {
     },
   });
 }
+
+// Photo upload
+export function useUploadPhoto() {
+  return useMutation({
+    mutationFn: (file: File) => api.uploadPhoto(file),
+    onError: (error) => {
+      console.error('Photo upload failed:', error);
+    },
+  });
+}
+
+// Photo delete
+export function useDeletePhoto() {
+  return useMutation({
+    mutationFn: (photoId: string) => api.deletePhoto(photoId),
+    onError: (error) => {
+      console.error('Photo delete failed:', error);
+    },
+  });
+}

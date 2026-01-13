@@ -20,7 +20,6 @@ import { AdminRoute } from "@/components/AdminRoute";
 import { PartnerRoute } from "@/components/PartnerRoute";
 import { InlineLoading } from "@/components/ui/loading";
 import { performanceMonitor } from "@/lib/performance";
-// import { preloadLogoAssets } from "@/lib/assets";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 
