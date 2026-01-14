@@ -20,8 +20,7 @@ import { AdminRoute } from "@/components/AdminRoute";
 import { PartnerRoute } from "@/components/PartnerRoute";
 import { InlineLoading } from "@/components/ui/loading";
 import { performanceMonitor } from "@/lib/performance";
-import { Analytics } from "@vercel/analytics/react";
-import { SpeedInsights } from "@vercel/speed-insights/react";
+import { SafeAnalytics, SafeSpeedInsights } from "@/components/SafeAnalytics";
 
 // Public pages - loaded immediately for better UX
 import Index from "./pages/Index";
@@ -317,8 +316,8 @@ const App = () => {
                 </BrowserRouter>
                 
                 {/* Vercel Analytics and Speed Insights */}
-                <Analytics />
-                <SpeedInsights />
+                <SafeAnalytics />
+                <SafeSpeedInsights />
               </TooltipProvider>
             </SmoothScrollProvider>
           </AnimationAccessibilityProvider>
