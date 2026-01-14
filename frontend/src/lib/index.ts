@@ -85,3 +85,4 @@ export * from './filters';
 export * from './shortlist';
 export * from './whatsapp';
 export * from './constants';
+export * from './assets';
