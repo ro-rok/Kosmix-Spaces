@@ -69,9 +69,6 @@ The frontend is configured to connect to the backend at `http://192.168.1.18:800
 
 ## Complete Partner & Admin Workflow
 
-### 🔐 **Admin Credentials**
-- **Email**: `swatikapoor@kosmixspaces.in`
-- **Password**: `Kosmix@30`
 
 ### 📋 **Workflow Steps**
 
