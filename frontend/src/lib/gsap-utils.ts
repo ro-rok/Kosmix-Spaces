@@ -60,6 +60,11 @@ export function createOptimizedScrollTrigger(options: any): any {
   };
 }
 
+export function createOptimizedAnimation(id: string, element: Element, options: any): void {
+  // Minimal animation implementation - just a placeholder
+  console.log('Animation:', id);
+}
+
 export function isReducedMotionPreferred(): boolean {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }

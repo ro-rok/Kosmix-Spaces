@@ -65,7 +65,7 @@ export interface AnimationPresets {
 // Default animation configuration
 export const defaultAnimationConfig: AnimationConfig = {
   smoothScroll: {
-    enabled: true,
+    enabled: false, // Disabled by default to prevent scroll issues
     duration: 1.2,
     easing: 'cubic-bezier(0.25, 0.1, 0.25, 1)',
   },

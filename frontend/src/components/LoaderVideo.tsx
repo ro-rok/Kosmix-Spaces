@@ -101,6 +101,16 @@ export function LoaderVideo({
 
     const video = videoRef.current;
     const container = containerRef.current;
+    let isMounted = true;
+
+    // Pause video on unmount to prevent play errors
+    const cleanup = () => {
+      isMounted = false;
+      if (video) {
+        video.pause();
+        video.src = '';
+      }
+    };
 
     // Video entrance animation
     if (!isReducedMotion) {
@@ -113,7 +123,9 @@ export function LoaderVideo({
           duration: 0.6,
           ease: 'back.out(1.7)',
           onComplete: () => {
-            setVideoLoaded(true);
+            if (isMounted) {
+              setVideoLoaded(true);
+            }
           },
         }
       );
@@ -137,11 +149,18 @@ export function LoaderVideo({
     // Auto-hide functionality
     if (autoHideDuration) {
       const timer = setTimeout(() => {
-        onComplete?.();
+        if (isMounted) {
+          onComplete?.();
+        }
       }, autoHideDuration * 1000);
 
-      return () => clearTimeout(timer);
+      return () => {
+        clearTimeout(timer);
+        cleanup();
+      };
     }
+
+    return cleanup;
   }, [show, isReducedMotion, autoHideDuration, onComplete]);
 
   // Text animations
@@ -286,8 +305,12 @@ export function LoaderVideo({
     }
   };
 
-  const handleVideoError = () => {
-    console.warn('LoaderVideo: Failed to load video:', videoSrc);
+  const handleVideoError = (e: React.SyntheticEvent<HTMLVideoElement, Event>) => {
+    // Suppress AbortError from interrupted play() requests
+    const error = (e.target as HTMLVideoElement).error;
+    if (error && error.code !== error.MEDIA_ERR_ABORTED) {
+      console.warn('LoaderVideo: Failed to load video:', videoSrc);
+    }
     setVideoLoaded(true); // Still show text even if video fails
   };
 
@@ -302,7 +325,7 @@ export function LoaderVideo({
       scale: 1,
       transition: {
         duration: config.transitions.defaultDuration,
-        ease: 'easeOut',
+        ease: 'easeOut' as any,
       },
     },
     exit: { 
@@ -310,7 +333,7 @@ export function LoaderVideo({
       scale: 0.9,
       transition: {
         duration: config.transitions.defaultDuration * 0.7,
-        ease: 'easeIn',
+        ease: 'easeIn' as any,
       },
     },
   };
@@ -319,7 +342,7 @@ export function LoaderVideo({
   const getTextVariants = () => {
     const baseTransition = {
       duration: config.transitions.defaultDuration,
-      ease: 'easeOut',
+      ease: 'easeOut' as any,
     };
 
     switch (textAnimation) {
@@ -341,7 +364,7 @@ export function LoaderVideo({
             transition: { 
               ...baseTransition, 
               delay: 0.3,
-              type: 'spring',
+              type: 'spring' as any,
               stiffness: 200,
             },
           },
