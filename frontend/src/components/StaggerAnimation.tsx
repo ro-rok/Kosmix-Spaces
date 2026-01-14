@@ -110,7 +110,12 @@ export function StaggerAnimation({
     // Create new timeline
     const timeline = gsap.timeline({ paused: true });
     
-    // Set initial state for all elements
+    // Set initial state for all elements with a safer approach
+    // Use will-change to prepare for animation but keep elements visible initially
+    targetElements.forEach(el => {
+      (el as HTMLElement).style.willChange = 'opacity, transform';
+    });
+    
     gsap.set(targetElements, {
       opacity: 0,
       y: 50,
@@ -135,6 +140,10 @@ export function StaggerAnimation({
         onStart?.();
       },
       onComplete: () => {
+        // Clear will-change after animation completes for better performance
+        targetElements.forEach(el => {
+          (el as HTMLElement).style.willChange = 'auto';
+        });
         onComplete?.();
       },
     });
@@ -167,6 +176,19 @@ export function StaggerAnimation({
       // Register for cleanup
       gsapRegistry.registerScrollTrigger(`${animationId}-trigger`, scrollTriggerInstance);
       scrollTriggerRef.current = scrollTriggerInstance;
+      
+      // CRITICAL FIX: If element is already in viewport, play animation immediately
+      // This fixes the issue where content above the fold never appears
+      setTimeout(() => {
+        if (scrollTriggerInstance && containerRef.current) {
+          const rect = containerRef.current.getBoundingClientRect();
+          const isInViewport = rect.top < window.innerHeight * 0.8;
+          
+          if (isInViewport && timeline.progress() === 0) {
+            timeline.play();
+          }
+        }
+      }, 100);
     } else {
       // Create scrub animation
       const scrollTriggerInstance = ScrollTrigger.create({
@@ -217,11 +239,34 @@ export function StaggerAnimation({
       return;
     }
     
-    // Longer delay to ensure DOM is ready and reduce initial load impact
-    const timeoutId = setTimeout(createStaggerAnimation, 200);
+    // Reduced delay for faster initialization
+    const timeoutId = setTimeout(createStaggerAnimation, 50);
+    
+    // Failsafe: Ensure content is visible after max wait time
+    const failsafeTimeoutId = setTimeout(() => {
+      if (containerRef.current) {
+        const childElements = Array.from(containerRef.current.children) as HTMLElement[];
+        childElements.forEach(el => {
+          const element = el as HTMLElement;
+          // Only force visibility if element is still invisible
+          const opacity = window.getComputedStyle(element).opacity;
+          if (opacity === '0' || parseFloat(opacity) < 0.1) {
+            gsap.to(element, {
+              opacity: 1,
+              y: 0,
+              scale: 1,
+              duration: 0.3,
+              ease: 'power2.out',
+              clearProps: 'all',
+            });
+          }
+        });
+      }
+    }, 2000); // 2 second failsafe
     
     return () => {
       clearTimeout(timeoutId);
+      clearTimeout(failsafeTimeoutId);
     };
   }, [createStaggerAnimation, shouldDisableAnimation]);
   
@@ -245,6 +290,26 @@ export function StaggerAnimation({
     
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
+  }, []);
+  
+  // Refresh ScrollTrigger after initial load to ensure proper positioning
+  useEffect(() => {
+    const handleLoad = () => {
+      // Delay to ensure DOM is fully ready
+      setTimeout(() => {
+        ScrollTrigger.refresh();
+      }, 500);
+    };
+    
+    if (document.readyState === 'complete') {
+      handleLoad();
+    } else {
+      window.addEventListener('load', handleLoad, { once: true });
+    }
+    
+    return () => {
+      window.removeEventListener('load', handleLoad);
+    };
   }, []);
   
   return (

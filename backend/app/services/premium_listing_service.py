@@ -541,6 +541,10 @@ def listing_to_public_response(listing: dict) -> dict:
     if location.get("approximateCoordinates"):
         public_listing["approximateCoordinates"] = location["approximateCoordinates"]
     
+    # Add SEO metadata if available
+    if listing.get("seoMetadata"):
+        public_listing["seoMetadata"] = listing["seoMetadata"]
+    
     # Add derived fields for frontend compatibility
     # Derive workspaceTypes from enabled offerings
     enabled_offerings = [

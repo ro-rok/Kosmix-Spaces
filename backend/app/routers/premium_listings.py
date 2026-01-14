@@ -239,6 +239,15 @@ async def submit_listing_with_photos(
                     print(f"Error updating offering {offering_type}: {e}")
                     # Continue with other offerings
         
+        # Generate SEO metadata for the listing
+        from app.services.seo_service import update_listing_seo
+        try:
+            await update_listing_seo(listing_id)
+            print(f"DEBUG: Generated SEO metadata for listing {listing_id}")
+        except Exception as e:
+            print(f"Warning: Failed to generate SEO metadata: {e}")
+            # Don't fail the whole submission if SEO generation fails
+        
         # Submit for review
         await submit_listing_for_review(listing_id, partner_id)
         

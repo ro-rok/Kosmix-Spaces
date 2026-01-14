@@ -3,6 +3,7 @@ import { Building2, Users, TrendingUp, Shield, MessageCircle, BadgeCheck, Clock,
 import { Button } from "@/components/ui/button";
 import { buildWhatsAppLink, buildEmailLink } from "@/lib/whatsapp";
 import { contactConfig } from "@/config/contact";
+import { SEO } from "@/components/SEO";
 
 const benefits = [
   {
@@ -56,9 +57,22 @@ export default function Partners() {
   });
 
   return (
-    <div>
-      {/* Hero */}
-      <section className="bg-gradient-to-br from-primary/5 via-background to-accent/5 py-16 md:py-24">
+    <>
+      <SEO
+        title="List Your Workspace - Partner with Kosmix Spaces"
+        description="List your coworking space on Kosmix Spaces. Reach quality leads, increase visibility. Partner fee only on successful bookings. No upfront costs."
+        keywords={[
+          "list coworking space",
+          "workspace partners",
+          "coworking space listing",
+          "partner program",
+          "list office space"
+        ]}
+        canonical="https://kosmixspaces.com/partners"
+      />
+      <div>
+        {/* Hero */}
+        <section className="bg-gradient-to-br from-primary/5 via-background to-accent/5 py-16 md:py-24">
         <div className="container">
           <div className="mx-auto max-w-3xl text-center">
             <span className="inline-block rounded-full bg-primary/10 px-4 py-1.5 text-sm font-medium text-primary">
@@ -212,5 +226,6 @@ export default function Partners() {
         </div>
       </section>
     </div>
+    </>
   );
 }

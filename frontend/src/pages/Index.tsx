@@ -14,6 +14,7 @@ import { useListings, useLocalities } from "@/hooks/useApi";
 import { teamSizeBands, BudgetBand, budgetBandLabels } from "@/types/models";
 import { buildWhatsAppLink } from "@/lib/whatsapp";
 import { transparencyLines } from "@/config/contact";
+import { SEO } from "@/components/SEO";
 
 const budgetBands: { value: BudgetBand; label: string }[] = [
   { value: "5k-10k", label: "₹5K-10K" },
@@ -84,8 +85,23 @@ const testimonials = [
 ];
 
   return (
-    <div className="pb-20 md:pb-0">
-      {/* Hero Section */}
+    <>
+      <SEO
+        title="Verified Coworking Spaces in Delhi, Gurugram, Noida | Kosmix Spaces"
+        description="Find verified coworking spaces across Delhi NCR. Zero brokerage, shortlisted options, site visits arranged. Browse 50+ verified workspaces in prime locations."
+        keywords={[
+          "coworking space delhi",
+          "coworking space gurugram",
+          "coworking space noida",
+          "office space delhi",
+          "workspace delhi ncr",
+          "verified coworking",
+          "zero brokerage coworking"
+        ]}
+        canonical="https://kosmixspaces.com/"
+      />
+      <div className="pb-20 md:pb-0">
+        {/* Hero Section */}
       <section className="relative min-h-[95vh] flex items-center pt-20 lg:pt-0">
         {/* Background Image with Overlay */}
         <div className="absolute inset-0 z-0">
@@ -200,25 +216,25 @@ const testimonials = [
                 </div>
 
                 {/* CTAs */}
-                <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
+                <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center sm:gap-4">
                   <AnimatedButton 
                     variant="cta" 
-                    size="lg" 
+                    size="default"
                     asChild 
-                    className="flex-1 sm:flex-none"
-                    intensity="enhanced"
+                    className="w-full sm:w-auto"
+                    intensity="normal"
                   >
-                    <a href={whatsappLink} target="_blank" rel="noopener noreferrer">
-                      <MessageCircle className="h-5 w-5" />
+                    <a href={whatsappLink} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2">
+                      <MessageCircle className="h-4 w-4" />
                       WhatsApp for Best Options
                     </a>
                   </AnimatedButton>
                   <AnimatedButton 
                     variant="outline" 
-                    size="lg" 
+                    size="default"
                     onClick={handleBrowse} 
-                    className="flex-1 sm:flex-none"
-                    intensity="normal"
+                    className="w-full sm:w-auto"
+                    intensity="subtle"
                   >
                     Browse Verified Spaces
                     <ArrowRight className="h-4 w-4" />
@@ -466,15 +482,15 @@ const testimonials = [
               <p className="mx-auto mt-4 max-w-xl opacity-90">
                 WhatsApp us with your requirements and we'll shortlist the best options for you within 3 hours.
               </p>
-              <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
-                <AnimatedButton variant="hero-outline" size="lg" asChild intensity="enhanced">
-                  <a href={buildWhatsAppLink()} target="_blank" rel="noopener noreferrer">
-                    <MessageCircle className="h-5 w-5" />
+              <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4">
+                <AnimatedButton variant="hero-outline" size="default" asChild intensity="normal" className="w-full sm:w-auto">
+                  <a href={buildWhatsAppLink()} target="_blank" rel="noopener noreferrer" className="gap-2">
+                    <MessageCircle className="h-4 w-4" />
                     WhatsApp Us Now
                   </a>
                 </AnimatedButton>
-                <AnimatedButton variant="hero-outline" size="lg" asChild intensity="enhanced">
-                  <Link to="/explore">
+                <AnimatedButton variant="hero-outline" size="default" asChild intensity="subtle" className="w-full sm:w-auto">
+                  <Link to="/explore" className="gap-2">
                     Browse All Spaces <ArrowRight className="h-4 w-4" />
                   </Link>
                 </AnimatedButton>
@@ -486,6 +502,7 @@ const testimonials = [
           </ScrollTriggerAnimation>
         </div>
       </section>
-    </div>
+      </div>
+    </>
   );
 }

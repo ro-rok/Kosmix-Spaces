@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { FAQAccordion } from "@/components/FAQAccordion";
 import { buildWhatsAppLink } from "@/lib/whatsapp";
 import { transparencyLines } from "@/config/contact";
+import { SEO } from "@/components/SEO";
 
 const trustPillars = [
   {
@@ -72,8 +73,21 @@ const testimonials = [
 
 export default function Trust() {
   return (
-    <div>
-      {/* Hero */}
+    <>
+      <SEO
+        title="Trust & Safety - Verified Workspaces | Kosmix Spaces"
+        description="Learn about our verification process, privacy protection, and commitment to transparency. Every workspace is personally verified. No hidden fees."
+        keywords={[
+          "verified coworking",
+          "trusted workspace",
+          "safe coworking space",
+          "verified listings",
+          "no hidden fees"
+        ]}
+        canonical="https://kosmixspaces.com/trust"
+      />
+      <div>
+        {/* Hero */}
       <section className="bg-gradient-to-br from-primary/5 via-background to-accent/5 py-16 md:py-24">
         <div className="container text-center">
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
@@ -224,6 +238,7 @@ export default function Trust() {
           </div>
         </div>
       </section>
-    </div>
+      </div>
+    </>
   );
 }

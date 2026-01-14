@@ -26,7 +26,8 @@ from app.routers import (
     design_system,
     performance,
     locations,
-    keep_alive
+    keep_alive,
+    sitemap
 )
 
 settings = get_settings()
@@ -199,6 +200,9 @@ app.include_router(performance.router, prefix="/api/performance", tags=["Perform
 
 # Keep-alive service routes
 app.include_router(keep_alive.router, prefix="/api/keep-alive", tags=["Keep Alive"])
+
+# Sitemap routes (no prefix for /sitemap.xml, but admin routes have prefix)
+app.include_router(sitemap.router, tags=["Sitemap"])
 
 
 @app.get("/")

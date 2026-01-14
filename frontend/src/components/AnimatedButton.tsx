@@ -4,9 +4,10 @@ import { Button, ButtonProps } from '@/components/ui/button';
 import { useAnimation, useConditionalAnimation } from '@/contexts/AnimationContext';
 import { useAccessibleMotion } from '@/hooks/useAnimationAccessibility';
 import { AccessibleAnimation } from './AccessibleAnimation';
+import { Slot } from '@radix-ui/react-slot';
 import { cn } from '@/lib/utils';
 
-interface AnimatedButtonProps extends Omit<ButtonProps, 'asChild'> {
+interface AnimatedButtonProps extends ButtonProps {
   /**
    * Custom animation overrides
    */
@@ -41,6 +42,7 @@ export const AnimatedButton = forwardRef<HTMLButtonElement, AnimatedButtonProps>
     disableAnimation = false,
     intensity = 'normal',
     disabled,
+    asChild = false,
     ...props 
   }, ref) => {
     const { config, isReducedMotion } = useAnimation();
@@ -49,17 +51,18 @@ export const AnimatedButton = forwardRef<HTMLButtonElement, AnimatedButtonProps>
     const getAnimationValues = () => {
       const microConfig = config.microInteractions;
       
+      // More subtle intensity multipliers for better visual appeal
       const intensityMultipliers = {
-        subtle: 0.5,
-        normal: 1,
-        enhanced: 1.5,
+        subtle: 0.3,    // Very subtle: 1.015 hover scale
+        normal: 0.6,    // Moderate: 1.03 hover scale
+        enhanced: 1.0,  // Standard: 1.05 hover scale
       };
       
       const multiplier = intensityMultipliers[intensity];
       
       return {
         hoverScale: 1 + (microConfig.hoverScale - 1) * multiplier,
-        clickScale: 1 + (microConfig.clickScale - 1) * multiplier,
+        clickScale: 1 - (1 - microConfig.clickScale) * multiplier,
         focusScale: 1 + (microConfig.focusScale - 1) * multiplier,
         duration: microConfig.duration,
         easing: microConfig.easing,
@@ -68,22 +71,24 @@ export const AnimatedButton = forwardRef<HTMLButtonElement, AnimatedButtonProps>
 
     const animationValues = getAnimationValues();
 
-    // Define base animation properties
+    // Define base animation properties with subtle, polished effects
     const baseAnimationProps = {
       whileHover: !disabled ? {
         scale: animationValues.hoverScale,
+        y: -1, // Subtle lift effect
         transition: {
           duration: animationValues.duration,
-          ease: animationValues.easing,
+          ease: 'easeOut',
         },
         ...(animationOverrides.hover || {}),
       } : undefined,
       
       whileTap: !disabled ? {
         scale: animationValues.clickScale,
+        y: 0, // Press down effect
         transition: {
-          duration: animationValues.duration * 0.5, // Faster for tap
-          ease: animationValues.easing,
+          duration: 0.1, // Very fast for immediate feedback
+          ease: 'easeInOut',
         },
         ...(animationOverrides.tap || {}),
       } : undefined,
@@ -97,12 +102,12 @@ export const AnimatedButton = forwardRef<HTMLButtonElement, AnimatedButtonProps>
         ...(animationOverrides.focus || {}),
       } : undefined,
       
-      initial: animationOverrides.initial || { scale: 1 },
-      animate: animationOverrides.animate || { scale: 1 },
+      initial: animationOverrides.initial || { scale: 1, y: 0 },
+      animate: animationOverrides.animate || { scale: 1, y: 0 },
       
       transition: {
         duration: animationValues.duration,
-        ease: animationValues.easing as any,
+        ease: 'easeOut' as any,
         ...(animationOverrides.transition || {}),
       },
     };
@@ -117,9 +122,31 @@ export const AnimatedButton = forwardRef<HTMLButtonElement, AnimatedButtonProps>
           ref={ref}
           className={className}
           disabled={disabled}
+          asChild={asChild}
           {...props}
         >
           {children}
+        </Button>
+      );
+    }
+
+    // If asChild is true, wrap children with motion.div and use Slot for Button
+    if (asChild) {
+      return (
+        <Button
+          ref={ref}
+          className={className}
+          disabled={disabled}
+          asChild
+          {...props}
+        >
+          <motion.div
+            className="inline-flex items-center justify-center w-full h-full"
+            style={{ willChange: 'transform' }}
+            {...accessibleAnimationProps}
+          >
+            {children}
+          </motion.div>
         </Button>
       );
     }
@@ -130,11 +157,8 @@ export const AnimatedButton = forwardRef<HTMLButtonElement, AnimatedButtonProps>
     return (
       <MotionButton
         ref={ref}
-        className={cn(
-          // Ensure button doesn't interfere with motion animations
-          'transform-gpu',
-          className
-        )}
+        className={className}
+        style={{ willChange: 'transform' }}
         disabled={disabled}
         {...accessibleAnimationProps}
         {...props}

@@ -79,6 +79,11 @@ export function ScrollTriggerAnimation({
       // Create new timeline
       const timeline = gsap.timeline({ paused: true });
     
+    // Prepare element for animation
+    if (elementRef.current) {
+      (elementRef.current as HTMLElement).style.willChange = 'opacity, transform';
+    }
+    
     // Apply accessible animation to the element
     timeline.fromTo(elementRef.current, 
       {
@@ -99,6 +104,12 @@ export function ScrollTriggerAnimation({
         ...accessibleAnimation,
         // Ensure we don't override the element reference
         ...(accessibleAnimation.targets ? {} : {}),
+        onComplete: () => {
+          // Clear will-change after animation completes for better performance
+          if (elementRef.current) {
+            (elementRef.current as HTMLElement).style.willChange = 'auto';
+          }
+        },
       }
     );
     
@@ -138,6 +149,19 @@ export function ScrollTriggerAnimation({
     
     timelineRef.current = timeline;
     scrollTriggerRef.current = scrollTriggerInstance;
+    
+    // CRITICAL FIX: If element is already in viewport, play animation immediately
+    // This fixes the issue where content above the fold never appears
+    setTimeout(() => {
+      if (scrollTriggerInstance && elementRef.current) {
+        const rect = elementRef.current.getBoundingClientRect();
+        const isInViewport = rect.top < window.innerHeight * 0.8;
+        
+        if (isInViewport && timeline.progress() === 0) {
+          timeline.play();
+        }
+      }
+    }, 100);
     } catch (error) {
       reportError({
         type: 'runtime',
@@ -184,8 +208,27 @@ export function ScrollTriggerAnimation({
     // Small delay to ensure DOM is ready
     const timeoutId = setTimeout(createAnimation, 50);
     
+    // Failsafe: Ensure content is visible after max wait time
+    const failsafeTimeoutId = setTimeout(() => {
+      if (elementRef.current) {
+        const opacity = window.getComputedStyle(elementRef.current).opacity;
+        // Only force visibility if element is still invisible
+        if (opacity === '0' || parseFloat(opacity) < 0.1) {
+          gsap.to(elementRef.current, {
+            opacity: 1,
+            y: 0,
+            scale: 1,
+            duration: 0.3,
+            ease: 'power2.out',
+            clearProps: 'all',
+          });
+        }
+      }
+    }, 2000); // 2 second failsafe
+    
     return () => {
       clearTimeout(timeoutId);
+      clearTimeout(failsafeTimeoutId);
     };
   }, [createAnimation, shouldDisableAnimation]);
   
@@ -211,14 +254,30 @@ export function ScrollTriggerAnimation({
     return () => window.removeEventListener('resize', handleResize);
   }, []);
   
+  // Refresh ScrollTrigger after initial load to ensure proper positioning
+  useEffect(() => {
+    const handleLoad = () => {
+      // Delay to ensure DOM is fully ready
+      setTimeout(() => {
+        ScrollTrigger.refresh();
+      }, 500);
+    };
+    
+    if (document.readyState === 'complete') {
+      handleLoad();
+    } else {
+      window.addEventListener('load', handleLoad, { once: true });
+    }
+    
+    return () => {
+      window.removeEventListener('load', handleLoad);
+    };
+  }, []);
+  
   return (
     <div 
       ref={elementRef} 
       className={className}
-      style={{
-        // Ensure element is initially hidden if animations are enabled
-        ...(shouldDisableAnimation ? {} : { opacity: 0 }),
-      }}
     >
       {children}
     </div>

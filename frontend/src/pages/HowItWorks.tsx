@@ -3,6 +3,7 @@ import { Search, ListChecks, Eye, Key, MessageCircle, Shield, Clock, BadgeCheck 
 import { Button } from "@/components/ui/button";
 import { buildWhatsAppLink } from "@/lib/whatsapp";
 import { transparencyLines } from "@/config/contact";
+import { SEO } from "@/components/SEO";
 
 const steps = [
   {
@@ -52,8 +53,21 @@ const benefits = [
 
 export default function HowItWorks() {
   return (
-    <div>
-      {/* Hero */}
+    <>
+      <SEO
+        title="How It Works - Find Your Perfect Coworking Space | Kosmix Spaces"
+        description="Learn how Kosmix Spaces helps you find verified coworking spaces. Search, shortlist, visit, and move in. No customer fees, quick response, expert guidance."
+        keywords={[
+          "how coworking works",
+          "find office space",
+          "coworking space process",
+          "workspace search",
+          "verified coworking"
+        ]}
+        canonical="https://kosmixspaces.com/how-it-works"
+      />
+      <div>
+        {/* Hero */}
       <section className="bg-gradient-to-br from-primary/5 via-background to-accent/5 py-16 md:py-24">
         <div className="container text-center">
           <h1 className="font-display text-3xl font-bold text-foreground md:text-5xl">
@@ -165,6 +179,7 @@ export default function HowItWorks() {
           </div>
         </div>
       </section>
-    </div>
+      </div>
+    </>
   );
 }

@@ -98,9 +98,9 @@ export const defaultAnimationConfig: AnimationConfig = {
   },
   microInteractions: {
     enabled: true,
-    hoverScale: 1.05,
-    clickScale: 0.95,
-    focusScale: 1.02,
+    hoverScale: 1.02,      // Reduced from 1.05 for more subtle effect
+    clickScale: 0.98,      // Reduced from 0.95 for gentler feedback
+    focusScale: 1.01,      // Reduced from 1.02 for subtle focus
     duration: 0.2,
     easing: 'ease-out',
   },

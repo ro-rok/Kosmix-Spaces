@@ -42,6 +42,10 @@ class Settings(BaseSettings):
     KEEP_ALIVE_PING_INTERVAL: int = 840  # 14 minutes
     KEEP_ALIVE_HEALTH_CHECK_INTERVAL: int = 60  # 1 minute
     
+    # SEO and Sitemap
+    SITE_URL: str = "https://kosmixspaces.com"
+    SITEMAP_CACHE_TTL: int = 3600  # 1 hour in seconds
+    
     model_config = SettingsConfigDict(
         env_file=".env",
         case_sensitive=True

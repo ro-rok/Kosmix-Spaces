@@ -139,6 +139,23 @@ async def approve_premium_listing(
                 # Don't fail the approval if locality stats update fails
                 print(f"Warning: Failed to update locality stats: {e}")
         
+        # Regenerate SEO metadata and invalidate sitemap cache
+        if result.modified_count > 0:
+            try:
+                from app.services.seo_service import update_listing_seo
+                from app.services.sitemap_service import invalidate_sitemap_cache
+                
+                # Update SEO metadata for the approved listing
+                await update_listing_seo(str(listing["_id"]))
+                print(f"DEBUG: Regenerated SEO for approved listing {listing['_id']}")
+                
+                # Invalidate sitemap cache to include the new approved listing
+                invalidate_sitemap_cache()
+                print(f"DEBUG: Invalidated sitemap cache")
+            except Exception as e:
+                # Don't fail the approval if SEO/sitemap update fails
+                print(f"Warning: Failed to update SEO/sitemap: {e}")
+        
         return {"ok": True, "message": "Premium listing approved successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to approve premium listing: {str(e)}")

@@ -3,11 +3,24 @@ import { Button } from "@/components/ui/button";
 import { EnquiryForm } from "@/components/EnquiryForm";
 import { buildWhatsAppLink, buildCallLink, buildEmailLink } from "@/lib/whatsapp";
 import { contactConfig, transparencyLines } from "@/config/contact";
+import { SEO } from "@/components/SEO";
 
 export default function Contact() {
   return (
-    <div>
-      {/* Hero */}
+    <>
+      <SEO
+        title="Contact Us - Get Workspace Help | Kosmix Spaces"
+        description="Contact Kosmix Spaces for coworking space assistance. WhatsApp, phone, or email. Response within 3 hours. Expert guidance for finding your perfect workspace."
+        keywords={[
+          "contact kosmix spaces",
+          "workspace help",
+          "coworking assistance",
+          "office space contact"
+        ]}
+        canonical="https://kosmixspaces.com/contact"
+      />
+      <div>
+        {/* Hero */}
       <section className="bg-gradient-to-br from-primary/5 via-background to-accent/5 py-16 md:py-20">
         <div className="container text-center">
           <h1 className="font-display text-3xl font-bold text-foreground md:text-5xl">
@@ -149,6 +162,7 @@ export default function Contact() {
           </Button>
         </div>
       </section>
-    </div>
+      </div>
+    </>
   );
 }

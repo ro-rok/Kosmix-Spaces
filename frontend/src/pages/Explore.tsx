@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Loader2, SlidersHorizontal, Grid3X3, List } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -17,6 +17,7 @@ import { useSearchWithCache } from "@/hooks/useSearchWithCache";
 import { useUrlSync } from "@/hooks/useUrlSync";
 import { trackSearchPerformed, trackFilterApplied } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
+import { SEO } from "@/components/SEO";
 
 // Initial empty filters
 const initialFilters: SearchFilters = {
@@ -202,6 +203,38 @@ export default function Explore() {
     updateSearchQuery('');
   };
 
+  // Generate dynamic SEO based on filters
+  const seoData = useMemo(() => {
+    const localities = filters.locality.length > 0 ? filters.locality.join(", ") : "";
+    const cities = filters.city.length > 0 ? filters.city.join(", ") : "Delhi NCR";
+    const budgetText = filters.budgetBand.length > 0 ? ` | Budget ${filters.budgetBand.join(", ")}` : "";
+    
+    let title = "Explore Coworking Spaces";
+    let description = "Browse verified coworking spaces across Delhi NCR.";
+    
+    if (localities) {
+      title = `Coworking Spaces in ${localities}${budgetText} | Kosmix Spaces`;
+      description = `Find verified coworking spaces in ${localities}. ${total} spaces available. Zero brokerage, site visits arranged.`;
+    } else if (cities !== "Delhi NCR") {
+      title = `Coworking Spaces in ${cities}${budgetText} | Kosmix Spaces`;
+      description = `Discover ${total} coworking spaces in ${cities}. Verified listings, no customer fees.`;
+    } else {
+      title = `Coworking Spaces in Delhi NCR${budgetText} | Kosmix Spaces`;
+      description = `Browse ${total} verified coworking spaces across Delhi, Gurugram, Noida. Zero brokerage.`;
+    }
+    
+    const keywords = [
+      "coworking space",
+      ...filters.city,
+      ...filters.locality,
+      "office space",
+      "workspace",
+      "verified coworking"
+    ];
+    
+    return { title, description, keywords };
+  }, [filters, total]);
+
   const handleSuggestedSearch = (localityId: string) => {
     setFilters({
       ...initialFilters,
@@ -271,8 +304,15 @@ export default function Explore() {
   }
 
   return (
-    <div className="pb-20 md:pb-0">
-      {/* Header */}
+    <>
+      <SEO
+        title={seoData.title}
+        description={seoData.description}
+        keywords={seoData.keywords}
+        canonical="https://kosmixspaces.com/explore"
+      />
+      <div className="pb-20 md:pb-0">
+        {/* Header */}
       <div className="border-b border-border/60 glass sticky-top-safe z-40">
         <div className="container py-3">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -458,6 +498,7 @@ export default function Explore() {
 
       {/* Mobile Sticky CTA */}
       <StickyCTA />
-    </div>
+      </div>
+    </>
   );
 }

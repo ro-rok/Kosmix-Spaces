@@ -31,6 +31,7 @@ import { offeringTypeLabels, OfferingType } from "@/types/models";
 import { transparencyLines } from "@/config/contact";
 import { cn } from "@/lib/utils";
 import { trackListingView, trackWhatsAppClick, trackCallClick, trackEnquirySubmit } from "@/lib/analytics";
+import { SEO, StructuredData } from "@/components/SEO";
 
 // Navigation tabs for scroll-spy
 const navigationTabs = [
@@ -210,9 +211,60 @@ export default function PremiumSpaceDetail() {
   // Get enabled offerings from the listing data
   const enabledOfferings = Object.values(listing.offerings || {}).filter((offering: any) => offering.enabled);
 
+  // Prepare SEO metadata
+  const seoMetadata = listing.seoMetadata || {
+    metaTitle: `${listing.displayName} | Coworking Space in ${listing.locality} | Kosmix Spaces`,
+    metaDescription: listing.overview.substring(0, 155),
+    keywords: [`coworking ${listing.locality}`, listing.city, listing.displayName],
+    ogTitle: `${listing.displayName} - ${listing.locality}`,
+    ogDescription: listing.overview,
+    ogImage: allPhotos[0]?.url,
+    canonicalUrl: `https://kosmixspaces.com/spaces${listing.slug}`
+  };
+
+  // Prepare structured data for rich snippets
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "CoworkingSpace",
+    "name": listing.displayName,
+    "description": listing.overview,
+    "address": {
+      "@type": "PostalAddress",
+      "addressLocality": listing.locality,
+      "addressRegion": listing.city,
+      "addressCountry": "IN"
+    },
+    "image": allPhotos.map(photo => photo.url),
+    "amenityFeature": listing.amenities.map((amenity: string) => ({
+      "@type": "LocationFeatureSpecification",
+      "name": amenity
+    })),
+    "offers": enabledOfferings.map((offering: any) => ({
+      "@type": "Offer",
+      "name": offering.title,
+      "description": offering.description,
+      "price": offering.startingPrice,
+      "priceCurrency": "INR"
+    }))
+  };
+
   return (
-    <div className="pb-24 md:pb-0">
-      {/* Breadcrumb */}
+    <>
+      <SEO
+        title={seoMetadata.metaTitle}
+        description={seoMetadata.metaDescription}
+        keywords={seoMetadata.keywords}
+        ogTitle={seoMetadata.ogTitle}
+        ogDescription={seoMetadata.ogDescription}
+        ogImage={seoMetadata.ogImage}
+        twitterTitle={seoMetadata.ogTitle}
+        twitterDescription={seoMetadata.ogDescription}
+        twitterImage={seoMetadata.ogImage}
+        canonical={seoMetadata.canonicalUrl}
+      />
+      <StructuredData data={structuredData} />
+      <div className="pb-24 md:pb-0">
+        {/* Breadcrumb */}
       <div className="border-b border-border bg-muted/30">
         <div className="container py-3">
           <div className="flex items-center gap-2 text-sm">
@@ -785,6 +837,7 @@ export default function PremiumSpaceDetail() {
           />
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+    </>
   );
 }
