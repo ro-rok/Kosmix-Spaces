@@ -112,6 +112,7 @@ export function useTouchGestures(config: TouchGestureConfig = {}) {
 
     // Track analytics
     trackGestureAnalytics({
+      type: 'swipe',
       gestureType: 'touch',
       action: `swipe_${swipe.direction}`,
       direction: swipe.direction,

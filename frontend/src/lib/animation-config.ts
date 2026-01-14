@@ -34,6 +34,10 @@ export interface AnimationConfig {
   };
   scrollAnimations: {
     enabled: boolean;
+    duration?: number;
+    ease?: string;
+    staggerDelay: number;
+    triggerOnce: boolean;
   };
   microInteractions: {
     enabled: boolean;
@@ -87,6 +91,10 @@ export const defaultAnimationConfig: AnimationConfig = {
   },
   scrollAnimations: {
     enabled: true,
+    duration: 0.8,
+    ease: 'power2.out',
+    staggerDelay: 0.1,
+    triggerOnce: true,
   },
   microInteractions: {
     enabled: true,
@@ -112,7 +120,7 @@ export const animationPresets: AnimationPresets = {
   minimal: {
     ...defaultAnimationConfig,
     smoothScroll: { ...defaultAnimationConfig.smoothScroll, enabled: false },
-    scrollAnimations: { enabled: false },
+    scrollAnimations: { ...defaultAnimationConfig.scrollAnimations, enabled: false },
     microInteractions: { ...defaultAnimationConfig.microInteractions, enabled: false },
     performance: { maxConcurrentAnimations: 3, debounceResize: 200 },
   },
@@ -140,7 +148,7 @@ export const animationPresets: AnimationPresets = {
   performance: {
     ...defaultAnimationConfig,
     smoothScroll: { ...defaultAnimationConfig.smoothScroll, enabled: false },
-    scrollAnimations: { enabled: false },
+    scrollAnimations: { ...defaultAnimationConfig.scrollAnimations, enabled: false },
     microInteractions: { ...defaultAnimationConfig.microInteractions, enabled: false },
     transitions: {
       ...defaultAnimationConfig.transitions,

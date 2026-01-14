@@ -6,6 +6,14 @@ export interface AnimationOptions {
   stagger?: number;
 }
 
+export interface GSAPPerformanceMetrics {
+  fps: number;
+  activeAnimations: number;
+  activeTriggers: number;
+  memoryUsage: number;
+  lastUpdate: number;
+}
+
 export function createStaggerAnimation(
   elements: Element[],
   options: AnimationOptions = {}
@@ -40,17 +48,54 @@ export function animateOut(element: Element, options: AnimationOptions = {}): vo
 }
 
 // GSAP registry and utilities
+const activeAnimations = new Set<string>();
+const activeScrollTriggers = new Set<string>();
+
 export const gsapRegistry = {
   register: (id: string, animation: any) => {
+    activeAnimations.add(id);
     console.log('Registered animation:', id);
   },
   unregister: (id: string) => {
+    activeAnimations.delete(id);
     console.log('Unregistered animation:', id);
   },
   registerScrollTrigger: (id: string, trigger: any) => {
+    activeScrollTriggers.add(id);
     console.log('Registered ScrollTrigger:', id);
   },
+  getPerformanceMetrics: (): GSAPPerformanceMetrics => {
+    return {
+      fps: 60, // Mock FPS
+      activeAnimations: activeAnimations.size,
+      activeTriggers: activeScrollTriggers.size,
+      memoryUsage: 0,
+      lastUpdate: Date.now(),
+    };
+  },
+  getActiveAnimations: (): string[] => {
+    return Array.from(activeAnimations);
+  },
 };
+
+export function getPerformanceRecommendations(): string[] {
+  const metrics = gsapRegistry.getPerformanceMetrics();
+  const recommendations: string[] = [];
+  
+  if (metrics.activeAnimations > 10) {
+    recommendations.push('Consider reducing the number of concurrent animations');
+  }
+  
+  if (metrics.activeTriggers > 20) {
+    recommendations.push('Too many ScrollTriggers active - consider lazy loading');
+  }
+  
+  if (metrics.fps < 30) {
+    recommendations.push('Low FPS detected - simplify animations or reduce complexity');
+  }
+  
+  return recommendations;
+}
 
 export function createOptimizedScrollTrigger(options: any): any {
   // Minimal scroll trigger implementation
@@ -58,6 +103,14 @@ export function createOptimizedScrollTrigger(options: any): any {
     kill: () => {},
     refresh: () => {},
   };
+}
+
+export function createBatchScrollTriggers(elements: Element[], options: any = {}): any[] {
+  // Minimal batch scroll trigger implementation
+  return elements.map(() => ({
+    kill: () => {},
+    refresh: () => {},
+  }));
 }
 
 export function createOptimizedAnimation(id: string, element: Element, options: any): void {

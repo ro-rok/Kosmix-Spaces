@@ -9,7 +9,7 @@ import { EnhancedError, ErrorType } from "./error-handling";
 export interface EnhancedToastOptions {
   title?: string;
   description?: string;
-  variant?: "default" | "destructive" | "success" | "warning";
+  variant?: "default" | "destructive";
   duration?: number;
   action?: {
     label: string;
@@ -31,12 +31,6 @@ export const enhancedToast = {
       description: message,
       variant: "default",
       duration: options.duration || 4000,
-      action: options.action ? {
-        altText: options.action.label,
-        onClick: options.action.onClick,
-        children: options.action.label
-      } : undefined,
-      ...options
     });
   },
 
@@ -95,12 +89,6 @@ export const enhancedToast = {
       description,
       variant: "destructive",
       duration: options.duration || 6000,
-      action: action ? {
-        altText: action.label,
-        onClick: action.onClick,
-        children: action.label
-      } : undefined,
-      ...options
     });
   },
 
@@ -109,14 +97,8 @@ export const enhancedToast = {
     return baseToast({
       title: options.title || "Warning",
       description: message,
-      variant: "default", // Using default as warning variant may not exist
+      variant: "default",
       duration: options.duration || 5000,
-      action: options.action ? {
-        altText: options.action.label,
-        onClick: options.action.onClick,
-        children: options.action.label
-      } : undefined,
-      ...options
     });
   },
 
@@ -127,12 +109,6 @@ export const enhancedToast = {
       description: message,
       variant: "default",
       duration: options.duration || 4000,
-      action: options.action ? {
-        altText: options.action.label,
-        onClick: options.action.onClick,
-        children: options.action.label
-      } : undefined,
-      ...options
     });
   },
 
@@ -143,7 +119,6 @@ export const enhancedToast = {
       description: message,
       variant: "default",
       duration: options.duration || Infinity, // Persistent by default
-      ...options
     });
   },
 

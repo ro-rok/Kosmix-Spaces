@@ -1,8 +1,7 @@
 import React, { forwardRef, useEffect, useRef, useState } from 'react';
 import { motion, MotionProps } from 'framer-motion';
 import { useAnimationAccessibility } from '../hooks/useAnimationAccessibility';
-import { useAnimationErrorHandling, reportError } from '../lib/animation-error-handling';
-import { applyAnimationFallback } from '../lib/animation-accessibility';
+import { reportError } from '../lib/animation-error-handling';
 
 // Props for the AccessibleAnimation component
 interface AccessibleAnimationProps extends Omit<MotionProps, 'ref'> {
@@ -52,9 +51,6 @@ export const AccessibleAnimation = forwardRef<HTMLDivElement, AccessibleAnimatio
       announceAnimation,
     } = useAnimationAccessibility();
 
-    // Get error handling features
-    const { reportError, isRecoveryMode } = useAnimationErrorHandling();
-
     // Get accessible motion props
     const accessibleProps = getAccessibleMotionProps(motionProps, animationType);
 
@@ -69,36 +65,42 @@ export const AccessibleAnimation = forwardRef<HTMLDivElement, AccessibleAnimatio
     useEffect(() => {
       if (!enableErrorRecovery) return;
 
-      const handleError = (error: Error) => {
+      const handleError = (event: ErrorEvent) => {
         setHasError(true);
         reportError({
           type: 'runtime',
-          message: error.message,
+          message: event.message,
           context: `AccessibleAnimation-${animationType}`,
           timestamp: Date.now(),
-          stack: error.stack,
+          stack: event.error?.stack,
+        });
+      };
+
+      const handleRejection = (event: PromiseRejectionEvent) => {
+        setHasError(true);
+        reportError({
+          type: 'runtime',
+          message: String(event.reason),
+          context: `AccessibleAnimation-${animationType}`,
+          timestamp: Date.now(),
         });
       };
 
       // Set up error handling for the component
       window.addEventListener('error', handleError);
-      window.addEventListener('unhandledrejection', (event) => {
-        handleError(new Error(event.reason));
-      });
+      window.addEventListener('unhandledrejection', handleRejection);
 
       return () => {
         window.removeEventListener('error', handleError);
-        window.removeEventListener('unhandledrejection', (event) => {
-          handleError(new Error(event.reason));
-        });
+        window.removeEventListener('unhandledrejection', handleRejection);
       };
-    }, [enableErrorRecovery, reportError, animationType]);
+    }, [enableErrorRecovery, animationType]);
 
     // Apply fallback styles if needed
     useEffect(() => {
       if (!elementRef.current) return;
 
-      if (shouldDisableAnimations || hasError || isRecoveryMode) {
+      if (shouldDisableAnimations || hasError) {
         // Apply instant fallback styles
         const fallbackStyles: React.CSSProperties = {
           transition: 'none',
@@ -109,7 +111,7 @@ export const AccessibleAnimation = forwardRef<HTMLDivElement, AccessibleAnimatio
         Object.assign(elementRef.current.style, fallbackStyles);
         elementRef.current.classList.add('animation-fallback');
       }
-    }, [shouldDisableAnimations, hasError, isRecoveryMode]);
+    }, [shouldDisableAnimations, hasError]);
 
     // If there's an error and a fallback component is provided
     if (hasError && FallbackComponent) {
@@ -126,7 +128,7 @@ export const AccessibleAnimation = forwardRef<HTMLDivElement, AccessibleAnimatio
     }
 
     // If animations should be disabled completely
-    if (shouldDisableAnimations || hasError || isRecoveryMode) {
+    if (shouldDisableAnimations || hasError) {
       return (
         <div
           ref={combinedRef}

@@ -42,9 +42,9 @@ export function useSearchWithCache(params: SearchParams) {
     parking: params.filters.privateOffice ? 'required' : undefined,
     powerBackup: params.filters.verifiedOnly ? true : undefined,
     // Map sort options to API format
-    sort: params.sort === 'recommended' ? 'best_match' : 
+    sort: (params.sort === 'recommended' ? 'best_match' : 
           params.sort === 'most-enquired' ? 'recent_verified' : 
-          'budget_low',
+          'budget_low') as 'best_match' | 'recent_verified' | 'budget_low',
     page: params.page,
     pageSize: params.pageSize || 12,
     // Add search query if present
@@ -60,7 +60,7 @@ export function useSearchWithCache(params: SearchParams) {
     queryKey: ['search-listings', apiParams],
     queryFn: () => api.public.getListings(apiParams),
     staleTime: 1000 * 60 * 5, // 5 minutes cache
-    keepPreviousData: true, // Keep previous results while loading new ones
+    placeholderData: (previousData) => previousData, // Keep previous results while loading new ones
     retry: (failureCount, error) => {
       // Don't retry on 4xx errors
       if (error && 'status' in error && typeof error.status === 'number' && error.status >= 400 && error.status < 500) {

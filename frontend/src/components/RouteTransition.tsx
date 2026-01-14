@@ -58,11 +58,20 @@ export function RouteTransition({
         initial: { opacity: 0 },
         animate: { opacity: 1 },
         exit: { opacity: 0 },
-        transition: { duration: 0.1, ease: 'linear' },
+        transition: { duration: 0.1, ease: 'linear' as any },
       };
     }
 
-    return config.transitions.pageTransition;
+    const pageTransition = config.transitions.pageTransition as any;
+    return {
+      initial: pageTransition.initial || { opacity: 0 },
+      animate: pageTransition.animate || { opacity: 1 },
+      exit: pageTransition.exit || { opacity: 0 },
+      transition: {
+        duration: pageTransition.transition?.duration || 0.3,
+        ease: (pageTransition.transition?.ease || 'easeInOut') as any,
+      },
+    };
   };
 
   const transitionConfig = getTransitionConfig();
@@ -192,7 +201,7 @@ export function RouteLoading({
           exit="exit"
           transition={{ 
             duration: config.transitions.defaultDuration,
-            ease: config.transitions.defaultEasing,
+            ease: config.transitions.defaultEasing as any,
           }}
         >
           {children}

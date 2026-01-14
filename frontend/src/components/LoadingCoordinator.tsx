@@ -301,7 +301,7 @@ export function LoadingWrapper({
 export function useAsyncOperation() {
   const { startLoading, stopLoading, updateLoading } = useLoadingCoordinator();
 
-  const executeWithLoading = useCallback(async <T>(
+  const executeWithLoading = useCallback(<T,>(
     operation: () => Promise<T>,
     options: {
       loadingId: string;
@@ -311,29 +311,31 @@ export function useAsyncOperation() {
   ): Promise<T> => {
     const { loadingId, message, onProgress } = options;
 
-    try {
-      startLoading(loadingId, { 
-        type: 'action', 
-        message,
-        progress: 0,
-      });
+    return (async () => {
+      try {
+        startLoading(loadingId, { 
+          type: 'action', 
+          message,
+          progress: 0,
+        });
 
-      // If progress callback is provided, set up progress updates
-      if (onProgress) {
-        const progressInterval = setInterval(() => {
-          // This is a simple progress simulation
-          // In real usage, the operation should call onProgress with actual progress
-        }, 100);
+        // If progress callback is provided, set up progress updates
+        if (onProgress) {
+          const progressInterval = setInterval(() => {
+            // This is a simple progress simulation
+            // In real usage, the operation should call onProgress with actual progress
+          }, 100);
 
-        const result = await operation();
-        clearInterval(progressInterval);
-        return result;
-      } else {
-        return await operation();
+          const result = await operation();
+          clearInterval(progressInterval);
+          return result;
+        } else {
+          return await operation();
+        }
+      } finally {
+        stopLoading(loadingId);
       }
-    } finally {
-      stopLoading(loadingId);
-    }
+    })();
   }, [startLoading, stopLoading]);
 
   return {
@@ -398,7 +400,7 @@ export function ProgressIndicator({
     animate: { width: `${progress}%` },
     transition: {
       duration: config.transitions.defaultDuration,
-      ease: config.transitions.defaultEasing,
+      ease: config.transitions.defaultEasing as any,
     },
   };
 

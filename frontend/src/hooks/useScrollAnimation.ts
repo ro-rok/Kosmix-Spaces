@@ -145,12 +145,12 @@ export function useScrollAnimation(
 
   // Default ScrollTrigger configuration
   const defaultScrollTrigger = useMemo(() => ({
-    start: config.scrollAnimations.start,
-    end: config.scrollAnimations.end,
+    start: 'top 80%',
+    end: 'bottom 20%',
     scrub: false,
     pin: false,
     markers: false,
-  }), [config.scrollAnimations]);
+  }), []);
 
   // Merge ScrollTrigger options
   const effectiveScrollTrigger = useMemo(() => ({
@@ -203,12 +203,19 @@ export function useScrollAnimation(
     });
 
     // Register animation for cleanup
-    animationRegistry.register(animationId, () => {
-      timeline.kill();
-      if (scrollTriggerRef.current) {
-        scrollTriggerRef.current.kill();
-        scrollTriggerRef.current = null;
-      }
+    animationRegistry.register({
+      id: animationId,
+      type: 'scroll',
+      priority: 1, // NORMAL priority
+      startTime: performance.now(),
+      element: elementRef.current || undefined,
+      cleanup: () => {
+        timeline.kill();
+        if (scrollTriggerRef.current) {
+          scrollTriggerRef.current.kill();
+          scrollTriggerRef.current = null;
+        }
+      },
     });
 
     return timeline;

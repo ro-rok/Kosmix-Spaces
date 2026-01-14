@@ -1,5 +1,6 @@
 import React, { forwardRef } from 'react';
 import { motion, AnimatePresence, MotionProps } from 'framer-motion';
+import * as DialogPrimitive from '@radix-ui/react-dialog';
 import {
   Dialog,
   DialogContent,
@@ -7,12 +8,11 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-  DialogProps,
 } from '@/components/ui/dialog';
 import { useAnimation, useConditionalAnimation } from '@/contexts/AnimationContext';
 import { cn } from '@/lib/utils';
 
-interface AnimatedModalProps extends DialogProps {
+interface AnimatedModalProps extends React.ComponentPropsWithoutRef<typeof DialogPrimitive.Root> {
   /**
    * Custom animation overrides
    */
@@ -40,6 +40,10 @@ interface AnimatedModalProps extends DialogProps {
    * Content props
    */
   contentProps?: React.ComponentProps<typeof DialogContent>;
+  /**
+   * Children to render inside the modal
+   */
+  children: React.ReactNode;
 }
 
 /**
@@ -170,8 +174,7 @@ export function AnimatedModal({
               y: 30,
             },
             transition: {
-              ...baseTransition,
-              type: 'spring',
+              type: 'spring' as const,
               damping: 25,
               stiffness: 300,
             },

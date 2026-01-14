@@ -3,6 +3,9 @@ export interface AccessibilityPreferences {
   reducedMotion: boolean;
   highContrast: boolean;
   largeText: boolean;
+  forcedColors?: boolean;
+  prefersReducedData?: boolean;
+  prefersReducedTransparency?: boolean;
 }
 
 export interface AnimationFallback {

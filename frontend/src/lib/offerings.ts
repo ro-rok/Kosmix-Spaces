@@ -2,7 +2,7 @@
  * Offering management utilities
  */
 
-import { OfferingType, OfferingData, OfferingFormData, defaultOfferingTitles } from '@/types/models';
+import { OfferingType, OfferingData, OfferingFormData, defaultOfferingTitles, PhotoData } from '@/types/models';
 
 /**
  * Create default offering data for a given type
@@ -167,11 +167,11 @@ export function toggleOfferingEnabled(
 export function addPhotoToOffering(
   offerings: Record<OfferingType, OfferingData>,
   type: OfferingType,
-  photoUrl: string
+  photo: PhotoData
 ): Record<OfferingType, OfferingData> {
   const currentPhotos = offerings[type].photos || [];
   return updateOffering(offerings, type, {
-    photos: [...currentPhotos, photoUrl],
+    photos: [...currentPhotos, photo],
   });
 }
 
@@ -181,11 +181,11 @@ export function addPhotoToOffering(
 export function removePhotoFromOffering(
   offerings: Record<OfferingType, OfferingData>,
   type: OfferingType,
-  photoUrl: string
+  photoPublicId: string
 ): Record<OfferingType, OfferingData> {
   const currentPhotos = offerings[type].photos || [];
   return updateOffering(offerings, type, {
-    photos: currentPhotos.filter(url => url !== photoUrl),
+    photos: currentPhotos.filter(photo => photo.publicId !== photoPublicId),
   });
 }
 

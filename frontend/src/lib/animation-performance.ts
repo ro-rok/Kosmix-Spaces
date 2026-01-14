@@ -4,11 +4,15 @@ export interface PerformanceMetrics {
   frameTime: number;
   memoryUsage?: number;
   animationCount: number;
+  cpuUsage: number;
+  timestamp: number;
 }
 
 export interface DevicePerformanceProfile {
   tier: 'low' | 'medium' | 'high';
   maxConcurrentAnimations: number;
+  enableComplexAnimations: boolean;
+  enableGPUAcceleration: boolean;
   capabilities: {
     supportsHardwareAcceleration: boolean;
     preferredFrameRate: number;
@@ -22,6 +26,8 @@ class DegradationManager {
   private currentProfile: DevicePerformanceProfile = {
     tier: 'medium',
     maxConcurrentAnimations: 10,
+    enableComplexAnimations: true,
+    enableGPUAcceleration: true,
     capabilities: {
       supportsHardwareAcceleration: true,
       preferredFrameRate: 60,
@@ -50,6 +56,8 @@ class PerformanceMonitor {
     fps: 60,
     frameTime: 16.67,
     animationCount: 0,
+    cpuUsage: 0,
+    timestamp: Date.now(),
   };
   private degradationCallback?: PerformanceCallback;
   private recoveryCallback?: PerformanceCallback;

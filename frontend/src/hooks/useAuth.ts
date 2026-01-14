@@ -146,7 +146,7 @@ export function useAdminListing(listingId: string) {
   
   return useQuery({
     queryKey: ["admin", "premium-listing", listingId],
-    queryFn: () => api.admin.getPremiumListing(listingId),
+    queryFn: () => api.admin.getListing(listingId),
     enabled: !!token && userType === "admin" && !!listingId,
     staleTime: 1000 * 60 * 2, // 2 minutes
   });
@@ -157,7 +157,7 @@ export function useApproveListing() {
   
   return useMutation({
     mutationFn: ({ listingId, notes }: { listingId: string; notes?: string }) => 
-      api.admin.approvePremiumListing(listingId, notes),
+      api.admin.approveListing(listingId, notes),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "premium-listings"] });
       queryClient.invalidateQueries({ queryKey: ["admin", "premium-listing"] });
@@ -170,7 +170,7 @@ export function useNeedsInfoListing() {
   
   return useMutation({
     mutationFn: ({ listingId, notes }: { listingId: string; notes: string }) => 
-      api.admin.needsInfoPremiumListing(listingId, notes),
+      api.admin.needsInfoListing(listingId, notes),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "premium-listings"] });
       queryClient.invalidateQueries({ queryKey: ["admin", "premium-listing"] });
@@ -183,7 +183,7 @@ export function useRejectListing() {
   
   return useMutation({
     mutationFn: ({ listingId, reason }: { listingId: string; reason: string }) => 
-      api.admin.rejectPremiumListing(listingId, reason),
+      api.admin.rejectListing(listingId, reason),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "premium-listings"] });
       queryClient.invalidateQueries({ queryKey: ["admin", "premium-listing"] });
@@ -277,11 +277,15 @@ export function usePartnerListings(params: {
       // Handle both paginated response (premium) and direct array (legacy)
       if (Array.isArray(result)) {
         return result; // Legacy format
-      } else if (result && Array.isArray(result.items)) {
-        return result.items; // Premium paginated format
-      } else {
-        return []; // Fallback
       }
+      
+      // Check if it's a paginated response object
+      const paginatedResult = result as { items?: any[] };
+      if (paginatedResult && Array.isArray(paginatedResult.items)) {
+        return paginatedResult.items; // Premium paginated format
+      }
+      
+      return []; // Fallback
     },
     enabled: !!token && userType === "partner",
     staleTime: 1000 * 60 * 2, // 2 minutes

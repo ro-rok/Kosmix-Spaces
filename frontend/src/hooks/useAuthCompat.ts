@@ -3,7 +3,8 @@
 
 import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 
 // Legacy storage helpers - kept for backward compatibility
 export function getStoredToken(): string | null {
@@ -99,6 +100,21 @@ export function useAuthStatus() {
   return {
     isAuthenticated,
     userType: userRole,
+  };
+}
+
+// Main compatibility hook with redirectToLogin
+export function useAuthCompat() {
+  const navigate = useNavigate();
+  const { logout } = useAuth();
+  
+  const redirectToLogin = () => {
+    logout();
+    navigate('/partner/login');
+  };
+  
+  return {
+    redirectToLogin,
   };
 }
 

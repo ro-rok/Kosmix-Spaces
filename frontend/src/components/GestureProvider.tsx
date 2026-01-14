@@ -1,4 +1,4 @@
-import React, { createContext, useContext, ReactNode } from 'react';
+import { createContext, useContext, ReactNode } from 'react';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { useTouchGestures } from '@/hooks/useTouchGestures';
 
@@ -51,8 +51,11 @@ export function GestureProvider({
     touchGestures: {
       isGestureActive: touchGestures.isGestureActive,
       config: {
-        ...touchGestures.config,
+        minDistance: touchGestures.config.minDistance,
+        maxDuration: touchGestures.config.maxDuration,
+        requiredFingers: touchGestures.config.requiredFingers,
         enableNavigation: enableTouchGestures,
+        sensitivity: touchGestures.config.velocityThreshold,
       },
     },
   };

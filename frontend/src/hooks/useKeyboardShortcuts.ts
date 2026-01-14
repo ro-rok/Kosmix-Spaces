@@ -23,6 +23,7 @@ export function useKeyboardShortcuts(config: KeyboardShortcutsConfig = {}) {
         
         // Track analytics
         trackGestureAnalytics({
+          type: 'tap',
           gestureType: 'keyboard',
           action: 'admin_shortcut',
           success: true,
@@ -39,6 +40,7 @@ export function useKeyboardShortcuts(config: KeyboardShortcutsConfig = {}) {
           navigate('/partner/login');
           showGestureToast('Opening partner portal');
           trackGestureAnalytics({
+            type: 'tap',
             gestureType: 'keyboard',
             action: 'partner_shortcut',
             success: true,
@@ -53,6 +55,7 @@ export function useKeyboardShortcuts(config: KeyboardShortcutsConfig = {}) {
           navigate('/');
           showGestureToast('Going to home');
           trackGestureAnalytics({
+            type: 'tap',
             gestureType: 'keyboard',
             action: 'home_shortcut',
             success: true,
@@ -67,6 +70,7 @@ export function useKeyboardShortcuts(config: KeyboardShortcutsConfig = {}) {
           navigate('/explore');
           showGestureToast('Going to explore');
           trackGestureAnalytics({
+            type: 'tap',
             gestureType: 'keyboard',
             action: 'explore_shortcut',
             success: true,

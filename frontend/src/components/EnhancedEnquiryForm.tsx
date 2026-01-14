@@ -313,26 +313,31 @@ export function EnhancedEnquiryForm({
                     <SwitchField
                       {...form.getFieldProps("nearMetroPreferred")}
                       label="Near Metro Station"
+                      checked={form.data.nearMetroPreferred || false}
                     />
                     
                     <SwitchField
                       {...form.getFieldProps("parkingNeeded")}
                       label="Parking Required"
+                      checked={form.data.parkingNeeded || false}
                     />
                     
                     <SwitchField
                       {...form.getFieldProps("powerBackupRequired")}
                       label="Power Backup"
+                      checked={form.data.powerBackupRequired || false}
                     />
                     
                     <SwitchField
                       {...form.getFieldProps("gstRequired")}
                       label="GST Invoice Required"
+                      checked={form.data.gstRequired || false}
                     />
                     
                     <SwitchField
                       {...form.getFieldProps("meetingRoomsNeeded")}
                       label="Meeting Rooms Needed"
+                      checked={form.data.meetingRoomsNeeded || false}
                     />
                   </FormGrid>
                 </div>

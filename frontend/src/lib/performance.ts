@@ -437,10 +437,10 @@ export function prefetchData(queryKey: string[], queryFn: () => Promise<any>): v
 }
 
 // Memory management
-export function createMemoryEfficientComponent<T>(
+export function createMemoryEfficientComponent<T extends object>(
   component: React.ComponentType<T>,
   shouldUpdate: (prevProps: T, nextProps: T) => boolean = () => true
-): React.ComponentType<T> {
+): React.MemoExoticComponent<React.ComponentType<T>> {
   return React.memo(component, (prevProps, nextProps) => {
     return !shouldUpdate(prevProps, nextProps);
   });

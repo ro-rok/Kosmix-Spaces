@@ -102,14 +102,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
     enabled: !!storedToken && storedUserType === 'partner',
     retry: false,
     staleTime: 1000 * 60 * 5, // 5 minutes
-    onError: (error: any) => {
-      console.error('Partner session validation failed:', error);
+  });
+
+  // Handle partner query errors
+  React.useEffect(() => {
+    if (partnerQuery.error) {
+      console.error('Partner session validation failed:', partnerQuery.error);
+      const error = partnerQuery.error as any;
       if (error.status === 401) {
         setIsSessionExpired(true);
         handleSessionExpiry();
       }
-    },
-  });
+    }
+  }, [partnerQuery.error]);
 
   const adminQuery = useQuery({
     queryKey: ['auth', 'admin', forceUpdate],
@@ -125,14 +130,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
     enabled: !!storedToken && storedUserType === 'admin',
     retry: false,
     staleTime: 1000 * 60 * 5, // 5 minutes
-    onError: (error: any) => {
-      console.error('Admin session validation failed:', error);
+  });
+
+  // Handle admin query errors
+  React.useEffect(() => {
+    if (adminQuery.error) {
+      console.error('Admin session validation failed:', adminQuery.error);
+      const error = adminQuery.error as any;
       if (error.status === 401) {
         setIsSessionExpired(true);
         handleSessionExpiry();
       }
-    },
-  });
+    }
+  }, [adminQuery.error]);
 
   // Determine current user and loading state
   const currentQuery = storedUserType === 'partner' ? partnerQuery : 

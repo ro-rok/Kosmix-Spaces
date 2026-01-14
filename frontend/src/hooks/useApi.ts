@@ -99,7 +99,7 @@ export function useCreateSiteVisit() {
 // Photo upload
 export function useUploadPhoto() {
   return useMutation({
-    mutationFn: (file: File) => api.uploadPhoto(file),
+    mutationFn: (file: File) => api.partner.uploadPhoto(file),
     onError: (error) => {
       console.error('Photo upload failed:', error);
     },
@@ -109,7 +109,7 @@ export function useUploadPhoto() {
 // Photo delete
 export function useDeletePhoto() {
   return useMutation({
-    mutationFn: (photoId: string) => api.deletePhoto(photoId),
+    mutationFn: (photoId: string) => api.partner.deletePhoto(photoId),
     onError: (error) => {
       console.error('Photo delete failed:', error);
     },

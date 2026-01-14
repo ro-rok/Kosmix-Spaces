@@ -418,7 +418,7 @@ export function usePerformanceAwareConfig(options: {
           if (fps < fpsThreshold) {
             console.warn(`Low FPS detected (${fps}), switching to performance preset`);
             resetToPreset('performance');
-          } else if (fps > 50 && deviceCapabilities.memoryConstraints === 'high') {
+          } else if (fps > 50 && deviceCapabilities.memoryLevel === 'high') {
             // Good performance, can use enhanced preset
             if (config !== animationPresets.enhanced) {
               console.log(`Good performance detected (${fps}), switching to enhanced preset`);

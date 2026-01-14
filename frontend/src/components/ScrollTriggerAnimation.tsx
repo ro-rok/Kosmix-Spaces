@@ -3,7 +3,7 @@ import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useAnimation } from '../contexts/AnimationContext';
 import { useAccessibleGSAP } from '../hooks/useAnimationAccessibility';
-import { withAnimationErrorHandling } from '../lib/animation-error-handling';
+import { reportError } from '../lib/animation-error-handling';
 import { gsapRegistry, createOptimizedScrollTrigger, isReducedMotionPreferred } from '../lib/gsap-utils';
 
 // Register ScrollTrigger plugin
@@ -61,22 +61,23 @@ export function ScrollTriggerAnimation({
   }, [disabled, config.scrollAnimations.enabled, isReducedMotion, config.accessibility.respectReducedMotion]);
   
   // Create animation timeline with error handling
-  const createAnimation = useCallback(withAnimationErrorHandling(() => {
-    if (!elementRef.current || shouldDisableAnimation) return;
-    
-    // Generate unique ID for this animation
-    const animationId = `scroll-trigger-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    
-    // Clean up existing animation
-    if (timelineRef.current) {
-      timelineRef.current.kill();
-    }
-    if (scrollTriggerRef.current) {
-      scrollTriggerRef.current.kill();
-    }
-    
-    // Create new timeline
-    const timeline = gsap.timeline({ paused: true });
+  const createAnimation = useCallback(() => {
+    try {
+      if (!elementRef.current || shouldDisableAnimation) return;
+      
+      // Generate unique ID for this animation
+      const animationId = `scroll-trigger-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      
+      // Clean up existing animation
+      if (timelineRef.current) {
+        timelineRef.current.kill();
+      }
+      if (scrollTriggerRef.current) {
+        scrollTriggerRef.current.kill();
+      }
+      
+      // Create new timeline
+      const timeline = gsap.timeline({ paused: true });
     
     // Apply accessible animation to the element
     timeline.fromTo(elementRef.current, 
@@ -105,43 +106,48 @@ export function ScrollTriggerAnimation({
     gsapRegistry.register(animationId, timeline);
     
     // Create ScrollTrigger using optimized utility
-    const scrollTriggerInstance = createOptimizedScrollTrigger(
-      `${animationId}-trigger`,
-      {
-        trigger: trigger || elementRef.current,
-        start,
-        end,
-        scrub,
-        pin,
-        markers: markers && process.env.NODE_ENV === 'development',
-        animation: timeline,
-        onEnter: () => {
-          if (!scrub) timeline.play();
-          onEnter?.();
-        },
-        onLeave: () => {
-          if (!scrub) timeline.reverse();
-          onLeave?.();
-        },
-        onEnterBack: () => {
-          if (!scrub) timeline.play();
-          onEnterBack?.();
-        },
-        onLeaveBack: () => {
-          if (!scrub) timeline.reverse();
-          onLeaveBack?.();
-        },
-        onUpdate: onUpdate,
-      } as any, // Type assertion to handle GSAP type issues
-      {
-        respectReducedMotion: config.accessibility.respectReducedMotion,
-        autoCleanup: true,
-      }
-    );
+    const scrollTriggerInstance = createOptimizedScrollTrigger({
+      id: `${animationId}-trigger`,
+      trigger: trigger || elementRef.current,
+      start,
+      end,
+      scrub,
+      pin,
+      markers: markers && process.env.NODE_ENV === 'development',
+      animation: timeline,
+      onEnter: () => {
+        if (!scrub) timeline.play();
+        onEnter?.();
+      },
+      onLeave: () => {
+        if (!scrub) timeline.reverse();
+        onLeave?.();
+      },
+      onEnterBack: () => {
+        if (!scrub) timeline.play();
+        onEnterBack?.();
+      },
+      onLeaveBack: () => {
+        if (!scrub) timeline.reverse();
+        onLeaveBack?.();
+      },
+      onUpdate: onUpdate,
+      respectReducedMotion: config.accessibility.respectReducedMotion,
+      autoCleanup: true,
+    } as any);
     
     timelineRef.current = timeline;
     scrollTriggerRef.current = scrollTriggerInstance;
-  }, 'ScrollTriggerAnimation.createAnimation'), [
+    } catch (error) {
+      reportError({
+        type: 'runtime',
+        message: error instanceof Error ? error.message : 'ScrollTrigger animation error',
+        context: 'ScrollTriggerAnimation.createAnimation',
+        timestamp: Date.now(),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+    }
+  }, [
     accessibleAnimation,
     trigger,
     start,

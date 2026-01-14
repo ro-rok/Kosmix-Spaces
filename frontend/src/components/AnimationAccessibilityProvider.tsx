@@ -53,13 +53,7 @@ export function AnimationAccessibilityProvider({
   // Initialize accessibility systems
   useEffect(() => {
     // Set up global accessibility manager
-    const accessibilityManager = getGlobalAccessibilityManager({
-      enableInstantFallback: true,
-      enableCSSFallback: true,
-      enableGracefulDegradation: true,
-      fallbackDuration: 0.1,
-      preserveFunctionality: true,
-    });
+    const accessibilityManager = getGlobalAccessibilityManager();
 
     // Set up global error handler
     const errorHandler = getGlobalAnimationErrorHandler({
@@ -82,10 +76,20 @@ export function AnimationAccessibilityProvider({
       // Auto-update animation config based on preferences
       if (preferences.reducedMotion && config.accessibility.respectReducedMotion) {
         updateConfig({
-          smoothScroll: { enabled: false },
-          scrollAnimations: { enabled: false },
-          microInteractions: { enabled: false },
+          smoothScroll: { 
+            ...config.smoothScroll,
+            enabled: false 
+          },
+          scrollAnimations: { 
+            ...config.scrollAnimations,
+            enabled: false 
+          },
+          microInteractions: { 
+            ...config.microInteractions,
+            enabled: false 
+          },
           transitions: {
+            ...config.transitions,
             defaultDuration: config.accessibility.fallbackToInstant ? 0 : 0.1,
           },
         });

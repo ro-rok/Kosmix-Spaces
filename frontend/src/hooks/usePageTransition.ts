@@ -180,11 +180,17 @@ export function usePageTransition(options: UsePageTransitionOptions = {}) {
     };
 
     // Register transition with animation registry
-    animationRegistry.register(animationId, () => {
-      clearProgressTracking();
-      if (transitionTimeoutRef.current) {
-        clearTimeout(transitionTimeoutRef.current);
-      }
+    animationRegistry.register({
+      id: animationId,
+      type: 'transition',
+      priority: 2, // HIGH priority
+      startTime: performance.now(),
+      cleanup: () => {
+        clearProgressTracking();
+        if (transitionTimeoutRef.current) {
+          clearTimeout(transitionTimeoutRef.current);
+        }
+      },
     });
 
     // Start transition with optional delay
@@ -281,11 +287,17 @@ export function usePageTransition(options: UsePageTransitionOptions = {}) {
     };
 
     // Register with animation system
-    animationRegistry.register(animationId, () => {
-      clearProgressTracking();
-      if (transitionTimeoutRef.current) {
-        clearTimeout(transitionTimeoutRef.current);
-      }
+    animationRegistry.register({
+      id: animationId,
+      type: 'transition',
+      priority: 2, // HIGH priority
+      startTime: performance.now(),
+      cleanup: () => {
+        clearProgressTracking();
+        if (transitionTimeoutRef.current) {
+          clearTimeout(transitionTimeoutRef.current);
+        }
+      },
     });
 
     setTransitionState(newState);
