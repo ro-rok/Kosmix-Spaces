@@ -208,8 +208,8 @@ export function LoaderVideo({
   };
 
   const animateTypewriter = (element: HTMLElement, textContent: string) => {
-    if (isReducedMotion) {
-      element.textContent = textContent;
+    if (isReducedMotion || !textContent) {
+      element.textContent = textContent || '';
       return;
     }
 

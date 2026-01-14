@@ -217,6 +217,7 @@ export function getAmenityIcon(amenity: string): LucideIcon {
 
 // Function to get amenity display name (optional, for consistency)
 export function getAmenityDisplayName(amenity: string): string {
+  if (!amenity) return '';
   return amenity
     .split(/[-_\s]+/)
     .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())

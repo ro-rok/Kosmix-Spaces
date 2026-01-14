@@ -1,20 +1,24 @@
 import React, { forwardRef, useState } from 'react';
 import { motion, MotionProps } from 'framer-motion';
-import { Card, CardProps } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { useAnimation, useConditionalAnimation } from '@/contexts/AnimationContext';
 import { cn } from '@/lib/utils';
 
-interface AnimatedCardProps extends CardProps {
+interface AnimatedCardProps extends React.HTMLAttributes<HTMLDivElement> {
+  /**
+   * Card content
+   */
+  children?: React.ReactNode;
   /**
    * Custom animation overrides
    */
   animationOverrides?: {
-    hover?: MotionProps['whileHover'];
-    tap?: MotionProps['whileTap'];
-    focus?: MotionProps['whileFocus'];
-    initial?: MotionProps['initial'];
-    animate?: MotionProps['animate'];
-    transition?: MotionProps['transition'];
+    hover?: Record<string, any>;
+    tap?: Record<string, any>;
+    focus?: Record<string, any>;
+    initial?: Record<string, any>;
+    animate?: Record<string, any>;
+    transition?: Record<string, any>;
   };
   /**
    * Disable animations for this card
@@ -117,9 +121,9 @@ export const AnimatedCard = forwardRef<HTMLDivElement, AnimatedCardProps>(
         ...getHoverEffects(),
         transition: {
           duration: animationValues.duration,
-          ease: animationValues.easing,
+          ease: animationValues.easing as any,
         },
-        ...animationOverrides.hover,
+        ...(animationOverrides.hover || {}),
       },
       
       whileTap: clickable ? {
@@ -127,9 +131,9 @@ export const AnimatedCard = forwardRef<HTMLDivElement, AnimatedCardProps>(
         y: elevateOnHover ? -4 : 0,
         transition: {
           duration: animationValues.duration * 0.5,
-          ease: animationValues.easing,
+          ease: animationValues.easing as any,
         },
-        ...animationOverrides.tap,
+        ...(animationOverrides.tap || {}),
       } : undefined,
       
       whileFocus: {
@@ -137,9 +141,9 @@ export const AnimatedCard = forwardRef<HTMLDivElement, AnimatedCardProps>(
         boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.5)',
         transition: {
           duration: animationValues.duration,
-          ease: animationValues.easing,
+          ease: animationValues.easing as any,
         },
-        ...animationOverrides.focus,
+        ...(animationOverrides.focus || {}),
       },
       
       initial: animationOverrides.initial || { 
@@ -158,7 +162,7 @@ export const AnimatedCard = forwardRef<HTMLDivElement, AnimatedCardProps>(
       
       transition: {
         duration: animationValues.duration,
-        ease: animationValues.easing,
+        ease: animationValues.easing as any,
         ...animationOverrides.transition,
       },
     });
@@ -347,7 +351,7 @@ export function AnimatedCardGrid({
           transition={{
             delay: index * staggerDelay,
             duration: config.transitions.defaultDuration,
-            ease: config.transitions.defaultEasing,
+            ease: config.transitions.defaultEasing as any,
           }}
         >
           {child}

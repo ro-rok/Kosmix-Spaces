@@ -136,7 +136,7 @@ export function ListingCard({
         isPremium 
           ? "card-premium" 
           : "rounded-xl border bg-card shadow-sm"
-      )}
+      )} 
     >
       {/* Image with Auto-Scrolling Carousel */}
       <div 
@@ -257,7 +257,7 @@ export function ListingCard({
                 variant="outline"
                 className="text-xs px-1.5 py-0.5 border-border/60 hover:border-primary/50 transition-colors"
               >
-                {workspaceTypeLabels[type].split(' ')[0]} {/* Show first word only */}
+                {(workspaceTypeLabels[type] || '').split(' ')[0]} {/* Show first word only */}
               </Badge>
             ))}
             {listing.workspaceTypes && listing.workspaceTypes.length > 2 && (
@@ -281,7 +281,7 @@ export function ListingCard({
                     title={amenity}
                   >
                     <IconComponent className="h-3 w-3 flex-shrink-0" />
-                    <span className="truncate max-w-[60px]">{amenity.split(' ')[0]}</span>
+                    <span className="truncate max-w-[60px]">{(amenity || '').split(' ')[0]}</span>
                   </div>
                 );
               })}
