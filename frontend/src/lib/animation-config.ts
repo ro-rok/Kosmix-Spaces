@@ -18,6 +18,7 @@ export interface AnimationConfig {
   };
   transitions: {
     defaultDuration: number;
+    defaultEasing: string;
     pageTransition: {
       transition: {
         duration: number;
@@ -36,13 +37,20 @@ export interface AnimationConfig {
   };
   microInteractions: {
     enabled: boolean;
+    hoverScale: number;
+    clickScale: number;
+    focusScale: number;
+    duration: number;
+    easing: string;
   };
   accessibility: {
     respectReducedMotion: boolean;
     fallbackToInstant: boolean;
+    announceAnimations: boolean;
   };
   performance: {
     maxConcurrentAnimations: number;
+    debounceResize: number;
   };
 }
 
@@ -63,6 +71,7 @@ export const defaultAnimationConfig: AnimationConfig = {
   },
   transitions: {
     defaultDuration: 0.3,
+    defaultEasing: 'ease-in-out',
     pageTransition: {
       transition: {
         duration: 0.3,
@@ -81,13 +90,20 @@ export const defaultAnimationConfig: AnimationConfig = {
   },
   microInteractions: {
     enabled: true,
+    hoverScale: 1.05,
+    clickScale: 0.95,
+    focusScale: 1.02,
+    duration: 0.2,
+    easing: 'ease-out',
   },
   accessibility: {
     respectReducedMotion: true,
     fallbackToInstant: false,
+    announceAnimations: false,
   },
   performance: {
     maxConcurrentAnimations: 10,
+    debounceResize: 150,
   },
 };
 
@@ -97,8 +113,8 @@ export const animationPresets: AnimationPresets = {
     ...defaultAnimationConfig,
     smoothScroll: { ...defaultAnimationConfig.smoothScroll, enabled: false },
     scrollAnimations: { enabled: false },
-    microInteractions: { enabled: false },
-    performance: { maxConcurrentAnimations: 3 },
+    microInteractions: { ...defaultAnimationConfig.microInteractions, enabled: false },
+    performance: { maxConcurrentAnimations: 3, debounceResize: 200 },
   },
   subtle: {
     ...defaultAnimationConfig,
@@ -106,7 +122,7 @@ export const animationPresets: AnimationPresets = {
       ...defaultAnimationConfig.transitions,
       defaultDuration: 0.2,
     },
-    performance: { maxConcurrentAnimations: 5 },
+    performance: { maxConcurrentAnimations: 5, debounceResize: 150 },
   },
   standard: defaultAnimationConfig,
   enhanced: {
@@ -119,18 +135,18 @@ export const animationPresets: AnimationPresets = {
       ...defaultAnimationConfig.transitions,
       defaultDuration: 0.4,
     },
-    performance: { maxConcurrentAnimations: 15 },
+    performance: { maxConcurrentAnimations: 15, debounceResize: 100 },
   },
   performance: {
     ...defaultAnimationConfig,
     smoothScroll: { ...defaultAnimationConfig.smoothScroll, enabled: false },
     scrollAnimations: { enabled: false },
-    microInteractions: { enabled: false },
+    microInteractions: { ...defaultAnimationConfig.microInteractions, enabled: false },
     transitions: {
       ...defaultAnimationConfig.transitions,
       defaultDuration: 0.1,
     },
-    performance: { maxConcurrentAnimations: 3 },
+    performance: { maxConcurrentAnimations: 3, debounceResize: 200 },
   },
 };
 

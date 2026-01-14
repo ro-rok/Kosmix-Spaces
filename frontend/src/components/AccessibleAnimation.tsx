@@ -1,7 +1,7 @@
 import React, { forwardRef, useEffect, useRef, useState } from 'react';
 import { motion, MotionProps } from 'framer-motion';
 import { useAnimationAccessibility } from '../hooks/useAnimationAccessibility';
-import { useAnimationErrorHandling } from '../lib/animation-error-handling';
+import { useAnimationErrorHandling, reportError } from '../lib/animation-error-handling';
 import { applyAnimationFallback } from '../lib/animation-accessibility';
 
 // Props for the AccessibleAnimation component

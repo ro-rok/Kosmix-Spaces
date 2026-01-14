@@ -6,9 +6,11 @@ export interface AccessibilityPreferences {
 }
 
 export interface AnimationFallback {
-  type: 'css' | 'instant' | 'disabled';
+  type: 'css' | 'instant' | 'disabled' | 'reduced';
   duration?: number;
   easing?: string;
+  styles?: React.CSSProperties;
+  className?: string;
 }
 
 export interface FallbackOptions {
@@ -21,14 +23,25 @@ export interface FallbackOptions {
 export class AccessibilityManager {
   private preferences: AccessibilityPreferences;
   private options: Partial<FallbackOptions>;
+  private listeners: Set<(preferences: AccessibilityPreferences) => void> = new Set();
+  private mediaQueryList: MediaQueryList;
 
   constructor(options?: Partial<FallbackOptions>) {
     this.options = options || {};
+    this.mediaQueryList = window.matchMedia('(prefers-reduced-motion: reduce)');
     this.preferences = {
-      reducedMotion: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+      reducedMotion: this.mediaQueryList.matches,
       highContrast: window.matchMedia('(prefers-contrast: high)').matches,
       largeText: false,
     };
+
+    // Listen for changes to reduced motion preference
+    this.handleMediaQueryChange = this.handleMediaQueryChange.bind(this);
+    this.mediaQueryList.addEventListener('change', this.handleMediaQueryChange);
+  }
+
+  private handleMediaQueryChange(e: MediaQueryListEvent): void {
+    this.updatePreferences({ reducedMotion: e.matches });
   }
 
   getPreferences(): AccessibilityPreferences {
@@ -37,6 +50,31 @@ export class AccessibilityManager {
 
   updatePreferences(updates: Partial<AccessibilityPreferences>): void {
     this.preferences = { ...this.preferences, ...updates };
+    this.notifyListeners();
+  }
+
+  shouldDisableAnimations(): boolean {
+    return this.preferences.reducedMotion && (this.options.respectSystemPreferences ?? true);
+  }
+
+  shouldReduceTransparency(): boolean {
+    return this.preferences.highContrast;
+  }
+
+  subscribe(listener: (preferences: AccessibilityPreferences) => void): () => void {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
+  }
+
+  private notifyListeners(): void {
+    this.listeners.forEach(listener => listener(this.preferences));
+  }
+
+  cleanup(): void {
+    this.mediaQueryList.removeEventListener('change', this.handleMediaQueryChange);
+    this.listeners.clear();
   }
 }
 
@@ -52,16 +90,45 @@ export class AnimationFallbackManager {
     this.fallbacks.set(id, fallback);
   }
 
-  getFallback(id: string): AnimationFallback | undefined {
-    return this.fallbacks.get(id);
+  getFallback(
+    id: string,
+    animationType: 'transition' | 'scroll' | 'interaction' | 'loading',
+    originalProps: any
+  ): AnimationFallback {
+    // Check for custom fallback first
+    const customFallback = this.fallbacks.get(id);
+    if (customFallback) {
+      return customFallback;
+    }
+
+    // Check for type-specific custom fallback
+    if (this.options.customFallbacks?.[animationType]) {
+      return this.options.customFallbacks[animationType];
+    }
+
+    // Return default fallback based on options
+    if (this.options.enableInstantFallbacks) {
+      return { type: 'instant', duration: 0 };
+    }
+
+    if (this.options.enableCSSFallbacks) {
+      return { type: 'css', duration: 0.1, easing: 'linear' };
+    }
+
+    // Default reduced motion fallback
+    return { type: 'css', duration: 0.15, easing: 'ease' };
   }
 
   applyFallback(id: string): void {
-    const fallback = this.getFallback(id);
+    const fallback = this.fallbacks.get(id);
     if (fallback) {
       // Apply fallback logic
       console.log('Applying fallback:', id, fallback);
     }
+  }
+
+  cleanup(): void {
+    this.fallbacks.clear();
   }
 }
 

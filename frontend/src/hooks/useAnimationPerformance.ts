@@ -38,7 +38,7 @@ export function useAnimationPerformance(
   } = options;
 
   const [metrics, setMetrics] = useState<PerformanceMetrics>(() => 
-    globalDegradationManager.getMetrics()
+    globalPerformanceMonitor.getMetrics()
   );
   const [deviceProfile, setDeviceProfile] = useState<DevicePerformanceProfile>(() =>
     globalDegradationManager.getDeviceProfile()
@@ -52,7 +52,7 @@ export function useAnimationPerformance(
 
   // Refresh all metrics
   const refreshMetrics = useCallback(() => {
-    const newMetrics = globalDegradationManager.getMetrics();
+    const newMetrics = globalPerformanceMonitor.getMetrics();
     const newProfile = globalDegradationManager.getDeviceProfile();
     const registry = getAnimationRegistry();
     

@@ -70,39 +70,14 @@ export function SmoothScrollProvider({
       };
       rafRef.current = requestAnimationFrame(raf);
 
-      // Add event listeners for debugging and monitoring (only in development)
-      if (process.env.NODE_ENV === 'development') {
-        // Throttle debug logging to avoid performance impact
-        let lastLogTime = 0;
-        lenis.on('scroll', ({ scroll, limit, velocity, direction, progress }) => {
-          const now = Date.now();
-          if (now - lastLogTime > 1000) { // Log only once per second
-            console.debug('Lenis scroll:', { scroll, limit, velocity, direction, progress });
-            lastLogTime = now;
-          }
-        });
-      }
-
       // Update animation context with Lenis instance
       setLenisInstance(lenis);
       
-      console.log('Lenis initialized successfully', lenis);
-      
     } catch (error) {
       console.error('Failed to initialize Lenis:', error);
-      
-      // Fallback: disable smooth scrolling in config
-      updateConfig({
-        smoothScroll: {
-          ...config.smoothScroll,
-          enabled: false,
-        },
-      });
-      
-      // Ensure context is updated even on failure
       setLenisInstance(null);
     }
-  }, [shouldEnableSmoothing, lenisOptions, config.smoothScroll, updateConfig, setLenisInstance]);
+  }, [shouldEnableSmoothing, lenisOptions, setLenisInstance]);
 
   // Cleanup Lenis
   const cleanupLenis = useCallback(() => {
@@ -123,24 +98,14 @@ export function SmoothScrollProvider({
 
   // Initialize on mount and when options change
   useEffect(() => {
-    // Wait for DOM to be ready before initializing
-    const initializeWhenReady = () => {
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initializeLenis, { once: true });
-      } else {
-        // DOM is already ready
-        initializeLenis();
-      }
-    };
-
     if (shouldEnableSmoothing) {
-      initializeWhenReady();
+      initializeLenis();
     } else {
       cleanupLenis();
     }
 
     return cleanupLenis;
-  }, [shouldEnableSmoothing, initializeLenis, cleanupLenis]);
+  }, [shouldEnableSmoothing]);
 
   // Handle page load completion for better initialization
   useEffect(() => {
@@ -191,28 +156,25 @@ export function SmoothScrollProvider({
         }
       } catch (error) {
         console.error('Error handling visibility change:', error);
-        // If Lenis fails, clean up and disable smooth scrolling
-        cleanupLenis();
-        updateConfig({
-          smoothScroll: {
-            ...config.smoothScroll,
-            enabled: false,
-          },
-        });
       }
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [cleanupLenis, config.smoothScroll, updateConfig]);
+  }, []);
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      // Ensure cleanup happens on unmount
-      cleanupLenis();
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+      }
+      if (lenisRef.current) {
+        lenisRef.current.destroy();
+        delete (window as any).lenis;
+      }
     };
-  }, [cleanupLenis]);
+  }, []);
 
   // Initialize anchor link handling
   useEffect(() => {

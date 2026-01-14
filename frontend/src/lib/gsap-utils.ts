@@ -47,6 +47,9 @@ export const gsapRegistry = {
   unregister: (id: string) => {
     console.log('Unregistered animation:', id);
   },
+  registerScrollTrigger: (id: string, trigger: any) => {
+    console.log('Registered ScrollTrigger:', id);
+  },
 };
 
 export function createOptimizedScrollTrigger(options: any): any {

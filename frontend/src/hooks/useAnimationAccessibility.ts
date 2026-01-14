@@ -25,18 +25,24 @@ export function useAnimationAccessibility(fallbackOptions?: Partial<FallbackOpti
       // Auto-update animation config based on preferences
       if (newPreferences.reducedMotion && config.accessibility.respectReducedMotion) {
         updateConfig({
-          smoothScroll: { enabled: false },
+          smoothScroll: { 
+            enabled: false,
+            duration: config.smoothScroll.duration,
+            easing: config.smoothScroll.easing,
+          },
           scrollAnimations: { enabled: false },
           microInteractions: { enabled: false },
           transitions: {
             defaultDuration: config.accessibility.fallbackToInstant ? 0 : 0.1,
+            pageTransition: config.transitions.pageTransition,
+            modalTransition: config.transitions.modalTransition,
           },
         });
       }
     });
 
     return unsubscribe;
-  }, [accessibilityManager, config.accessibility, updateConfig]);
+  }, [accessibilityManager, config, updateConfig]);
 
   // Cleanup on unmount
   useEffect(() => {

@@ -11,12 +11,12 @@ interface AnimatedButtonProps extends Omit<ButtonProps, 'asChild'> {
    * Custom animation overrides
    */
   animationOverrides?: {
-    hover?: MotionProps['whileHover'];
-    tap?: MotionProps['whileTap'];
-    focus?: MotionProps['whileFocus'];
-    initial?: MotionProps['initial'];
-    animate?: MotionProps['animate'];
-    transition?: MotionProps['transition'];
+    hover?: Record<string, any>;
+    tap?: Record<string, any>;
+    focus?: Record<string, any>;
+    initial?: Record<string, any>;
+    animate?: Record<string, any>;
+    transition?: Record<string, any>;
   };
   /**
    * Disable animations for this button
@@ -76,7 +76,7 @@ export const AnimatedButton = forwardRef<HTMLButtonElement, AnimatedButtonProps>
           duration: animationValues.duration,
           ease: animationValues.easing,
         },
-        ...animationOverrides.hover,
+        ...(animationOverrides.hover || {}),
       } : undefined,
       
       whileTap: !disabled ? {
@@ -85,7 +85,7 @@ export const AnimatedButton = forwardRef<HTMLButtonElement, AnimatedButtonProps>
           duration: animationValues.duration * 0.5, // Faster for tap
           ease: animationValues.easing,
         },
-        ...animationOverrides.tap,
+        ...(animationOverrides.tap || {}),
       } : undefined,
       
       whileFocus: !disabled ? {
@@ -94,7 +94,7 @@ export const AnimatedButton = forwardRef<HTMLButtonElement, AnimatedButtonProps>
           duration: animationValues.duration,
           ease: animationValues.easing,
         },
-        ...animationOverrides.focus,
+        ...(animationOverrides.focus || {}),
       } : undefined,
       
       initial: animationOverrides.initial || { scale: 1 },
@@ -102,8 +102,8 @@ export const AnimatedButton = forwardRef<HTMLButtonElement, AnimatedButtonProps>
       
       transition: {
         duration: animationValues.duration,
-        ease: animationValues.easing,
-        ...animationOverrides.transition,
+        ease: animationValues.easing as any,
+        ...(animationOverrides.transition || {}),
       },
     };
 
@@ -124,29 +124,23 @@ export const AnimatedButton = forwardRef<HTMLButtonElement, AnimatedButtonProps>
       );
     }
 
+    // Apply motion directly to Button using motion component
+    const MotionButton = motion.create(Button);
+
     return (
-      <AccessibleAnimation
-        animationType="interaction"
-        enableErrorRecovery={true}
-        announceToScreenReader={false} // Buttons don't need animation announcements
-        fallbackComponent={Button}
-        fallbackProps={{ ref, className, disabled, ...props }}
-        style={{ display: 'inline-block' }}
+      <MotionButton
+        ref={ref}
+        className={cn(
+          // Ensure button doesn't interfere with motion animations
+          'transform-gpu',
+          className
+        )}
+        disabled={disabled}
         {...accessibleAnimationProps}
+        {...props}
       >
-        <Button
-          ref={ref}
-          className={cn(
-            // Ensure button doesn't interfere with motion animations
-            'transform-gpu',
-            className
-          )}
-          disabled={disabled}
-          {...props}
-        >
-          {children}
-        </Button>
-      </AccessibleAnimation>
+        {children}
+      </MotionButton>
     );
   }
 );
@@ -180,17 +174,17 @@ export const AnimatedFAB = forwardRef<HTMLButtonElement, AnimatedFABProps>(
         scale: 1.1,
         rotate: 5,
         boxShadow: '0 8px 25px rgba(0, 0, 0, 0.15)',
-        ...animationOverrides.hover,
+        ...(animationOverrides.hover || {}),
       },
       tap: {
         scale: 0.95,
         rotate: -2,
-        ...animationOverrides.tap,
+        ...(animationOverrides.tap || {}),
       },
       focus: {
         scale: 1.05,
         boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.5)',
-        ...animationOverrides.focus,
+        ...(animationOverrides.focus || {}),
       },
     };
 
@@ -254,10 +248,10 @@ export function AnimatedButtonGroup({
           transition={{
             delay: index * staggerDelay,
             duration: config.transitions.defaultDuration,
-            ease: config.transitions.defaultEasing,
+            ease: config.transitions.defaultEasing as any,
           }}
           enableErrorRecovery={true}
-          fallbackComponent="div"
+          fallbackComponent={({ children }: any) => <div>{children}</div>}
         >
           {child}
         </AccessibleAnimation>

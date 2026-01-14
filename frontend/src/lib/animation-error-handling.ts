@@ -1,4 +1,12 @@
 // Animation error handling and recovery
+export interface AnimationError {
+  type: 'runtime' | 'initialization' | 'performance';
+  message: string;
+  context: string;
+  timestamp: number;
+  stack?: string;
+}
+
 export interface ErrorRecoveryStrategy {
   fallbackToCSS: boolean;
   disableAnimations: boolean;
@@ -9,6 +17,7 @@ export interface ErrorRecoveryStrategy {
 
 class AnimationErrorHandler {
   private strategy: ErrorRecoveryStrategy;
+  private errors: AnimationError[] = [];
 
   constructor(strategy: ErrorRecoveryStrategy) {
     this.strategy = strategy;
@@ -18,6 +27,21 @@ class AnimationErrorHandler {
     if (this.strategy.reportError) {
       console.error('Animation error:', error);
     }
+  }
+
+  reportError(error: AnimationError): void {
+    this.errors.push(error);
+    if (this.strategy.reportError) {
+      console.error('Animation error:', error);
+    }
+  }
+
+  getErrors(): AnimationError[] {
+    return this.errors;
+  }
+
+  clearErrors(): void {
+    this.errors = [];
   }
 
   getStrategy(): ErrorRecoveryStrategy {
@@ -32,12 +56,23 @@ class AnimationErrorHandler {
 let globalErrorHandler: AnimationErrorHandler | null = null;
 
 export function getGlobalAnimationErrorHandler(
-  strategy: ErrorRecoveryStrategy
+  strategy?: ErrorRecoveryStrategy
 ): AnimationErrorHandler {
   if (!globalErrorHandler) {
-    globalErrorHandler = new AnimationErrorHandler(strategy);
+    globalErrorHandler = new AnimationErrorHandler(strategy || {
+      fallbackToCSS: true,
+      disableAnimations: false,
+      retryAttempts: 3,
+      reportError: true,
+      gracefulDegradation: true,
+    });
   }
   return globalErrorHandler;
+}
+
+export function reportError(error: AnimationError): void {
+  const handler = getGlobalAnimationErrorHandler();
+  handler.reportError(error);
 }
 
 export function cleanupGlobalAnimationErrorHandler(): void {

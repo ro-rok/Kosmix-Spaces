@@ -3,56 +3,76 @@ export interface PerformanceMetrics {
   fps: number;
   frameTime: number;
   memoryUsage?: number;
+  animationCount: number;
 }
 
 export interface DevicePerformanceProfile {
   tier: 'low' | 'medium' | 'high';
+  maxConcurrentAnimations: number;
   capabilities: {
     supportsHardwareAcceleration: boolean;
-    maxConcurrentAnimations: number;
     preferredFrameRate: number;
   };
 }
 
+type DegradationCallback = (profile: DevicePerformanceProfile) => void;
+
 class DegradationManager {
-  private isMonitoring = false;
+  private callbacks: Set<DegradationCallback> = new Set();
+  private currentProfile: DevicePerformanceProfile = {
+    tier: 'medium',
+    maxConcurrentAnimations: 10,
+    capabilities: {
+      supportsHardwareAcceleration: true,
+      preferredFrameRate: 60,
+    },
+  };
   
-  startMonitoring(): void {
-    this.isMonitoring = true;
-  }
-  
-  stopMonitoring(): void {
-    this.isMonitoring = false;
+  onDegradation(callback: DegradationCallback): () => void {
+    this.callbacks.add(callback);
+    return () => this.callbacks.delete(callback);
   }
   
   getDeviceProfile(): DevicePerformanceProfile {
-    return {
-      tier: 'medium',
-      capabilities: {
-        supportsHardwareAcceleration: true,
-        maxConcurrentAnimations: 10,
-        preferredFrameRate: 60,
-      },
-    };
+    return this.currentProfile;
+  }
+  
+  private notifyCallbacks(): void {
+    this.callbacks.forEach(cb => cb(this.currentProfile));
   }
 }
+
+type PerformanceCallback = (metrics: PerformanceMetrics) => void;
+type VisibilityCallback = (isVisible: boolean) => void;
 
 class PerformanceMonitor {
   private metrics: PerformanceMetrics = {
     fps: 60,
     frameTime: 16.67,
+    animationCount: 0,
   };
+  private degradationCallback?: PerformanceCallback;
+  private recoveryCallback?: PerformanceCallback;
+  private visibilityCallback?: VisibilityCallback;
 
   getMetrics(): PerformanceMetrics {
     return this.metrics;
   }
 
-  startMonitoring(): void {
-    // Minimal implementation
+  startMonitoring(
+    onDegradation?: PerformanceCallback,
+    onRecovery?: PerformanceCallback,
+    onVisibilityChange?: VisibilityCallback
+  ): void {
+    this.degradationCallback = onDegradation;
+    this.recoveryCallback = onRecovery;
+    this.visibilityCallback = onVisibilityChange;
   }
 
   stopMonitoring(): void {
-    // Minimal implementation
+    this.degradationCallback = undefined;
+    this.recoveryCallback = undefined;
+    this.visibilityCallback = undefined;
   }
 }
 
@@ -69,6 +89,14 @@ class ResourceManager {
 
   cleanup(): void {
     this.resources.clear();
+  }
+
+  cleanupAll(): void {
+    this.cleanup();
+  }
+
+  getActiveResourceCount(): number {
+    return this.resources.size;
   }
 }
 

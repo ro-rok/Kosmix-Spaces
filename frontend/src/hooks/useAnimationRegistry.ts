@@ -116,7 +116,7 @@ export function useAnimationId(prefix = 'anim'): string {
   const idRef = useRef<string>();
   
   if (!idRef.current) {
-    idRef.current = `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    idRef.current = `${prefix}-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
   }
   
   return idRef.current;
@@ -137,7 +137,7 @@ export function useElementAnimations(element: HTMLElement | null) {
   
   const cancelAllAnimations = useCallback(() => {
     const animations = getActiveAnimations();
-    animations.forEach(anim => animationRegistry.unregister(anim.id));
+    animations.forEach((anim: AnimationMetadata) => animationRegistry.unregister(anim.id));
   }, [getActiveAnimations, animationRegistry]);
   
   return {
