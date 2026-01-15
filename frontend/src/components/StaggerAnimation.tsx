@@ -151,10 +151,14 @@ export function StaggerAnimation({
     // Register timeline for cleanup
     gsapRegistry.register(animationId, timeline);
     
+    // Find Lenis wrapper element if it exists
+    const lenisWrapper = document.querySelector('[style*="position: fixed"]') as HTMLElement | null;
+    
     // Create ScrollTrigger using optimized utility
     if (!scrub) {
       const scrollTriggerInstance = ScrollTrigger.create({
         trigger: trigger || containerRef.current,
+        scroller: lenisWrapper || window,
         start,
         end,
         animation: timeline,
@@ -193,6 +197,7 @@ export function StaggerAnimation({
       // Create scrub animation
       const scrollTriggerInstance = ScrollTrigger.create({
         trigger: trigger || containerRef.current,
+        scroller: lenisWrapper || window,
         start,
         end,
         scrub: typeof scrub === 'boolean' ? true : scrub,

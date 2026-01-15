@@ -32,6 +32,9 @@ class KeepAliveService:
             "last_error": None,
             "uptime_start": datetime.utcnow()
         }
+        # Keep references to background tasks to prevent garbage collection
+        self._ping_task = None
+        self._health_check_task = None
     
     async def start(self):
         """Start the keep-alive service."""
@@ -43,8 +46,11 @@ class KeepAliveService:
         logger.info("Starting keep-alive service")
         
         # Start background tasks with initial delay to allow server startup
-        asyncio.create_task(self._ping_loop_with_delay())
-        asyncio.create_task(self._health_check_loop_with_delay())
+        # Keep references to prevent garbage collection
+        self._ping_task = asyncio.create_task(self._ping_loop_with_delay())
+        self._health_check_task = asyncio.create_task(self._health_check_loop_with_delay())
+        
+        logger.info(f"Keep-alive service tasks created: ping_task={self._ping_task}, health_check_task={self._health_check_task}")
         
     async def _ping_loop_with_delay(self):
         """Ping loop with initial startup delay."""
@@ -64,6 +70,23 @@ class KeepAliveService:
     async def stop(self):
         """Stop the keep-alive service."""
         self.is_running = False
+        logger.info("Stopping keep-alive service...")
+        
+        # Cancel background tasks if they exist
+        if self._ping_task and not self._ping_task.done():
+            self._ping_task.cancel()
+            try:
+                await self._ping_task
+            except asyncio.CancelledError:
+                pass
+        
+        if self._health_check_task and not self._health_check_task.done():
+            self._health_check_task.cancel()
+            try:
+                await self._health_check_task
+            except asyncio.CancelledError:
+                pass
+        
         logger.info("Keep-alive service stopped")
     
     async def _ping_loop(self):
@@ -156,8 +179,15 @@ class KeepAliveService:
         """Get keep-alive service statistics."""
         uptime = datetime.utcnow() - self.stats["uptime_start"]
         
+        # Check if tasks are actually running
+        ping_task_running = self._ping_task is not None and not self._ping_task.done()
+        health_check_task_running = self._health_check_task is not None and not self._health_check_task.done()
+        
         return {
             "is_running": self.is_running,
+            "ping_task_running": ping_task_running,
+            "health_check_task_running": health_check_task_running,
+            "tasks_healthy": ping_task_running and health_check_task_running,
             "uptime_seconds": int(uptime.total_seconds()),
             "uptime_formatted": str(uptime),
             "last_ping": self.last_ping.isoformat() if self.last_ping else None,

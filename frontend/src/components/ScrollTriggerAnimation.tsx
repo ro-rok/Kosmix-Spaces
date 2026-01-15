@@ -116,10 +116,14 @@ export function ScrollTriggerAnimation({
     // Register timeline for cleanup
     gsapRegistry.register(animationId, timeline);
     
+    // Find Lenis wrapper element if it exists
+    const lenisWrapper = document.querySelector('[style*="position: fixed"]') as HTMLElement | null;
+    
     // Create ScrollTrigger using optimized utility
     const scrollTriggerInstance = createOptimizedScrollTrigger({
       id: `${animationId}-trigger`,
       trigger: trigger || elementRef.current,
+      scroller: lenisWrapper || window,
       start,
       end,
       scrub,

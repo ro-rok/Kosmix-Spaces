@@ -98,11 +98,35 @@ export function getPerformanceRecommendations(): string[] {
 }
 
 export function createOptimizedScrollTrigger(options: any): any {
-  // Minimal scroll trigger implementation
-  return {
-    kill: () => {},
-    refresh: () => {},
+  // Import ScrollTrigger from global if available
+  const ScrollTrigger = (window as any).ScrollTrigger;
+  
+  if (!ScrollTrigger) {
+    console.warn('ScrollTrigger not available');
+    return {
+      kill: () => {},
+      refresh: () => {},
+    };
+  }
+  
+  // Configure scroller for Lenis if it's active
+  const lenisWrapper = document.querySelector('[style*="position: fixed"]');
+  
+  const scrollTriggerConfig = {
+    ...options,
+    // Use Lenis wrapper as scroller if available
+    scroller: lenisWrapper || window,
   };
+  
+  // Create and return the ScrollTrigger
+  const trigger = ScrollTrigger.create(scrollTriggerConfig);
+  
+  // Register it
+  if (options.id) {
+    gsapRegistry.registerScrollTrigger(options.id, trigger);
+  }
+  
+  return trigger;
 }
 
 export function createBatchScrollTriggers(elements: Element[], options: any = {}): any[] {

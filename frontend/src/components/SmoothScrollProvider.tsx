@@ -62,6 +62,34 @@ export function SmoothScrollProvider({
 
       // Make Lenis globally available for anchor navigation
       (window as any).lenis = lenis;
+      
+      // CRITICAL: Configure ScrollTrigger to use Lenis scroller
+      // This tells ScrollTrigger to track scroll position from the Lenis wrapper
+      if ((window as any).ScrollTrigger && wrapperRef.current) {
+        const ScrollTrigger = (window as any).ScrollTrigger;
+        ScrollTrigger.scrollerProxy(wrapperRef.current, {
+          scrollTop(value?: number) {
+            if (arguments.length && value !== undefined) {
+              lenis.scrollTo(value, { immediate: true });
+            }
+            return lenis.animatedScroll;
+          },
+          getBoundingClientRect() {
+            return {
+              top: 0,
+              left: 0,
+              width: window.innerWidth,
+              height: window.innerHeight,
+            };
+          },
+          pinType: wrapperRef.current.style.transform ? "transform" : "fixed"
+        });
+        
+        // Update ScrollTrigger on Lenis scroll
+        lenis.on('scroll', () => {
+          ScrollTrigger.update();
+        });
+      }
 
       // Start the animation loop
       const raf = (time: number) => {
@@ -72,6 +100,13 @@ export function SmoothScrollProvider({
 
       // Update animation context with Lenis instance
       setLenisInstance(lenis);
+      
+      // CRITICAL: Refresh ScrollTrigger after Lenis initializes
+      setTimeout(() => {
+        if ((window as any).ScrollTrigger) {
+          (window as any).ScrollTrigger.refresh();
+        }
+      }, 100);
       
     } catch (error) {
       console.error('Failed to initialize Lenis:', error);
@@ -93,6 +128,12 @@ export function SmoothScrollProvider({
       
       // Remove global reference
       delete (window as any).lenis;
+      
+      // Clean up ScrollTrigger scroller proxy
+      if ((window as any).ScrollTrigger && wrapperRef.current) {
+        const ScrollTrigger = (window as any).ScrollTrigger;
+        ScrollTrigger.scrollerProxy(wrapperRef.current, null);
+      }
     }
   }, [setLenisInstance]);
 
@@ -217,20 +258,28 @@ export function SmoothScrollProvider({
   }, []);
 
   return (
-    <div
-      ref={wrapperRef}
-      className={className}
-      style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        width: '100%',
-        height: '100%',
-        overflow: shouldEnableSmoothing ? 'hidden' : 'auto',
-      }}
-    >
-      {children}
-    </div>
+    <>
+      {shouldEnableSmoothing ? (
+        <div
+          ref={wrapperRef}
+          className={className}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            overflow: 'hidden',
+          }}
+        >
+          {children}
+        </div>
+      ) : (
+        <div ref={wrapperRef} className={className}>
+          {children}
+        </div>
+      )}
+    </>
   );
 }
 
