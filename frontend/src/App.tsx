@@ -311,9 +311,8 @@ const App = () => {
                   >
                     <AnimatedRoutes />
                     
-                    {/* Gesture UI Components */}
+                    {/* Gesture UI Components - GestureIndicator only, GestureHelp removed for mobile */}
                     <GestureIndicator position="bottom-right" />
-                    <GestureHelp />
                   </GestureProvider>
                 </BrowserRouter>
                 

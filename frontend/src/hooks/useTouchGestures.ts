@@ -124,51 +124,114 @@ export function useTouchGestures(config: TouchGestureConfig = {}) {
 
   useEffect(() => {
     const handleTouchStart = (event: TouchEvent) => {
-      if (event.touches.length === gestureConfig.requiredFingers) {
+      // Initialize tracking on first touch
+      if (touchStartRef.current.length === 0) {
         isSwipingRef.current = true;
-        touchStartRef.current = Array.from(event.touches).map((touch, index) => ({
-          x: touch.clientX,
-          y: touch.clientY,
-          timestamp: Date.now(),
-          identifier: touch.identifier,
-        }));
+      }
+      
+      // Continue adding touches as they come in, up to the required number
+      if (touchStartRef.current.length < gestureConfig.requiredFingers) {
+        // Find new touches that we haven't tracked yet
+        const newTouches = Array.from(event.touches).filter(touch => 
+          !touchStartRef.current.some(t => t.identifier === touch.identifier)
+        );
         
-        // Prevent default to avoid scrolling during gesture
-        event.preventDefault();
+        // Add each new touch to our tracking array
+        newTouches.forEach(touch => {
+          if (touchStartRef.current.length < gestureConfig.requiredFingers) {
+            touchStartRef.current.push({
+              x: touch.clientX,
+              y: touch.clientY,
+              timestamp: Date.now(),
+              identifier: touch.identifier,
+            });
+            
+            if (enableDebug) {
+              console.log(`Gesture: Added finger ${touchStartRef.current.length}/${gestureConfig.requiredFingers}`);
+            }
+          }
+        });
+        
+        // If we've reached the required number of fingers, prevent default scrolling
+        if (touchStartRef.current.length === gestureConfig.requiredFingers) {
+          event.preventDefault();
+          
+          if (enableDebug) {
+            console.log(`Gesture: All ${gestureConfig.requiredFingers} fingers detected, ready for swipe`);
+          }
+        }
       }
     };
 
     const handleTouchMove = (event: TouchEvent) => {
-      if (isSwipingRef.current && event.touches.length === gestureConfig.requiredFingers) {
-        // Prevent scrolling during multi-finger gesture
+      if (isSwipingRef.current && touchStartRef.current.length === gestureConfig.requiredFingers) {
+        // Prevent scrolling during multi-finger gesture when we have the required number
         event.preventDefault();
       }
     };
 
     const handleTouchEnd = (event: TouchEvent) => {
-      if (isSwipingRef.current && touchStartRef.current.length === gestureConfig.requiredFingers) {
-        // Get the touch points that just ended
+      if (isSwipingRef.current) {
         const remainingTouches = Array.from(event.touches);
         const changedTouches = Array.from(event.changedTouches);
         
-        // If all fingers are lifted
-        if (remainingTouches.length === 0 && changedTouches.length === gestureConfig.requiredFingers) {
-          const touchEndPoints: TouchPoint[] = changedTouches.map(touch => ({
-            x: touch.clientX,
-            y: touch.clientY,
-            timestamp: Date.now(),
-            identifier: touch.identifier,
-          }));
+        if (enableDebug) {
+          console.log(`Gesture: TouchEnd - remaining: ${remainingTouches.length}, changed: ${changedTouches.length}, tracked: ${touchStartRef.current.length}`);
+        }
+        
+        // Check if we had the required number of fingers at the start
+        const hadRequiredFingers = touchStartRef.current.length === gestureConfig.requiredFingers;
+        
+        // If all fingers are lifted and we had the required number at the start
+        if (remainingTouches.length === 0 && hadRequiredFingers) {
+          // Map changed touches to their corresponding start points
+          const touchEndPoints: TouchPoint[] = [];
+          
+          for (const startTouch of touchStartRef.current) {
+            const endTouch = changedTouches.find(t => t.identifier === startTouch.identifier);
+            if (endTouch) {
+              touchEndPoints.push({
+                x: endTouch.clientX,
+                y: endTouch.clientY,
+                timestamp: Date.now(),
+                identifier: endTouch.identifier,
+              });
+            } else {
+              // If we can't find matching end touch, use the start position
+              // (this shouldn't happen but is a safety fallback)
+              touchEndPoints.push({
+                ...startTouch,
+                timestamp: Date.now(),
+              });
+            }
+          }
 
-          const swipe = validateGesture(touchStartRef.current, touchEndPoints, gestureConfig);
-          if (swipe) {
-            handleSwipe(swipe);
+          // Only validate if we have matching end points for all start points
+          if (touchEndPoints.length === touchStartRef.current.length) {
+            if (enableDebug) {
+              console.log('Gesture: Validating gesture...');
+            }
+            
+            const swipe = validateGesture(touchStartRef.current, touchEndPoints, gestureConfig);
+            if (swipe) {
+              if (enableDebug) {
+                console.log(`Gesture: Valid ${swipe.fingers}-finger ${swipe.direction} swipe detected!`);
+              }
+              handleSwipe(swipe);
+            } else if (enableDebug) {
+              console.log('Gesture: Validation failed - did not meet requirements');
+            }
           }
         }
 
-        // Reset state
-        isSwipingRef.current = false;
-        touchStartRef.current = [];
+        // Reset state when all fingers are lifted
+        if (remainingTouches.length === 0) {
+          if (enableDebug) {
+            console.log('Gesture: All fingers lifted, resetting');
+          }
+          isSwipingRef.current = false;
+          touchStartRef.current = [];
+        }
       }
     };
 
@@ -178,16 +241,31 @@ export function useTouchGestures(config: TouchGestureConfig = {}) {
     };
 
     // Add event listeners with passive: false to allow preventDefault
-    document.addEventListener('touchstart', handleTouchStart, { passive: false });
-    document.addEventListener('touchmove', handleTouchMove, { passive: false });
-    document.addEventListener('touchend', handleTouchEnd, { passive: false });
-    document.addEventListener('touchcancel', handleTouchCancel, { passive: false });
+    // Use capture phase to ensure we get events before other handlers
+    const options = { passive: false, capture: true };
+    
+    try {
+      document.addEventListener('touchstart', handleTouchStart, options);
+      document.addEventListener('touchmove', handleTouchMove, options);
+      document.addEventListener('touchend', handleTouchEnd, options);
+      document.addEventListener('touchcancel', handleTouchCancel, options);
+      
+      if (enableDebug) {
+        console.log('Gesture: Event listeners attached successfully');
+      }
+    } catch (error) {
+      console.error('Gesture: Failed to attach event listeners', error);
+    }
 
     return () => {
-      document.removeEventListener('touchstart', handleTouchStart);
-      document.removeEventListener('touchmove', handleTouchMove);
-      document.removeEventListener('touchend', handleTouchEnd);
-      document.removeEventListener('touchcancel', handleTouchCancel);
+      try {
+        document.removeEventListener('touchstart', handleTouchStart, options);
+        document.removeEventListener('touchmove', handleTouchMove, options);
+        document.removeEventListener('touchend', handleTouchEnd, options);
+        document.removeEventListener('touchcancel', handleTouchCancel, options);
+      } catch (error) {
+        console.error('Gesture: Failed to remove event listeners', error);
+      }
     };
   }, [handleSwipe, gestureConfig, enableDebug]);
 
