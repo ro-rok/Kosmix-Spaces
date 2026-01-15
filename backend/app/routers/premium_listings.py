@@ -375,14 +375,47 @@ async def update_listing(
     update_data: PremiumListingUpdate,
     current_user: dict = Depends(require_partner)
 ):
-    """Update listing."""
+    """Update listing - reverts to PENDING if approved listing is edited."""
     partner_id = current_user["partnerId"]
     
+    # Get current listing status
+    from app.db.mongodb import get_database
+    db = get_database()
+    current_listing = await db.premium_listings.find_one({
+        "_id": ObjectId(listing_id),
+        "partnerId": ObjectId(partner_id)
+    })
+    
+    if not current_listing:
+        raise HTTPException(status_code=404, detail="Listing not found")
+    
+    # Check if listing was approved
+    was_approved = current_listing.get("verificationStatus") in ["APPROVED", "APPROVED_VERIFIED"]
+    
+    # Update the listing
     listing = await update_premium_listing(
         listing_id=listing_id,
         partner_id=partner_id,
         update_data=update_data.model_dump(exclude_unset=True)
     )
+    
+    # If it was approved, revert to PENDING and unpublish
+    if was_approved:
+        from datetime import datetime
+        await db.premium_listings.update_one(
+            {"_id": ObjectId(listing_id)},
+            {
+                "$set": {
+                    "verificationStatus": "PENDING",
+                    "isPublished": False,
+                    "wasReEdited": True,  # Flag to indicate this was re-edited after approval
+                    "reEditedAt": datetime.utcnow(),
+                    "adminNotes": f"Listing edited by partner on {datetime.now().isoformat()} - Requires re-approval"
+                }
+            }
+        )
+        # Refresh listing data
+        listing = await get_premium_listing(listing_id, partner_id)
     
     return listing_to_public_response(listing)
 
@@ -394,8 +427,21 @@ async def update_listing_offering(
     offering_data: OfferingUpdateRequest,
     current_user: dict = Depends(require_partner)
 ):
-    """Update a specific offering."""
+    """Update a specific offering - reverts to PENDING if approved."""
     partner_id = current_user["partnerId"]
+    
+    # Get current listing status
+    from app.db.mongodb import get_database
+    db = get_database()
+    current_listing = await db.premium_listings.find_one({
+        "_id": ObjectId(listing_id),
+        "partnerId": ObjectId(partner_id)
+    })
+    
+    if not current_listing:
+        raise HTTPException(status_code=404, detail="Listing not found")
+    
+    was_approved = current_listing.get("verificationStatus") in ["APPROVED", "APPROVED_VERIFIED"]
     
     listing = await update_offering(
         listing_id=listing_id,
@@ -403,6 +449,23 @@ async def update_listing_offering(
         offering_type=offering_type,
         offering_data=offering_data.model_dump(exclude_unset=True)
     )
+    
+    # If was approved, revert to PENDING
+    if was_approved:
+        from datetime import datetime
+        await db.premium_listings.update_one(
+            {"_id": ObjectId(listing_id)},
+            {
+                "$set": {
+                    "verificationStatus": "PENDING",
+                    "isPublished": False,
+                    "wasReEdited": True,
+                    "reEditedAt": datetime.utcnow(),
+                    "adminNotes": f"Listing edited by partner on {datetime.now().isoformat()} - Requires re-approval"
+                }
+            }
+        )
+        listing = await get_premium_listing(listing_id, partner_id)
     
     return listing_to_public_response(listing)
 
@@ -566,8 +629,21 @@ async def update_listing_basic_info(
     basic_info: dict,
     current_user: dict = Depends(require_partner)
 ):
-    """Update listing basic information (step 1 of wizard)."""
+    """Update listing basic information (step 1 of wizard) - reverts to PENDING if approved."""
     partner_id = current_user["partnerId"]
+    
+    # Get current listing status
+    from app.db.mongodb import get_database
+    db = get_database()
+    current_listing = await db.premium_listings.find_one({
+        "_id": ObjectId(listing_id),
+        "partnerId": ObjectId(partner_id)
+    })
+    
+    if not current_listing:
+        raise HTTPException(status_code=404, detail="Listing not found")
+    
+    was_approved = current_listing.get("verificationStatus") in ["APPROVED", "APPROVED_VERIFIED"]
     
     # Extract basic info fields
     update_data = {
@@ -589,6 +665,23 @@ async def update_listing_basic_info(
         update_data=update_data
     )
     
+    # If was approved, revert to PENDING
+    if was_approved:
+        from datetime import datetime
+        await db.premium_listings.update_one(
+            {"_id": ObjectId(listing_id)},
+            {
+                "$set": {
+                    "verificationStatus": "PENDING",
+                    "isPublished": False,
+                    "wasReEdited": True,
+                    "reEditedAt": datetime.utcnow(),
+                    "adminNotes": f"Listing edited by partner on {datetime.now().isoformat()} - Requires re-approval"
+                }
+            }
+        )
+        listing = await get_premium_listing(listing_id, partner_id)
+    
     return listing_to_public_response(listing)
 
 
@@ -598,8 +691,21 @@ async def update_listing_location(
     location_data: dict,
     current_user: dict = Depends(require_partner)
 ):
-    """Update listing location information (step 3 of wizard)."""
+    """Update listing location information (step 3 of wizard) - reverts to PENDING if approved."""
     partner_id = current_user["partnerId"]
+    
+    # Get current listing status
+    from app.db.mongodb import get_database
+    db = get_database()
+    current_listing = await db.premium_listings.find_one({
+        "_id": ObjectId(listing_id),
+        "partnerId": ObjectId(partner_id)
+    })
+    
+    if not current_listing:
+        raise HTTPException(status_code=404, detail="Listing not found")
+    
+    was_approved = current_listing.get("verificationStatus") in ["APPROVED", "APPROVED_VERIFIED"]
     
     # Extract location fields
     update_data = {
@@ -629,6 +735,23 @@ async def update_listing_location(
         partner_id=partner_id,
         update_data=update_data
     )
+    
+    # If was approved, revert to PENDING
+    if was_approved:
+        from datetime import datetime
+        await db.premium_listings.update_one(
+            {"_id": ObjectId(listing_id)},
+            {
+                "$set": {
+                    "verificationStatus": "PENDING",
+                    "isPublished": False,
+                    "wasReEdited": True,
+                    "reEditedAt": datetime.utcnow(),
+                    "adminNotes": f"Listing edited by partner on {datetime.now().isoformat()} - Requires re-approval"
+                }
+            }
+        )
+        listing = await get_premium_listing(listing_id, partner_id)
     
     return listing_to_public_response(listing)
 
@@ -667,80 +790,6 @@ async def submit_listing(
     }
 
 
-# Additional endpoints for listing builder
-@router.put("/listings/{listing_id}/basic-info")
-async def update_listing_basic_info(
-    listing_id: str,
-    basic_info: dict,
-    current_user: dict = Depends(require_partner)
-):
-    """Update listing basic information (step 1 of wizard)."""
-    partner_id = current_user["partnerId"]
-    
-    # Extract basic info fields
-    update_data = {
-        "displayName": basic_info.get("displayName"),
-        "overview": basic_info.get("overview"),
-        "locality": basic_info.get("locality"),
-        "city": basic_info.get("city"),
-        "amenities": basic_info.get("amenities"),
-        "accessHours": basic_info.get("accessHours"),
-        "weekendAccess": basic_info.get("weekendAccess")
-    }
-    
-    # Remove None values
-    update_data = {k: v for k, v in update_data.items() if v is not None}
-    
-    listing = await update_premium_listing(
-        listing_id=listing_id,
-        partner_id=partner_id,
-        update_data=update_data
-    )
-    
-    return listing_to_public_response(listing)
-
-
-@router.put("/listings/{listing_id}/location")
-async def update_listing_location(
-    listing_id: str,
-    location_data: dict,
-    current_user: dict = Depends(require_partner)
-):
-    """Update listing location information (step 3 of wizard)."""
-    partner_id = current_user["partnerId"]
-    
-    # Extract location fields
-    update_data = {
-        "locality": location_data.get("locality"),
-        "city": location_data.get("city"),
-        "approximateCoordinates": location_data.get("approximateCoordinates"),
-        "accessHours": location_data.get("accessHours"),
-        "customAccessHours": location_data.get("customAccessHours"),
-        "weekendAccess": location_data.get("weekendAccess"),
-        "twentyFourSevenAccess": location_data.get("twentyFourSevenAccess"),
-        "nearMetro": location_data.get("nearMetro"),
-        "metroDetails": location_data.get("metroDetails"),
-        "parking": location_data.get("parking"),
-        "parkingNotes": location_data.get("parkingNotes"),
-        "powerBackup": location_data.get("powerBackup"),
-        "internetSpeedMbps": location_data.get("internetSpeedMbps"),
-        "wifiDetails": location_data.get("wifiDetails"),
-        "houseRules": location_data.get("houseRules"),
-        "specialInstructions": location_data.get("specialInstructions")
-    }
-    
-    # Remove None values
-    update_data = {k: v for k, v in update_data.items() if v is not None}
-    
-    listing = await update_premium_listing(
-        listing_id=listing_id,
-        partner_id=partner_id,
-        update_data=update_data
-    )
-    
-    return listing_to_public_response(listing)
-
-
 @router.put("/listings/{listing_id}/offerings/{offering_type}/photos/reorder")
 async def reorder_photos(
     listing_id: str,
@@ -766,30 +815,40 @@ async def save_listing(
     listing_id: str,
     current_user: dict = Depends(require_partner)
 ):
-    """Save listing (sets status to pending)."""
+    """Save listing (sets status to pending, even for approved listings being re-edited)."""
     partner_id = current_user["partnerId"]
     
     # Get listing to verify ownership
     listing = await get_premium_listing(listing_id, partner_id)
     
-    # Update status to pending if not already approved
-    if listing.get("verificationStatus") not in ["APPROVED", "APPROVED_VERIFIED"]:
-        from app.db.mongodb import get_database
-        from datetime import datetime
-        db = get_database()
-        await db.premium_listings.update_one(
-            {"_id": ObjectId(listing_id)},
-            {
-                "$set": {
-                    "verificationStatus": "PENDING",
-                    "updatedAt": datetime.utcnow()
-                }
-            }
-        )
+    # Always update status to PENDING and unpublish when saving edits
+    # This ensures that any edits require admin re-approval
+    from app.db.mongodb import get_database
+    from datetime import datetime
+    db = get_database()
+    
+    # If listing was approved, mark it as PENDING and unpublish
+    was_approved = listing.get("verificationStatus") in ["APPROVED", "APPROVED_VERIFIED"]
+    
+    update_data = {
+        "verificationStatus": "PENDING",
+        "updatedAt": datetime.utcnow()
+    }
+    
+    # If it was approved, also unpublish it until admin re-approves
+    if was_approved:
+        update_data["isPublished"] = False
+        update_data["adminNotes"] = f"Listing edited by partner on {datetime.now().isoformat()} - Requires re-approval"
+    
+    await db.premium_listings.update_one(
+        {"_id": ObjectId(listing_id)},
+        {"$set": update_data}
+    )
     
     return {
         "ok": True,
-        "message": "Listing saved successfully"
+        "message": "Listing saved successfully. Status changed to pending for admin re-approval." if was_approved else "Listing saved successfully",
+        "wasApproved": was_approved
     }
 
 

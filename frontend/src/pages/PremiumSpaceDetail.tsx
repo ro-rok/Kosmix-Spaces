@@ -24,6 +24,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { EnquiryForm } from "@/components/EnquiryForm";
 import { VisitRequestForm } from "@/components/VisitRequestForm";
+import { GoogleMap } from "@/components/GoogleMap";
 import { useListingDetail } from "@/hooks/useApi";
 import { buildWhatsAppLink, buildCallLink } from "@/lib/whatsapp";
 import { formatPrice } from "@/lib/price";
@@ -569,16 +570,12 @@ export default function PremiumSpaceDetail() {
                       </div>
                     </div>
                     
-                    {/* Approximate Map Placeholder */}
-                    <div className="aspect-[16/9] bg-muted rounded-lg flex items-center justify-center">
-                      <div className="text-center">
-                        <MapPin className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                        <p className="text-sm text-muted-foreground">Approximate location</p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Exact address shared after enquiry
-                        </p>
-                      </div>
-                    </div>
+                    {/* Google Maps - Approximate Location */}
+                    <GoogleMap
+                      locality={listing.locality}
+                      city={listing.city}
+                      approximateCoordinates={listing.approximateCoordinates}
+                    />
 
                     {/* Location Features */}
                     <div className="grid gap-3 sm:grid-cols-2">

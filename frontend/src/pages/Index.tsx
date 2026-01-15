@@ -176,6 +176,11 @@ const testimonials = [
                             )}
                           </SelectItem>
                         ))}
+                        {selectedCity && (
+                          <SelectItem value="other-locality" className="border-t border-border mt-1 pt-2">
+                            <span className="text-muted-foreground">Other (Not Listed)</span>
+                          </SelectItem>
+                        )}
                       </SelectContent>
                     </Select>
                   </div>

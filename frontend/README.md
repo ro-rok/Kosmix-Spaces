@@ -33,6 +33,25 @@ Verified workspace listings platform for Delhi.
 
 ## Configuration
 
+### Environment Variables
+Create a `.env.local` file in the `frontend` directory:
+```bash
+# API Configuration
+VITE_API_BASE_URL=http://localhost:8000
+
+# Google Maps API Key (required for location maps)
+VITE_GOOGLE_MAPS_API_KEY=your_google_maps_api_key_here
+```
+
+**Getting a Google Maps API Key:**
+1. Go to [Google Cloud Console](https://console.cloud.google.com/google/maps-apis)
+2. Create a new project or select an existing one
+3. Enable "Maps JavaScript API" and "Geocoding API"
+4. Create an API key in Credentials
+5. Add the key to your `.env.local` file
+
+See [GOOGLE_MAPS_SETUP.md](../GOOGLE_MAPS_SETUP.md) for detailed setup instructions.
+
 ### Admin Access
 Edit `src/config/admin.ts`:
 - `ADMIN_ENABLED`: Set to `true` to enable admin area

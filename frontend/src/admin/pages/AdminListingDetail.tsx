@@ -31,11 +31,13 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { useAdminPremiumListing, useApprovePremiumListing, useNeedsInfoPremiumListing, useRejectPremiumListing } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { ApprovalWarningDialog } from "@/components/ApprovalWarningDialog";
 
 export function AdminListingDetail() {
   const { listingId } = useParams<{ listingId: string }>();
   const [notes, setNotes] = useState("");
   const [reason, setReason] = useState("");
+  const [showApprovalWarning, setShowApprovalWarning] = useState(false);
 
   // Get the premium listing
   const { data: listing, isLoading, error } = useAdminPremiumListing(listingId!);
@@ -43,8 +45,15 @@ export function AdminListingDetail() {
   const needsInfoMutation = useNeedsInfoPremiumListing();
   const rejectMutation = useRejectPremiumListing();
 
+  const handleApproveClick = () => {
+    // Show warning dialog before approving
+    setShowApprovalWarning(true);
+  };
+
   const handleApprove = async () => {
     if (!listing) return;
+    
+    setShowApprovalWarning(false);
     
     try {
       await approveMutation.mutateAsync({ 
@@ -147,7 +156,15 @@ export function AdminListingDetail() {
           </Link>
         </Button>
         <div className="flex-1">
-          <h1 className="font-display text-2xl font-bold">{listing.displayName}</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="font-display text-2xl font-bold">{listing.displayName}</h1>
+            {(listing as any).wasReEdited && (
+              <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-300">
+                <AlertCircle className="h-3 w-3 mr-1" />
+                Re-edited
+              </Badge>
+            )}
+          </div>
           <p className="text-muted-foreground">{listing.locality}, {listing.city}</p>
           <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
             <div className="flex items-center gap-1">
@@ -162,6 +179,12 @@ export function AdminListingDetail() {
               <Camera className="h-4 w-4" />
               {totalPhotos} photos
             </div>
+            {(listing as any).reEditedAt && (
+              <div className="flex items-center gap-1 text-yellow-600">
+                <Clock className="h-4 w-4" />
+                Edited: {new Date((listing as any).reEditedAt).toLocaleDateString()}
+              </div>
+            )}
           </div>
         </div>
         <StatusBadge status={listing.verificationStatus} />
@@ -506,6 +529,17 @@ export function AdminListingDetail() {
               <CardHeader>
                 <CardTitle>Admin Actions</CardTitle>
                 <p className="text-sm text-muted-foreground">Current Status: {listing.verificationStatus}</p>
+                {(listing as any).wasReEdited && (
+                  <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <div className="flex items-start gap-2">
+                      <AlertCircle className="h-4 w-4 text-yellow-600 mt-0.5" />
+                      <div className="text-sm text-yellow-800">
+                        <p className="font-semibold">Listing was re-edited</p>
+                        <p>This listing was previously approved but has been edited by the partner. Please review all changes carefully before re-approving.</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </CardHeader>
               <CardContent className="space-y-4">
                 {/* Approve */}
@@ -519,7 +553,7 @@ export function AdminListingDetail() {
                     rows={3}
                   />
                   <Button 
-                    onClick={handleApprove}
+                    onClick={handleApproveClick}
                     disabled={approveMutation.isPending}
                     className="w-full"
                     variant="default"
@@ -587,6 +621,15 @@ export function AdminListingDetail() {
           )}
         </div>
       </div>
+
+      {/* Approval Warning Dialog */}
+      <ApprovalWarningDialog
+        open={showApprovalWarning}
+        onOpenChange={setShowApprovalWarning}
+        onConfirm={handleApprove}
+        isLoading={approveMutation.isPending}
+        listingName={listing.displayName}
+      />
     </div>
   );
 }

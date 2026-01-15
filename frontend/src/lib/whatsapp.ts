@@ -22,9 +22,15 @@ export function buildWhatsAppLink(params: WhatsAppMessageParams = {}): string {
   let message = "Hi Kosmix Spaces! I'm looking for workspace";
   
   if (listingName || locality) {
-    message += listingName 
-      ? ` (interested in: ${listingName})` 
-      : ` in ${locality}`;
+    if (listingName) {
+      message += ` (interested in: ${listingName})`;
+    } else if (locality) {
+      // Handle "other-locality" specially
+      const localityText = locality === "other-locality" 
+        ? "other locality (not currently listed)" 
+        : locality;
+      message += ` in ${localityText}`;
+    }
   }
   
   message += ".\n\n";

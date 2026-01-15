@@ -219,8 +219,20 @@ export function ListingBuilder({ listingId, isEdit = false }: ListingBuilderProp
       const listingData = mapFormDataToBackend(formData);
       
       if (actualIsEdit && actualListingId) {
-        await updateListingMutation.mutateAsync({ listingId: actualListingId, data: listingData });
-        toast.success('Listing saved successfully');
+        // Check if listing was previously approved
+        const wasApproved = existingListing?.verificationStatus === 'APPROVED' || 
+                           existingListing?.verificationStatus === 'APPROVED_VERIFIED';
+        
+        const result = await updateListingMutation.mutateAsync({ listingId: actualListingId, data: listingData });
+        
+        // Show different message if listing was approved
+        if (wasApproved) {
+          toast.info('Listing saved. Status changed to PENDING - Requires admin re-approval.', {
+            duration: 5000,
+          });
+        } else {
+          toast.success('Listing saved successfully');
+        }
       } else {
         const result = await createListingMutation.mutateAsync(listingData);
         toast.success('Listing saved successfully');
@@ -270,9 +282,20 @@ export function ListingBuilder({ listingId, isEdit = false }: ListingBuilderProp
       };
 
       if (actualIsEdit && actualListingId) {
+        // Check if listing was previously approved
+        const wasApproved = existingListing?.verificationStatus === 'APPROVED' || 
+                           existingListing?.verificationStatus === 'APPROVED_VERIFIED';
+        
         // For editing existing listing, just submit for review
         await submitExistingListingMutation.mutateAsync(actualListingId);
-        toast.success('Listing submitted for approval');
+        
+        if (wasApproved) {
+          toast.success('Listing re-submitted for approval. It will be reviewed by our team.', {
+            duration: 5000,
+          });
+        } else {
+          toast.success('Listing submitted for approval');
+        }
         navigate('/partner/listings');
       } else {
         // For new listings, use the complete submit endpoint

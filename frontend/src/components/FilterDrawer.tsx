@@ -54,12 +54,16 @@ export function FilterDrawer({ filters, onChange, onClear }: FilterDrawerProps) 
   const hasActiveFilters = activeCount > 0;
 
   // Convert localities to options format, filtered by selected cities
-  const localityOptions = localities
-    .filter(loc => filters.city.includes(loc.city))
-    .map(loc => ({
-      value: loc.id,
-      label: loc.name
-    }));
+  const localityOptions = [
+    ...localities
+      .filter(loc => filters.city.includes(loc.city))
+      .map(loc => ({
+        value: loc.id,
+        label: loc.name
+      })),
+    // Add "Other" option at the end
+    { value: 'other-locality', label: 'Other (Not Listed)' }
+  ];
 
   // Convert budget bands to options format
   const budgetOptions = Object.entries(budgetBandLabels).map(([value, label]) => ({

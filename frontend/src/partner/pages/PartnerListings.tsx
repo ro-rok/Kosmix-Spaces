@@ -123,11 +123,15 @@ export function PartnerListings() {
                     </Button>
                     {(listing.verificationStatus === "NEEDS_INFO" || 
                       listing.verificationStatus === "PENDING_REVIEW" ||
-                      listing.verificationStatus === "REJECTED") && (
+                      listing.verificationStatus === "REJECTED" ||
+                      listing.verificationStatus === "APPROVED" ||
+                      listing.verificationStatus === "APPROVED_VERIFIED") && (
                       <Button asChild size="sm" className="flex-1 btn-premium">
                         <Link to={`/partner/listings/${listing.listingId}?edit=true`}>
                           <Edit className="h-4 w-4" />
-                          {listing.verificationStatus === "NEEDS_INFO" ? "Edit & Resubmit" : "Edit"}
+                          {listing.verificationStatus === "NEEDS_INFO" ? "Edit & Resubmit" : 
+                           (listing.verificationStatus === "APPROVED" || listing.verificationStatus === "APPROVED_VERIFIED") ? "Re-edit" :
+                           "Edit"}
                         </Link>
                       </Button>
                     )}
@@ -197,7 +201,9 @@ export function PartnerListings() {
                         </Button>
                         {(listing.verificationStatus === "NEEDS_INFO" || 
                           listing.verificationStatus === "PENDING_REVIEW" ||
-                          listing.verificationStatus === "REJECTED") && (
+                          listing.verificationStatus === "REJECTED" ||
+                          listing.verificationStatus === "APPROVED" ||
+                          listing.verificationStatus === "APPROVED_VERIFIED") && (
                           <Button variant="ghost" size="icon-sm" asChild className="btn-premium">
                             <Link to={`/partner/listings/${listing.listingId}?edit=true`}>
                               <Edit className="h-4 w-4" />

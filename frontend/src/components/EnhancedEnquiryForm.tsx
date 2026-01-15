@@ -260,7 +260,8 @@ export function EnhancedEnquiryForm({
                   ...localities.map(loc => ({
                     value: loc.id,
                     label: loc.name
-                  }))
+                  })),
+                  { value: "other-locality", label: "Other (Not Listed)" }
                 ]}
               />
             )}

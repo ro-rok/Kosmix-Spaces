@@ -110,11 +110,13 @@ export function PartnerListingDetail() {
   const offeringPhotosCount = enabledOfferings.reduce((total, [_, offering]: [string, any]) => total + (offering?.photos?.length || 0), 0);
   const totalPhotos = heroPhotosCount + offeringPhotosCount;
 
-  // Check if partner can edit
+  // Check if partner can edit (including approved listings for re-editing)
   const canEdit = listing.verificationStatus === 'NEEDS_INFO' || 
                   listing.verificationStatus === 'PENDING_REVIEW' ||
                   listing.verificationStatus === 'PENDING' ||
                   listing.verificationStatus === 'REJECTED' ||
+                  listing.verificationStatus === 'APPROVED' ||
+                  listing.verificationStatus === 'APPROVED_VERIFIED' ||
                   listing.status === 'pending';
 
   return (
@@ -173,7 +175,9 @@ export function PartnerListingDetail() {
           {canEdit && (
             <Button onClick={() => navigate(`/partner/listings/${id}?edit=true`)}>
               <Edit className="h-4 w-4" />
-              {listing.verificationStatus === 'NEEDS_INFO' ? 'Edit & Resubmit' : 'Edit'}
+              {listing.verificationStatus === 'NEEDS_INFO' ? 'Edit & Resubmit' : 
+               (listing.verificationStatus === 'APPROVED' || listing.verificationStatus === 'APPROVED_VERIFIED') ? 'Re-edit Listing' : 
+               'Edit'}
             </Button>
           )}
         </div>
@@ -182,6 +186,29 @@ export function PartnerListingDetail() {
       {/* Admin Notes Panel - Show if needs info or rejected */}
       {(listing.verificationStatus === 'NEEDS_INFO' || listing.verificationStatus === 'REJECTED') && listing.adminNotes && (
         <AdminNotesPanel listing={listing} />
+      )}
+
+      {/* Info Banner for Approved Listings */}
+      {(listing.verificationStatus === 'APPROVED' || listing.verificationStatus === 'APPROVED_VERIFIED') && (
+        <Card className="border-blue-200 bg-blue-50">
+          <CardContent className="pt-6">
+            <div className="flex items-start gap-3">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100">
+                <CheckCircle className="h-5 w-5 text-blue-600" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-blue-900 mb-1">Listing is Live</h3>
+                <p className="text-sm text-blue-800">
+                  Your listing is approved and publicly visible. You can still edit it if needed.
+                </p>
+                <p className="text-sm text-blue-700 mt-2 font-medium">
+                  <AlertCircle className="h-4 w-4 inline mr-1" />
+                  Note: If you make any edits, your listing status will change to PENDING and it will be unpublished until an admin re-approves it.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       <div className="grid gap-6 lg:grid-cols-3">

@@ -5,10 +5,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { MapPin, Shield, Clock, Car, Zap, Wifi } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { MapPin, Shield, Clock, Car, Zap, Wifi, Loader2 } from "lucide-react";
 import { LocationData } from "@/types/models";
 import { useLocalities } from "@/hooks/useApi";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
+import { GoogleMap } from "@/components/GoogleMap";
 
 interface LocationStepProps {
   data: LocationData;
@@ -39,6 +42,7 @@ export function LocationStep({ data, onChange, errors, disabled = false }: Locat
   const { data: localitiesData } = useLocalities();
   const localities = localitiesData?.localities || [];
   const localitiesByCity = localitiesData?.by_city || {};
+  const { toast } = useToast();
   
   // Available cities
   const cities = ["Delhi", "Gurugram", "Noida"];
@@ -49,6 +53,7 @@ export function LocationStep({ data, onChange, errors, disabled = false }: Locat
   // State for custom locality
   const [isCustomLocality, setIsCustomLocality] = useState(false);
   const [customLocalityValue, setCustomLocalityValue] = useState("");
+  const [isGeocoding, setIsGeocoding] = useState(false);
 
   const handleInputChange = (field: keyof LocationData, value: any) => {
     onChange({ [field]: value });
@@ -69,6 +74,87 @@ export function LocationStep({ data, onChange, errors, disabled = false }: Locat
   const handleCustomLocalityChange = (value: string) => {
     setCustomLocalityValue(value);
     handleInputChange('locality', value);
+  };
+
+  // Geocode address to get coordinates
+  const handleGeocodeAddress = async () => {
+    if (!data.exactAddress || !data.exactAddress.trim()) {
+      toast({
+        title: "Address Required",
+        description: "Please enter an address first",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsGeocoding(true);
+
+    try {
+      // Load Google Maps if not already loaded
+      if (!window.google?.maps) {
+        const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+        
+        if (!apiKey) {
+          toast({
+            title: "API Key Missing",
+            description: "Google Maps API key is not configured",
+            variant: "destructive",
+          });
+          setIsGeocoding(false);
+          return;
+        }
+
+        await new Promise<void>((resolve, reject) => {
+          const script = document.createElement('script');
+          script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
+          script.async = true;
+          script.defer = true;
+          script.onload = () => resolve();
+          script.onerror = () => reject(new Error('Failed to load Google Maps'));
+          document.head.appendChild(script);
+        });
+      }
+
+      const geocoder = new window.google.maps.Geocoder();
+      
+      geocoder.geocode({ address: data.exactAddress }, (results, status) => {
+        if (status === 'OK' && results && results[0]) {
+          const location = results[0].geometry.location;
+          const lat = location.lat();
+          const lng = location.lng();
+
+          // Round to 2 decimal places for privacy
+          const roundedLat = Math.round(lat * 100) / 100;
+          const roundedLng = Math.round(lng * 100) / 100;
+
+          handleInputChange('approximateCoordinates', {
+            lat: roundedLat,
+            lng: roundedLng
+          });
+
+          toast({
+            title: "Address Geocoded",
+            description: `Coordinates: ${roundedLat}, ${roundedLng} (rounded for privacy)`,
+          });
+        } else {
+          console.error('Geocoding failed:', status);
+          toast({
+            title: "Geocoding Failed",
+            description: "Unable to find coordinates for this address. Please try a more specific address or enter coordinates manually.",
+            variant: "destructive",
+          });
+        }
+        setIsGeocoding(false);
+      });
+    } catch (error) {
+      console.error('Geocoding error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to geocode address. Please try again.",
+        variant: "destructive",
+      });
+      setIsGeocoding(false);
+    }
   };
 
   // Initialize custom locality state based on existing data
@@ -196,14 +282,56 @@ export function LocationStep({ data, onChange, errors, disabled = false }: Locat
           </div>
         )}
 
+        {/* Full Address with Auto-Geocoding */}
+        <div className="space-y-2">
+          <Label htmlFor="exactAddress">
+            Full Address (For Internal Use Only)
+          </Label>
+          <Textarea
+            id="exactAddress"
+            value={data.exactAddress || ''}
+            onChange={(e) => handleInputChange('exactAddress', e.target.value)}
+            placeholder="e.g., Sri Aurobindo Marg, Block Q, Green Park Extension, Green Park, New Delhi, Delhi 110016"
+            className="min-h-[80px]"
+            disabled={disabled}
+          />
+          <p className="text-xs text-muted-foreground">
+            This address will NOT be shown publicly. It's used internally and for generating map location. 
+            Only locality will be displayed to customers.
+          </p>
+        </div>
+
         {/* Approximate Coordinates (Optional) */}
         <div className="space-y-4">
           <div>
             <Label>Approximate Location (Optional)</Label>
             <p className="text-xs text-muted-foreground mt-1">
               Provide approximate coordinates for better map display. These will be rounded for privacy.
+              You can also geocode from the address above.
             </p>
           </div>
+          
+          {data.exactAddress && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleGeocodeAddress}
+              disabled={disabled || isGeocoding}
+              className="w-full sm:w-auto"
+            >
+              {isGeocoding ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Geocoding...
+                </>
+              ) : (
+                <>
+                  <MapPin className="mr-2 h-4 w-4" />
+                  Geocode Address
+                </>
+              )}
+            </Button>
+          )}
           
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -246,8 +374,23 @@ export function LocationStep({ data, onChange, errors, disabled = false }: Locat
           </div>
           
           <p className="text-xs text-muted-foreground">
-            Coordinates will be rounded to 2 decimal places for privacy protection
+            Coordinates will be rounded to 2 decimal places for privacy protection. Use the "Geocode Address" button to automatically get coordinates from your address.
           </p>
+
+          {/* Map Preview */}
+          {data.locality && data.city && (data.approximateCoordinates?.lat || data.exactAddress) && (
+            <div className="space-y-2">
+              <Label>Location Preview</Label>
+              <GoogleMap
+                locality={data.locality}
+                city={data.city}
+                approximateCoordinates={data.approximateCoordinates}
+              />
+              <p className="text-xs text-muted-foreground">
+                This is how the location will appear to customers (approximate area, not exact address)
+              </p>
+            </div>
+          )}
         </div>
       </div>
 

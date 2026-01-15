@@ -313,6 +313,9 @@ export function EnquiryForm({ listingSlug, listingName, locality, source = "cont
                       {loc.name}
                     </SelectItem>
                   ))}
+                  <SelectItem value="other-locality" className="border-t border-border mt-1 pt-2">
+                    <span className="text-muted-foreground">Other (Not Listed)</span>
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
