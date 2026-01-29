@@ -74,7 +74,8 @@ async def create_indexes():
     await safe_create_index(db.localities, "cityId")
     await safe_create_index(db.localities, "status")
     await safe_create_index(db.localities, "name")
-    await safe_create_index(db.localities, [("cityId", 1), ("status", 1)])
+    await safe_create_index(db.localities, [("cityId", 1), ("status", 1), ("name", 1)])
+    await safe_create_index(db.localities, [("name", 1), ("cityId", 1)], unique=True)  # Prevent duplicates
     await safe_create_index(db.localities, [("popular", -1), ("listingCount", -1)])
     
     # Verifications indexes
@@ -90,11 +91,17 @@ async def create_indexes():
     await safe_create_index(db.analytics_events, "listingId")
     await safe_create_index(db.analytics_events, "partnerId")
     await safe_create_index(db.analytics_events, "locality")
-    await safe_create_index(db.analytics_events, [("eventName", 1), ("timestamp", -1)])
+    await safe_create_index(db.analytics_events, "path")
+    # Composite indexes for common query patterns
+    await safe_create_index(db.analytics_events, [("timestamp", -1), ("eventName", 1)])
+    await safe_create_index(db.analytics_events, [("sessionId", 1), ("timestamp", -1)])
+    await safe_create_index(db.analytics_events, [("listingId", 1), ("timestamp", -1)])
+    await safe_create_index(db.analytics_events, [("partnerId", 1), ("timestamp", -1)])
+    await safe_create_index(db.analytics_events, [("userRole", 1), ("timestamp", -1)])
+    await safe_create_index(db.analytics_events, [("path", 1), ("timestamp", -1)])
     await safe_create_index(db.analytics_events, [("listingId", 1), ("eventName", 1), ("timestamp", -1)])
     await safe_create_index(db.analytics_events, [("partnerId", 1), ("eventName", 1), ("timestamp", -1)])
     await safe_create_index(db.analytics_events, [("locality", 1), ("eventName", 1), ("timestamp", -1)])
-    await safe_create_index(db.analytics_events, [("timestamp", -1), ("eventName", 1)])  # For time-based queries
 
     # Design system indexes
     await safe_create_index(db.design_system_config, "environment", unique=True)

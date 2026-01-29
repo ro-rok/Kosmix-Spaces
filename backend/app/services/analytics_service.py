@@ -8,7 +8,8 @@ from bson import ObjectId
 from app.db.mongodb import get_database
 from app.models.analytics import (
     AnalyticsEvent, AnalyticsEventCreate, AnalyticsSummary, PartnerAnalytics,
-    EventName, UserRole, ListingPerformance, LocalityPerformance, PartnerPerformance
+    EventName, UserRole, ListingPerformance, LocalityPerformance, PartnerPerformance,
+    AnalyticsTimeSeries, TimeSeriesDataPoint
 )
 from app.models.partner import PartnerAccount
 
@@ -457,6 +458,145 @@ class AnalyticsService:
         
         top_localities.sort(key=lambda x: x["searches"], reverse=True)
         return top_localities[:limit]
+    
+    async def get_time_series(
+        self,
+        start_date: datetime,
+        end_date: datetime,
+        partner_id: Optional[str] = None,
+        listing_id: Optional[str] = None,
+        granularity: str = "day"  # "day", "week", "month"
+    ) -> AnalyticsTimeSeries:
+        """Get time-series data for charts."""
+        # Build match filter
+        match_filter = {
+            "timestamp": {"$gte": start_date, "$lte": end_date}
+        }
+        if partner_id:
+            match_filter["partnerId"] = partner_id
+        if listing_id:
+            match_filter["listingId"] = listing_id
+        
+        # Determine date truncation unit
+        date_trunc_unit = granularity
+        
+        # Group by date and event type
+        pipeline = [
+            {"$match": match_filter},
+            {
+                "$group": {
+                    "_id": {
+                        "date": {
+                            "$dateToString": {
+                                "format": "%Y-%m-%d" if granularity == "day" else ("%Y-%U" if granularity == "week" else "%Y-%m"),
+                                "date": "$timestamp"
+                            }
+                        },
+                        "eventName": "$eventName"
+                    },
+                    "count": {"$sum": 1}
+                }
+            },
+            {"$sort": {"_id.date": 1}}
+        ]
+        
+        # Execute aggregation
+        cursor = self.events_collection.aggregate(pipeline)
+        results = await cursor.to_list(length=None)
+        
+        # Transform to time-series format
+        date_map: Dict[str, Dict[str, int]] = {}
+        
+        for doc in results:
+            date_str = doc["_id"]["date"]
+            event_name = doc["_id"]["eventName"]
+            count = doc["count"]
+            
+            if date_str not in date_map:
+                date_map[date_str] = {"views": 0, "enquiries": 0, "searches": 0, "clicks": 0}
+            
+            # Map event names to metrics
+            if event_name in [EventName.LISTING_VIEW, EventName.PAGE_VIEW]:
+                date_map[date_str]["views"] += count
+            elif event_name == EventName.ENQUIRY_SUBMIT:
+                date_map[date_str]["enquiries"] += count
+            elif event_name in [EventName.SEARCH_PERFORMED, EventName.EXPLORE_SEARCH]:
+                date_map[date_str]["searches"] += count
+            elif event_name in [EventName.LISTING_CARD_CLICK, EventName.WHATSAPP_CLICK, EventName.CALL_CLICK, EventName.EMAIL_CLICK]:
+                date_map[date_str]["clicks"] += count
+        
+        # Convert to list of TimeSeriesDataPoint
+        data_points = []
+        for date_str, metrics in sorted(date_map.items()):
+            # Parse date string back to datetime
+            try:
+                if granularity == "day":
+                    date_obj = datetime.strptime(date_str, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+                elif granularity == "week":
+                    year, week = date_str.split("-")
+                    # Approximate: first day of week
+                    date_obj = datetime.strptime(f"{year}-W{week}-1", "%Y-W%W-%w").replace(tzinfo=timezone.utc)
+                else:  # month
+                    date_obj = datetime.strptime(date_str, "%Y-%m").replace(tzinfo=timezone.utc)
+            except Exception:
+                continue
+            
+            data_points.append(TimeSeriesDataPoint(
+                date=date_obj,
+                views=metrics["views"],
+                enquiries=metrics["enquiries"],
+                searches=metrics["searches"],
+                clicks=metrics["clicks"]
+            ))
+        
+        return AnalyticsTimeSeries(
+            dataPoints=data_points,
+            startDate=start_date,
+            endDate=end_date
+        )
+    
+    async def get_conversion_funnel(
+        self,
+        start_date: Optional[datetime] = None,
+        end_date: Optional[datetime] = None
+    ) -> Dict[str, int]:
+        """Calculate conversion funnel metrics."""
+        # Match filter
+        match_filter = {}
+        if start_date:
+            match_filter["timestamp"] = {"$gte": start_date}
+        if end_date:
+            if "timestamp" in match_filter:
+                match_filter["timestamp"]["$lte"] = end_date
+            else:
+                match_filter["timestamp"] = {"$lte": end_date}
+        
+        # Aggregate by event type
+        pipeline = [
+            {"$match": match_filter},
+            {
+                "$group": {
+                    "_id": "$eventName",
+                    "count": {"$sum": 1}
+                }
+            }
+        ]
+        
+        event_counts = {}
+        async for doc in self.events_collection.aggregate(pipeline):
+            event_counts[doc["_id"]] = doc["count"]
+        
+        # Map to funnel stages
+        funnel = {
+            "page_views": event_counts.get(EventName.PAGE_VIEW, 0),
+            "listing_views": event_counts.get(EventName.LISTING_VIEW, 0),
+            "enquiries": event_counts.get(EventName.ENQUIRY_SUBMIT, 0),
+            "whatsapp_clicks": event_counts.get(EventName.WHATSAPP_CLICK, 0),
+            "call_clicks": event_counts.get(EventName.CALL_CLICK, 0),
+            "email_clicks": event_counts.get(EventName.EMAIL_CLICK, 0)
+        }
+        
+        return funnel
 
 
 # Global service instance - lazy initialization

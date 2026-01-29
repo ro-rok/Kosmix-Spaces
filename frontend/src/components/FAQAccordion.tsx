@@ -10,7 +10,7 @@ const faqs = [
   {
     question: "How does Kosmix Spaces work?",
     answer:
-      "We help you find verified workspaces in Delhi. Browse our listings, shortlist spaces, and reach out via WhatsApp or call. We'll schedule visits and help you negotiate. No fees for customers.",
+      "We help you find verified workspaces in Delhi. Browse our listings and reach out via WhatsApp or call. We'll schedule visits and help you negotiate. No fees for customers.",
   },
   {
     question: "Do I have to pay Kosmix any fees?",

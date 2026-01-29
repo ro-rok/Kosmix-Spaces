@@ -252,8 +252,20 @@ export const api = {
       }>(`/public/listings?${searchParams}`, {}, cacheKey, 300000);
     },
 
-    getListingBySlug: (slug: string) =>
-      apiRequest<any>(`/public/listings/${slug}`, {}, `premium-listing-${slug}`, 300000),
+    getListingBySlug: (slug: string) => {
+      // Get or create session ID for location reveal
+      let sessionId = sessionStorage.getItem('analytics_session_id');
+      if (!sessionId) {
+        sessionId = `sess_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        sessionStorage.setItem('analytics_session_id', sessionId);
+      }
+      
+      return apiRequest<any>(`/public/listings/${slug}`, {
+        headers: {
+          "X-Session-ID": sessionId
+        }
+      }, `premium-listing-${slug}`, 300000);
+    },
 
     // Leads (Enquiries)
     createLead: (lead: {
@@ -274,7 +286,25 @@ export const api = {
       notes?: string;
       source?: string;
       listingSlug?: string;
-    }) =>
+    }) => {
+      // Get or create session ID
+      let sessionId = sessionStorage.getItem('analytics_session_id');
+      if (!sessionId) {
+        sessionId = `sess_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        sessionStorage.setItem('analytics_session_id', sessionId);
+      }
+      
+      return apiRequest<{ success: boolean; leadId: string; message: string; whatsappDeepLink?: string }>("/public/leads", {
+        method: "POST",
+        body: JSON.stringify(lead),
+        headers: {
+          "X-Session-ID": sessionId
+        }
+      });
+    },
+    
+    // Get related listings
+    getRelatedListings: (slug: string, limit: number = 6) =>
       apiRequest<{
         leadId: string;
         message: string;
@@ -707,6 +737,55 @@ export const api = {
         topLocalities: Array<{ locality: string; searches: number; views: number }>;
         topListings: Array<{ listingId: string; displayName: string; views: number; enquiries: number }>;
       }>(`/analytics/admin${queryString ? `?${queryString}` : ''}`, {}, `admin-analytics-${queryString}`, 300000);
+    },
+
+    // Get time-series analytics
+    getTimeSeries: (params?: {
+      startDate?: string;
+      endDate?: string;
+      partnerId?: string;
+      listingId?: string;
+      granularity?: 'day' | 'week' | 'month';
+    }) => {
+      const searchParams = new URLSearchParams();
+      if (params?.startDate) searchParams.append('start_date', params.startDate);
+      if (params?.endDate) searchParams.append('end_date', params.endDate);
+      if (params?.partnerId) searchParams.append('partner_id', params.partnerId);
+      if (params?.listingId) searchParams.append('listing_id', params.listingId);
+      if (params?.granularity) searchParams.append('granularity', params.granularity);
+      
+      const queryString = searchParams.toString();
+      return apiRequest<{
+        dataPoints: Array<{
+          date: string;
+          views: number;
+          enquiries: number;
+          searches: number;
+          clicks: number;
+        }>;
+        startDate: string;
+        endDate: string;
+      }>(`/analytics/time-series${queryString ? `?${queryString}` : ''}`, {}, `time-series-${queryString}`, 300000);
+    },
+
+    // Get conversion funnel
+    getConversionFunnel: (params?: {
+      startDate?: string;
+      endDate?: string;
+    }) => {
+      const searchParams = new URLSearchParams();
+      if (params?.startDate) searchParams.append('start_date', params.startDate);
+      if (params?.endDate) searchParams.append('end_date', params.endDate);
+      
+      const queryString = searchParams.toString();
+      return apiRequest<{
+        page_views: number;
+        listing_views: number;
+        enquiries: number;
+        whatsapp_clicks: number;
+        call_clicks: number;
+        email_clicks: number;
+      }>(`/analytics/funnel${queryString ? `?${queryString}` : ''}`, {}, `funnel-${queryString}`, 300000);
     },
 
     // Get partner-specific analytics

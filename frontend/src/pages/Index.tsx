@@ -6,7 +6,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ListingCard } from "@/components/ListingCard";
 import { TrustStrip } from "@/components/TrustStrip";
 import { FAQAccordion } from "@/components/FAQAccordion";
-import { ShortlistDrawer } from "@/components/ShortlistDrawer";
 import { StaggerAnimation } from "@/components/StaggerAnimation";
 import { ScrollTriggerAnimation } from "@/components/ScrollTriggerAnimation";
 import { AnimatedButton } from "@/components/AnimatedButton";
@@ -48,6 +47,11 @@ export default function Index() {
   // State for city selection
   const [selectedCity, setSelectedCity] = useState("");
 
+  // Track page view
+  useEffect(() => {
+    trackPageView('home');
+  }, []);
+
   const whatsappLink = buildWhatsAppLink({
     locality: selectedLocality,
     teamSize: selectedTeamSize,
@@ -88,7 +92,7 @@ const testimonials = [
     <>
       <SEO
         title="Verified Coworking Spaces in Delhi, Gurugram, Noida | Kosmix Spaces"
-        description="Find verified coworking spaces across Delhi NCR. Zero brokerage, shortlisted options, site visits arranged. Browse 50+ verified workspaces in prime locations."
+        description="Find verified coworking spaces across Delhi NCR. Zero brokerage, site visits arranged. Browse 50+ verified workspaces in prime locations."
         keywords={[
           "coworking space delhi",
           "coworking space gurugram",
@@ -125,7 +129,7 @@ const testimonials = [
             
             {/* Subhead */}
             <p className="mt-4 text-base text-muted-foreground md:text-lg max-w-2xl mx-auto">
-              Tell us locality + budget band. We'll shortlist verified options and schedule site visits.
+              Tell us locality + budget band. We'll find verified options and schedule site visits.
             </p>
 
             {/* Search Form */}
@@ -485,7 +489,7 @@ const testimonials = [
                 Ready to Find Your Workspace?
               </h2>
               <p className="mx-auto mt-4 max-w-xl opacity-90">
-                WhatsApp us with your requirements and we'll shortlist the best options for you within 3 hours.
+                WhatsApp us with your requirements and we'll find the best options for you within 3 hours.
               </p>
               <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4">
                 <AnimatedButton variant="hero-outline" size="default" asChild intensity="normal" className="w-full sm:w-auto">

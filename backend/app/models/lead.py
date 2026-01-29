@@ -8,7 +8,6 @@ from app.models.common import TimestampMixin, PyObjectId
 LeadStatus = Literal[
     "NEW",
     "QUALIFYING",
-    "SHORTLIST_SENT",
     "VISIT_REQUESTED",
     "VISIT_SCHEDULED",
     "QUOTE_SENT",

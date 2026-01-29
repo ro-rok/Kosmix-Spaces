@@ -1,6 +1,6 @@
 """Enhanced public API routes for premium listings."""
 from typing import Optional, List
-from fastapi import APIRouter, Query, HTTPException
+from fastapi import APIRouter, Query, HTTPException, Request
 from app.services.premium_listing_service import (
     get_premium_listing_by_slug,
     increment_listing_view,
@@ -194,8 +194,9 @@ async def get_enhanced_listings(
 
 
 @router.get("/listings/{slug:path}")
-async def get_enhanced_listing_detail(slug: str):
+async def get_enhanced_listing_detail(slug: str, request: Request):
     """Get enhanced listing detail by slug with analytics tracking."""
+    
     # Find premium listing by slug
     listing = await find_listing_by_slug(slug)
     
@@ -208,17 +209,32 @@ async def get_enhanced_listing_detail(slug: str):
     
     # Note: Removed the check for enabled offerings - approved listings should be accessible
     
+    # Check if user has created an enquiry for this listing
+    enquiry_created = False
+    session_id = request.headers.get("X-Session-ID") or request.cookies.get("session_id")
+    if session_id:
+        # Check if enquiry exists for this listing and session
+        db = get_database()
+        lead = await db.leads.find_one({
+            "listingSlug": slug,
+            "sessionId": session_id
+        })
+        enquiry_created = bool(lead)
+    
     # Increment view count
     await increment_listing_view(str(listing["_id"]))
     
-    return listing_to_public_response(listing)
+    return listing_to_public_response(listing, enquiry_created=enquiry_created)
 
 
 @router.post("/leads", response_model=LeadCreateResponse)
-async def create_enhanced_lead(lead: EnquiryLeadCreate):
+async def create_enhanced_lead(lead: EnquiryLeadCreate, request: Request):
     """Create an enquiry lead with enhanced tracking."""
+    # Get session ID from header or cookie
+    session_id = request.headers.get("X-Session-ID") or request.cookies.get("session_id")
+    
     lead_data = lead.model_dump()
-    created_lead = await create_lead(lead_data)
+    created_lead = await create_lead(lead_data, session_id=session_id)
     
     # If lead is for a specific listing, increment enquiry count
     if lead.listingSlug:
@@ -341,4 +357,54 @@ async def get_featured_listings(limit: int = Query(6, ge=1, le=20)):
     
     return {
         "items": [listing_to_public_response(listing) for listing in listings]
+    }
+
+
+@router.get("/listings/{slug:path}/related")
+async def get_related_listings(slug: str, limit: int = Query(6, ge=1, le=12)):
+    """Get related listings from same locality."""
+    db = get_database()
+    
+    # Find current listing
+    listing = await find_listing_by_slug(slug)
+    if not listing:
+        raise NotFoundError("Listing", slug)
+    
+    locality = listing.get("location", {}).get("locality")
+    city = listing.get("location", {}).get("city", "Delhi")
+    current_listing_id = listing["_id"]
+    
+    # Query same locality listings
+    query_filter = {
+        "isPublished": True,
+        "verificationStatus": "APPROVED_VERIFIED",
+        "location.locality": locality,
+        "location.city": city,
+        "_id": {"$ne": current_listing_id}
+    }
+    
+    # Get listings sorted by popularity
+    cursor = db.premium_listings.find(query_filter).sort([
+        ("viewCount", -1),
+        ("enquiryCount", -1)
+    ]).limit(limit)
+    
+    listings = await cursor.to_list(length=limit)
+    
+    # If not enough results, expand to same city
+    if len(listings) < limit:
+        city_query = {
+            "isPublished": True,
+            "verificationStatus": "APPROVED_VERIFIED",
+            "location.city": city,
+            "_id": {"$nin": [current_listing_id] + [l["_id"] for l in listings]}
+        }
+        additional = await db.premium_listings.find(city_query).sort([
+            ("viewCount", -1)
+        ]).limit(limit - len(listings)).to_list(length=limit - len(listings))
+        listings.extend(additional)
+    
+    return {
+        "items": [listing_to_public_response(l) for l in listings],
+        "total": len(listings)
     }

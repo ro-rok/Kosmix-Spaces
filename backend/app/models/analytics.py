@@ -10,14 +10,21 @@ from .common import PyObjectId, TimestampMixin
 
 class EventName(str, Enum):
     """Supported analytics event types."""
+    PAGE_VIEW = "page_view"
     LISTING_VIEW = "listing_view"
+    LISTING_CARD_CLICK = "listing_card_click"
+    EXPLORE_SEARCH = "explore_search"  # Alias for search_performed
+    SEARCH_PERFORMED = "search_performed"
+    FILTER_CHANGE = "filter_change"  # Alias for filter_applied
+    FILTER_APPLIED = "filter_applied"
     ENQUIRY_SUBMIT = "enquiry_submit"
     WHATSAPP_CLICK = "whatsapp_click"
     CALL_CLICK = "call_click"
-    SEARCH_PERFORMED = "search_performed"
-    FILTER_APPLIED = "filter_applied"
+    EMAIL_CLICK = "email_click"
     PARTNER_SIGNUP = "partner_signup"
+    PARTNER_LOGIN = "partner_login"
     PARTNER_LISTING_SUBMITTED = "partner_listing_submitted"
+    ADMIN_VERIFICATION_ACTION = "admin_verification_action"
 
 
 class UserRole(str, Enum):
@@ -155,3 +162,19 @@ class PartnerPerformance(BaseModel):
     conversionRate: float = 0.0
     signupDate: Optional[datetime] = None
     lastActivity: Optional[datetime] = None
+
+
+class TimeSeriesDataPoint(BaseModel):
+    """Time series data point for analytics charts."""
+    date: datetime
+    views: int = 0
+    enquiries: int = 0
+    searches: int = 0
+    clicks: int = 0
+
+
+class AnalyticsTimeSeries(BaseModel):
+    """Time series analytics data."""
+    dataPoints: List[TimeSeriesDataPoint] = Field(default_factory=list)
+    startDate: datetime
+    endDate: datetime

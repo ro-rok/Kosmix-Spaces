@@ -51,7 +51,6 @@ export interface Lead {
 export type LeadStatus = 
   | "new"
   | "qualifying"
-  | "shortlist_sent"
   | "visit_requested"
   | "visit_scheduled"
   | "quote_sent"
@@ -61,7 +60,6 @@ export type LeadStatus =
 export const leadStatusLabels: Record<LeadStatus, string> = {
   new: "New",
   qualifying: "Qualifying",
-  shortlist_sent: "Shortlist Sent",
   visit_requested: "Visit Requested",
   visit_scheduled: "Visit Scheduled",
   quote_sent: "Quote Sent",

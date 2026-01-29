@@ -82,7 +82,6 @@ export * from './api';
 export * from './utils';
 export * from './analytics';
 export * from './filters';
-export * from './shortlist';
 export * from './whatsapp';
 export * from './constants';
 export * from './assets';

@@ -10,7 +10,7 @@ import { OverlayLoadingAnimation } from "@/components/LoadingAnimation";
 import { Logo } from "@/components/Logo";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
-import { trackPartnerSignup } from "@/lib/analytics";
+import { trackPartnerSignup, trackPartnerLogin } from "@/lib/analytics";
 
 export function PartnerLogin() {
   const navigate = useNavigate();
@@ -51,6 +51,9 @@ export function PartnerLogin() {
       
       // Use the new auth context login method
       login(response.accessToken, 'partner');
+      
+      // Track partner login
+      trackPartnerLogin();
       
       toast.success("Login successful! Redirecting...");
       

@@ -6,7 +6,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 from app.models.analytics import (
     AnalyticsEventCreate, AnalyticsEventBatch, AnalyticsSummary, 
-    PartnerAnalytics, ListingPerformance
+    PartnerAnalytics, ListingPerformance, AnalyticsTimeSeries
 )
 from app.services.analytics_service import get_analytics_service
 from app.core.security import verify_admin_token, verify_partner_token, get_current_partner, get_current_user
@@ -14,6 +14,12 @@ from app.core.errors import AppError
 
 router = APIRouter()
 security = HTTPBearer()
+
+
+@router.options("/events")
+async def options_events():
+    """Handle CORS preflight for events endpoint."""
+    return {"status": "ok"}
 
 
 @router.post("/events", status_code=status.HTTP_201_CREATED)
@@ -197,6 +203,86 @@ async def get_listing_performance(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to fetch listing performance: {str(e)}"
+        )
+
+
+@router.get("/time-series", response_model=AnalyticsTimeSeries)
+async def get_time_series(
+    current_user: dict = Depends(get_current_user),
+    start_date: Optional[datetime] = Query(None),
+    end_date: Optional[datetime] = Query(None),
+    partner_id: Optional[str] = Query(None),
+    listing_id: Optional[str] = Query(None),
+    granularity: str = Query("day", regex="^(day|week|month)$")
+):
+    """
+    Get time-series analytics data for charts.
+    
+    Requires authentication. Partners can only see their own data.
+    """
+    try:
+        # Authorization: partners can only see their own data
+        if current_user.get("role") == "PARTNER":
+            if partner_id and partner_id != current_user.get("partnerId"):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Access denied - partners can only access their own analytics"
+                )
+            # Force partner_id to current partner
+            partner_id = current_user.get("partnerId")
+        
+        # Default to last 30 days
+        if not start_date:
+            start_date = datetime.now(timezone.utc) - timedelta(days=30)
+        if not end_date:
+            end_date = datetime.now(timezone.utc)
+        
+        analytics_service = get_analytics_service()
+        time_series = await analytics_service.get_time_series(
+            start_date, end_date, partner_id, listing_id, granularity
+        )
+        return time_series
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch time-series data: {str(e)}"
+        )
+
+
+@router.get("/funnel")
+async def get_conversion_funnel(
+    current_user: dict = Depends(get_current_user),
+    start_date: Optional[datetime] = Query(None),
+    end_date: Optional[datetime] = Query(None)
+):
+    """
+    Get conversion funnel metrics.
+    
+    Admin can see global funnel, partners see their own funnel.
+    """
+    try:
+        partner_id = None
+        if current_user.get("role") == "PARTNER":
+            partner_id = current_user.get("partnerId")
+        
+        # Default to last 30 days
+        if not start_date:
+            start_date = datetime.now(timezone.utc) - timedelta(days=30)
+        if not end_date:
+            end_date = datetime.now(timezone.utc)
+        
+        analytics_service = get_analytics_service()
+        
+        # For partners, we need to filter by their listings
+        # For now, return global funnel (can be enhanced later)
+        funnel = await analytics_service.get_conversion_funnel(start_date, end_date)
+        return funnel
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch conversion funnel: {str(e)}"
         )
 
 

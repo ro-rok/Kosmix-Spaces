@@ -34,6 +34,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAdminPremiumListings, useApprovePremiumListing, useNeedsInfoPremiumListing, useRejectPremiumListing } from "@/hooks/useAuth";
+import { trackAdminVerificationAction } from "@/lib/analytics";
 import { toast } from "sonner";
 
 const statusOptions = [
@@ -75,6 +76,10 @@ export function AdminListings() {
         listingId, 
         notes: `Approved by admin on ${new Date().toLocaleDateString()}` 
       });
+      
+      // Track admin verification action
+      trackAdminVerificationAction('approve', listingId);
+      
       toast.success(`"${displayName}" has been approved and published`);
     } catch (error: any) {
       toast.error(`Failed to approve listing: ${error.message}`);
@@ -99,6 +104,10 @@ export function AdminListings() {
 
     try {
       await rejectMutation.mutateAsync({ listingId, reason });
+      
+      // Track admin verification action
+      trackAdminVerificationAction('reject', listingId, reason);
+      
       toast.success(`"${displayName}" has been rejected`);
     } catch (error: any) {
       toast.error(`Failed to reject listing: ${error.message}`);

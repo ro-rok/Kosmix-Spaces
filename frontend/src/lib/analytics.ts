@@ -19,14 +19,21 @@ export interface AnalyticsEvent {
 }
 
 export type EventName = 
+  | 'page_view'
   | 'listing_view'
+  | 'listing_card_click'
+  | 'explore_search'
+  | 'search_performed'
+  | 'filter_change'
+  | 'filter_applied'
   | 'enquiry_submit'
   | 'whatsapp_click'
   | 'call_click'
-  | 'search_performed'
-  | 'filter_applied'
+  | 'email_click'
   | 'partner_signup'
-  | 'partner_listing_submitted';
+  | 'partner_login'
+  | 'partner_listing_submitted'
+  | 'admin_verification_action';
 
 export interface EventMetadata {
   // Search-related metadata
@@ -141,6 +148,15 @@ class AnalyticsClient {
     if (this.eventQueue.length >= this.batchSize) {
       this.flush();
     }
+  }
+
+  /**
+   * Track a critical event with immediate flush
+   */
+  trackCritical(eventName: EventName, metadata?: EventMetadata): void {
+    this.track(eventName, metadata);
+    // Flush immediately for critical events
+    this.flush();
   }
 
   /**
@@ -477,5 +493,33 @@ export const trackPartnerListingSubmitted = (listingId?: string, offeringType?: 
     listingId,
     offeringType,
     ...metadata
+  });
+};
+
+export const trackPageView = (pageType: string, metadata?: EventMetadata) => {
+  analytics.track('page_view', { pageType, ...metadata });
+};
+
+export const trackListingCardClick = (listingSlug: string, position: number, metadata?: EventMetadata) => {
+  analytics.track('listing_card_click', {
+    listingSlug,
+    position,
+    ...metadata
+  });
+};
+
+export const trackEmailClick = (listingId?: string, listingSlug?: string, metadata?: EventMetadata) => {
+  analytics.track('email_click', { listingId, listingSlug, ...metadata });
+};
+
+export const trackPartnerLogin = (metadata?: EventMetadata) => {
+  analytics.track('partner_login', metadata);
+};
+
+export const trackAdminVerificationAction = (action: 'approve' | 'reject', listingId: string, reason?: string) => {
+  analytics.trackCritical('admin_verification_action', {
+    action,
+    listingId,
+    reason
   });
 };

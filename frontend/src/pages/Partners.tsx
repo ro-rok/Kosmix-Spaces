@@ -1,7 +1,8 @@
 import { Link } from "react-router-dom";
-import { Building2, Users, TrendingUp, Shield, MessageCircle, BadgeCheck, Clock, Handshake } from "lucide-react";
+import { Building2, Users, TrendingUp, Shield, MessageCircle, BadgeCheck, Clock, Handshake, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { buildWhatsAppLink, buildEmailLink } from "@/lib/whatsapp";
+import { buildWhatsAppLink } from "@/lib/whatsapp";
+import { handleEmailClick } from "@/lib/email";
 import { contactConfig } from "@/config/contact";
 import { SEO } from "@/components/SEO";
 
@@ -217,10 +218,9 @@ export default function Partners() {
                 WhatsApp Us
               </a>
             </Button>
-            <Button variant="outline" size="lg" asChild>
-              <a href={buildEmailLink("Partnership Enquiry")}>
-                Email: {contactConfig.email}
-              </a>
+            <Button variant="outline" size="lg" onClick={() => handleEmailClick("Partnership Enquiry")}>
+              <Mail className="h-5 w-5" />
+              Email: {contactConfig.email}
             </Button>
           </div>
         </div>

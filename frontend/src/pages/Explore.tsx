@@ -15,7 +15,7 @@ import { StaggerAnimation } from "@/components/StaggerAnimation";
 import { SearchFilters } from "@/types/models";
 import { useSearchWithCache } from "@/hooks/useSearchWithCache";
 import { useUrlSync } from "@/hooks/useUrlSync";
-import { trackSearchPerformed, trackFilterApplied } from "@/lib/analytics";
+import { trackSearchPerformed, trackFilterApplied, trackPageView } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
 import { SEO } from "@/components/SEO";
 
@@ -76,6 +76,11 @@ export default function Explore() {
 
   const { items: listings, total, pageSize } = searchData;
   const totalPages = Math.ceil(total / pageSize);
+
+  // Track page view
+  useEffect(() => {
+    trackPageView('explore');
+  }, []);
 
   // Sync URL when filters, sort, or page changes
   useEffect(() => {

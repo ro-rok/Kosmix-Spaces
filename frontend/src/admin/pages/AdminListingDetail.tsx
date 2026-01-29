@@ -33,6 +33,7 @@ import { Separator } from "@/components/ui/separator";
 import { useAdminPremiumListing, useApprovePremiumListing, useNeedsInfoPremiumListing, useRejectPremiumListing, useUpdateListingAvailability } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { ApprovalWarningDialog } from "@/components/ApprovalWarningDialog";
+import { trackAdminVerificationAction } from "@/lib/analytics";
 
 export function AdminListingDetail() {
   const { listingId } = useParams<{ listingId: string }>();
@@ -88,6 +89,10 @@ export function AdminListingDetail() {
         listingId: listing.listingId, 
         notes: notes || `Approved by admin on ${new Date().toLocaleDateString()}` 
       });
+      
+      // Track admin verification action
+      trackAdminVerificationAction('approve', listing.listingId, notes || undefined);
+      
       toast.success("Listing has been approved and published");
       setNotes("");
     } catch (error: any) {
@@ -121,9 +126,13 @@ export function AdminListingDetail() {
 
     try {
       await rejectMutation.mutateAsync({ 
-        listingId: listing.listingId, 
+        listingId: listing.listingId,
         reason: reason.trim() 
       });
+      
+      // Track admin verification action
+      trackAdminVerificationAction('reject', listing.listingId, reason.trim());
+      
       toast.success("Listing has been rejected");
       setReason("");
     } catch (error: any) {

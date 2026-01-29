@@ -28,6 +28,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Listing, budgetBandLabels, workspaceTypeLabels } from "@/types/models";
 import { buildWhatsAppLink, buildCallLink } from "@/lib/whatsapp";
+import { trackListingCardClick } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
 import { getAmenityIcon } from "@/lib/amenity-icons";
 import { AnimatedCard } from "@/components/AnimatedCard";
@@ -112,6 +113,11 @@ export function ListingCard({
 
   // Handle click to scroll to top
   const handleCardClick = () => {
+    // Track listing card click
+    trackListingCardClick(listing.slug, 0, {
+      locality: listing.locality,
+      city: listing.city
+    });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 

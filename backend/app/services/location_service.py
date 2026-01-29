@@ -208,6 +208,10 @@ class LocationService:
     
     async def add_locality(self, request: LocalityRequest) -> Locality:
         """Add a new locality (pending approval)."""
+        # Validate addedBy is set (should be set by route handler)
+        if not request.addedBy:
+            raise ValueError("Partner ID (addedBy) is required")
+        
         # Validate city exists
         city = await self.cities_collection.find_one({"id": request.cityId, "isActive": True})
         if not city:

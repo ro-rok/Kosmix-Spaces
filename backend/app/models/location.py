@@ -72,7 +72,7 @@ class LocalityRequest(BaseModel):
     cityId: str
     metroConnected: bool = False
     metroNote: Optional[str] = None
-    addedBy: str  # Partner ID
+    addedBy: Optional[str] = None  # Partner ID - set in route handler
     
     @validator('name')
     def validate_name(cls, v):

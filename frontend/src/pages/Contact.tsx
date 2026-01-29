@@ -1,7 +1,8 @@
 import { MessageCircle, Phone, Mail, MapPin, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EnquiryForm } from "@/components/EnquiryForm";
-import { buildWhatsAppLink, buildCallLink, buildEmailLink } from "@/lib/whatsapp";
+import { buildWhatsAppLink, buildCallLink } from "@/lib/whatsapp";
+import { handleEmailClick } from "@/lib/email";
 import { contactConfig, transparencyLines } from "@/config/contact";
 import { SEO } from "@/components/SEO";
 
@@ -97,9 +98,9 @@ export default function Contact() {
                 </a>
 
                 {/* Email */}
-                <a
-                  href={buildEmailLink()}
-                  className="flex items-start gap-4 rounded-xl border border-border bg-card p-4 transition-colors hover:border-primary/50 hover:bg-primary/5"
+                <button
+                  onClick={() => handleEmailClick()}
+                  className="flex w-full items-start gap-4 rounded-xl border border-border bg-card p-4 text-left transition-colors hover:border-primary/50 hover:bg-primary/5"
                 >
                   <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-primary/10">
                     <Mail className="h-6 w-6 text-primary" />
@@ -109,7 +110,7 @@ export default function Contact() {
                     <p className="text-sm text-muted-foreground">For detailed enquiries</p>
                     <p className="mt-1 text-sm font-medium text-primary">{contactConfig.email}</p>
                   </div>
-                </a>
+                </button>
               </div>
 
               {/* Additional Info */}

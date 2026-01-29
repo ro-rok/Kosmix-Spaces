@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useLocalities, useCreateLead } from "@/hooks/useApi";
+import { useQueryClient } from "@tanstack/react-query";
 import { budgetBandLabels, workspaceTypeLabels, teamSizeBands } from "@/types/models";
 import { buildWhatsAppLink } from "@/lib/whatsapp";
 import { transparencyLines } from "@/config/contact";
@@ -78,6 +79,7 @@ export function EnquiryForm({ listingSlug, listingName, locality, source = "cont
   
   const { data: localitiesData } = useLocalities();
   const createLead = useCreateLead();
+  const queryClient = useQueryClient();
   const localities = localitiesData?.localities || localitiesData?.flat || [];
 
   const validateForm = (): boolean => {
@@ -126,6 +128,13 @@ export function EnquiryForm({ listingSlug, listingName, locality, source = "cont
       };
 
       const response = await createLead.mutateAsync(leadData);
+      
+      // Mark enquiry as submitted for this listing
+      if (listingSlug) {
+        localStorage.setItem(`enquiry_submitted_${listingSlug}`, 'true');
+        // Refetch listing to get exact address
+        queryClient.invalidateQueries({ queryKey: ['listing', listingSlug] });
+      }
       
       setSubmitted(true);
       toast({

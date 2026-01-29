@@ -471,7 +471,7 @@ def _get_default_offering_title(offering_type: OfferingType) -> str:
     return titles.get(offering_type, offering_type.replace("-", " ").title())
 
 
-def listing_to_public_response(listing: dict) -> dict:
+def listing_to_public_response(listing: dict, enquiry_created: bool = False) -> dict:
     """Convert internal listing to public API response."""
     # Handle missing slugData for legacy listings
     slug_data = listing.get("slugData", {})
@@ -537,9 +537,20 @@ def listing_to_public_response(listing: dict) -> dict:
             "availability": offering.get("availability")
         }
     
-    # Add approximate coordinates if available (privacy-protected)
-    if location.get("approximateCoordinates"):
-        public_listing["approximateCoordinates"] = location["approximateCoordinates"]
+    # Location privacy: only reveal exact address if enquiry was created
+    if enquiry_created:
+        # Reveal exact address after enquiry
+        if location.get("exactAddress"):
+            public_listing["exactAddress"] = location["exactAddress"]
+        # Keep approximate coordinates for map display
+        if location.get("approximateCoordinates"):
+            public_listing["approximateCoordinates"] = location["approximateCoordinates"]
+    else:
+        # Privacy mode: only show locality and approximate coordinates
+        public_listing["exactAddress"] = None
+        # Add approximate coordinates if available (privacy-protected)
+        if location.get("approximateCoordinates"):
+            public_listing["approximateCoordinates"] = location["approximateCoordinates"]
     
     # Add SEO metadata if available
     if listing.get("seoMetadata"):

@@ -25,13 +25,14 @@ import { Separator } from "@/components/ui/separator";
 import { EnquiryForm } from "@/components/EnquiryForm";
 import { VisitRequestForm } from "@/components/VisitRequestForm";
 import { GoogleMap } from "@/components/GoogleMap";
+import { RelatedListings } from "@/components/RelatedListings";
 import { useListingDetail } from "@/hooks/useApi";
 import { buildWhatsAppLink, buildCallLink } from "@/lib/whatsapp";
 import { formatPrice } from "@/lib/price";
 import { offeringTypeLabels, OfferingType } from "@/types/models";
 import { transparencyLines } from "@/config/contact";
 import { cn } from "@/lib/utils";
-import { trackListingView, trackWhatsAppClick, trackCallClick, trackEnquirySubmit } from "@/lib/analytics";
+import { trackListingView, trackWhatsAppClick, trackCallClick, trackEnquirySubmit, trackPageView } from "@/lib/analytics";
 import { SEO, StructuredData } from "@/components/SEO";
 
 // Navigation tabs for scroll-spy
@@ -58,6 +59,7 @@ export default function PremiumSpaceDetail() {
   const [activeTab, setActiveTab] = useState("overview");
   const [expandedOffering, setExpandedOffering] = useState<OfferingType | null>(null);
   const [isCarouselPaused, setIsCarouselPaused] = useState(false);
+  const [enquirySubmitted, setEnquirySubmitted] = useState(false);
   const autoScrollRef = useRef<NodeJS.Timeout | null>(null);
   
   // Refs for scroll-spy
@@ -66,9 +68,22 @@ export default function PremiumSpaceDetail() {
 
   const { data: listing, isLoading, error } = useListingDetail(slug);
 
-  // Track listing view when listing data is loaded
+  // Check localStorage for enquiry status
+  useEffect(() => {
+    if (slug) {
+      const enquiryKey = `enquiry_submitted_${slug}`;
+      const submitted = localStorage.getItem(enquiryKey) === 'true';
+      setEnquirySubmitted(submitted);
+    }
+  }, [slug]);
+
+  // Track page view and listing view when listing data is loaded
   useEffect(() => {
     if (listing && slug) {
+      trackPageView('detail', {
+        listingSlug: slug,
+        locality: listing.locality
+      });
       trackListingView(listing.slug, slug, {
         verificationStatus: listing.verificationStatus,
         locality: listing.locality,
@@ -223,10 +238,10 @@ export default function PremiumSpaceDetail() {
     canonicalUrl: `https://kosmixspaces.in/spaces${listing.slug}`
   };
 
-  // Prepare structured data for rich snippets
+  // Prepare structured data for rich snippets (LocalBusiness schema)
   const structuredData = {
     "@context": "https://schema.org",
-    "@type": "CoworkingSpace",
+    "@type": "LocalBusiness",
     "name": listing.displayName,
     "description": listing.overview,
     "address": {
@@ -235,7 +250,15 @@ export default function PremiumSpaceDetail() {
       "addressRegion": listing.city,
       "addressCountry": "IN"
     },
+    "geo": listing.approximateCoordinates ? {
+      "@type": "GeoCoordinates",
+      "latitude": listing.approximateCoordinates.lat,
+      "longitude": listing.approximateCoordinates.lng
+    } : undefined,
     "image": allPhotos.map(photo => photo.url),
+    "priceRange": listing.budgetBand || "$$",
+    "telephone": "+919555457457",
+    "url": `https://kosmixspaces.in/space/${slug}`,
     "amenityFeature": listing.amenities.map((amenity: string) => ({
       "@type": "LocationFeatureSpecification",
       "name": amenity
@@ -564,9 +587,15 @@ export default function PremiumSpaceDetail() {
                       <MapPin className="h-5 w-5 text-primary mt-0.5" />
                       <div>
                         <p className="font-medium text-foreground">{listing.locality}, {listing.city}</p>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          Exact location shared after enquiry
-                        </p>
+                        {enquirySubmitted && listing.exactAddress ? (
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {listing.exactAddress}
+                          </p>
+                        ) : (
+                          <p className="text-sm text-muted-foreground mt-1">
+                            Exact location will be shared after you submit an enquiry
+                          </p>
+                        )}
                       </div>
                     </div>
                     
@@ -771,6 +800,13 @@ export default function PremiumSpaceDetail() {
           </div>
         </div>
       </div>
+
+      {/* Related Listings */}
+      {listing && (
+        <div className="container py-8">
+          <RelatedListings listingSlug={slug} locality={listing.locality} />
+        </div>
+      )}
 
       {/* Mobile Sticky CTA Bar */}
       <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background/95 backdrop-blur-md p-3 lg:hidden">

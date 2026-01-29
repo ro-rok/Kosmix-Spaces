@@ -34,7 +34,7 @@ def build_whatsapp_link(
     return f"https://wa.me/919876543210?text={message}"  # Replace with actual WhatsApp number
 
 
-async def create_lead(lead_data: dict) -> dict:
+async def create_lead(lead_data: dict, session_id: Optional[str] = None) -> dict:
     """Create a new enquiry lead."""
     db = get_database()
     
@@ -46,6 +46,10 @@ async def create_lead(lead_data: dict) -> dict:
         "createdAt": datetime.utcnow(),
         "updatedAt": datetime.utcnow()
     }
+    
+    # Store sessionId if provided (for location reveal)
+    if session_id:
+        lead_doc["sessionId"] = session_id
     
     result = await db.leads.insert_one(lead_doc)
     lead_doc["_id"] = result.inserted_id

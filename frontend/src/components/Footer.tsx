@@ -2,7 +2,8 @@ import { Link } from "react-router-dom";
 import { MessageCircle, Phone, Mail, MapPin } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { contactConfig, transparencyLines } from "@/config/contact";
-import { buildWhatsAppLink, buildCallLink, buildEmailLink } from "@/lib/whatsapp";
+import { buildWhatsAppLink, buildCallLink } from "@/lib/whatsapp";
+import { handleEmailClick } from "@/lib/email";
 
 export function Footer() {
   return (
@@ -109,13 +110,13 @@ export function Footer() {
                 </a>
               </li>
               <li>
-                <a
-                  href={buildEmailLink()}
+                <button
+                  onClick={() => handleEmailClick()}
                   className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary"
                 >
                   <Mail className="h-4 w-4" />
                   {contactConfig.email}
-                </a>
+                </button>
               </li>
             </ul>
           </div>

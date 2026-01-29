@@ -17,7 +17,7 @@ interface SEOProps {
 }
 
 const DEFAULT_TITLE = "Kosmix Spaces - Verified Coworking Spaces in Delhi NCR";
-const DEFAULT_DESCRIPTION = "Find verified coworking spaces across Delhi, Gurugram, Noida. Zero brokerage, shortlisted options, site visits arranged. Browse 50+ verified workspaces.";
+const DEFAULT_DESCRIPTION = "Find verified coworking spaces across Delhi, Gurugram, Noida. Zero brokerage, site visits arranged. Browse 50+ verified workspaces.";
 const DEFAULT_IMAGE = "/logo.png";
 const SITE_URL = "https://kosmixspaces.in";
 
