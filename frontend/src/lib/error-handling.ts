@@ -424,7 +424,6 @@ export function useErrorBoundary() {
   const captureError = useCallback((error: Error) => {
     setError(error);
     // Log to analytics or error reporting service
-    console.error('Error boundary captured:', error);
   }, []);
 
   return {

@@ -283,9 +283,7 @@ export function usePartnerListings(params: {
   return useQuery({
     queryKey: ["partner", "listings", params],
     queryFn: async () => {
-      console.log("Fetching partner listings with token:", !!token);
       const result = await api.partner.getListings(params);
-      console.log("Partner listings result:", result);
       
       // Handle both paginated response (premium) and direct array (legacy)
       if (Array.isArray(result)) {
@@ -309,19 +307,10 @@ export function usePartnerListing(listingId: string) {
   const token = getStoredToken();
   const userType = getStoredUserType();
   
-  console.log("usePartnerListing debug:", {
-    listingId,
-    hasToken: !!token,
-    userType,
-    isEnabled: !!token && userType === "partner" && !!listingId
-  });
-  
   return useQuery({
     queryKey: ["partner", "listing", listingId],
     queryFn: async () => {
-      console.log("Fetching partner listing with ID:", listingId);
       const result = await api.partner.getListing(listingId);
-      console.log("Partner listing result:", result);
       return result;
     },
     enabled: !!token && userType === "partner" && !!listingId,

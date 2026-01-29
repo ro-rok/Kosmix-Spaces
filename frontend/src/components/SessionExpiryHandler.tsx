@@ -29,7 +29,6 @@ export function SessionExpiryHandler() {
       await refreshSession();
       setShowDialog(false);
     } catch (error) {
-      console.error('Session refresh failed:', error);
       // If refresh fails, logout will be handled by the auth context
     } finally {
       setIsRefreshing(false);

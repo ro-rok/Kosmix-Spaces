@@ -124,7 +124,6 @@ export function BasicInfoStep({ data, onChange, errors, disabled = false }: Basi
 
     } catch (error: any) {
       setLocalitySubmissionStatus('error');
-      console.error("Failed to add locality:", error);
       
       if (error.message?.includes("already exists")) {
         toast.error("This locality already exists in the selected city");

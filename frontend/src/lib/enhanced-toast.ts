@@ -51,7 +51,6 @@ export const enhancedToast = {
           label: error.actionMessage,
           onClick: () => {
             // This should be provided by the caller
-            console.warn('Retry action not implemented');
           }
         };
       }

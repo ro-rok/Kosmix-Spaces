@@ -95,7 +95,6 @@ export default function AdminLocalities() {
         rejectedCount: response.rejectedCount
       });
     } catch (error) {
-      console.error("Failed to fetch localities:", error);
       toast.error("Failed to load localities");
     } finally {
       setLoading(false);
@@ -141,7 +140,6 @@ export default function AdminLocalities() {
       setSelectedLocality(null);
       fetchLocalities();
     } catch (error: any) {
-      console.error("Failed to update locality:", error);
       toast.error(error.message || "Failed to update locality");
     } finally {
       setSubmitting(false);

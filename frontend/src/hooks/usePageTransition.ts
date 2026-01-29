@@ -439,7 +439,6 @@ export function useTransitionCoordination(options: {
     }
     
     loadingTimeoutRef.current = setTimeout(() => {
-      console.warn('Content loading timed out, proceeding with transition');
       completeContentLoading();
     }, maxWaitTime);
   }, [maxWaitTime, onLoadingStart]);

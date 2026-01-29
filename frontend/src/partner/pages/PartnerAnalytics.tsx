@@ -75,7 +75,6 @@ export function PartnerAnalytics() {
   }
 
   if (analyticsError || timeSeriesError) {
-    console.error("Analytics error:", analyticsError || timeSeriesError);
     return (
       <div className="container py-8 space-y-6">
         <div className="space-y-2">
@@ -99,40 +98,6 @@ export function PartnerAnalytics() {
       </div>
     );
   }
-
-  // Debug logging
-  console.log("Partner Analytics Debug:", {
-    partnerId,
-    user: user,
-    partner: partner,
-    analytics,
-    timeSeries,
-    listingsCount: listings.length,
-    listings: listings.map(l => ({ id: l.listingId, slug: l.slug }))
-  });
-  
-  // Debug: Check what events exist (only in dev mode)
-  useEffect(() => {
-    if (!partnerId || !import.meta.env.DEV) return;
-    
-    const checkEvents = async () => {
-      try {
-        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
-        const response = await fetch(`${API_BASE_URL}/api/analytics/debug/partner/${partnerId}`, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('kosmix_auth_token') || ''}`
-          }
-        });
-        if (response.ok) {
-          const debugData = await response.json();
-          console.log("Analytics Debug Data:", debugData);
-        }
-      } catch (error) {
-        console.error("Debug query failed:", error);
-      }
-    };
-    checkEvents();
-  }, [partnerId]);
 
   const timeSeriesData = timeSeries?.dataPoints?.map(point => ({
     date: new Date(point.date).toLocaleDateString('en-US', { 

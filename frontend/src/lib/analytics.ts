@@ -133,11 +133,6 @@ class AnalyticsClient {
     // Detect ad blocker on initialization (async, non-blocking)
     void this.detectAdBlocker();
     
-    // Initialize debug indicator if debug mode is enabled
-    if (this.isDebugMode() && import.meta.env.DEV) {
-      this.initDebugIndicator();
-    }
-    
     // Start periodic flush
     this.startPeriodicFlush();
     
@@ -332,10 +327,6 @@ class AnalyticsClient {
       // If we get here, backend is available
       this.backendAvailable = true;
       this.clearBlockedState();
-      
-      if (this.isDebugMode()) {
-        console.debug('[Analytics] Backend availability confirmed');
-      }
       } catch (error: any) {
         // Check if this is a validation error (422) - don't treat as ad blocker
         const isValidationError = error?.message?.includes('422') || 
@@ -347,10 +338,6 @@ class AnalyticsClient {
           // This is fine for detection - backend is available
           this.backendAvailable = true;
           this.clearBlockedState();
-          
-          if (this.isDebugMode()) {
-            console.debug('[Analytics] Backend available (validation error in test, but backend is reachable)');
-          }
           return;
         }
         
@@ -370,16 +357,6 @@ class AnalyticsClient {
           // Ad blocker detected
           this.backendAvailable = false;
           this.setBlockedState();
-          
-          if (this.isDebugMode()) {
-            console.debug('[Analytics] Ad blocker detected, analytics will be disabled');
-          }
-        } else {
-          // Other error (network, timeout, etc.) - don't mark as blocked
-          // Allow normal operation to handle it
-          if (this.isDebugMode()) {
-            console.debug('[Analytics] Backend detection failed (non-blocker):', error?.message);
-          }
         }
       }
   }
@@ -441,24 +418,7 @@ class AnalyticsClient {
       event.listingId = listingContext.listingId;
     }
 
-    // Debug logging
-    if (this.isDebugMode() || import.meta.env.DEV) {
-      console.log('[Analytics] Tracking event:', {
-        eventName,
-        listingSlug: event.listingSlug,
-        listingId: event.listingId,
-        path: event.path,
-        userRole: event.userRole,
-        queueLength: this.eventQueue.length + 1
-      });
-    }
-
     this.eventQueue.push(event);
-
-    // Update debug indicator
-    if (this.isDebugMode() && import.meta.env.DEV) {
-      this.updateDebugIndicator(0, this.eventQueue.length);
-    }
 
     // Flush if batch size reached
     if (this.eventQueue.length >= this.batchSize) {
@@ -472,9 +432,6 @@ class AnalyticsClient {
   trackCritical(eventName: EventName, metadata?: EventMetadata): void {
     this.track(eventName, metadata);
     // Flush immediately for critical events
-    if (this.isDebugMode() || import.meta.env.DEV) {
-      console.log('[Analytics] Critical event, flushing immediately. Queue length:', this.eventQueue.length);
-    }
     this.flush();
   }
 
@@ -491,9 +448,6 @@ class AnalyticsClient {
       
       // If still within retry window, skip silently
       if (timeSinceBlock < this.RETRY_AFTER_MS) {
-        if (this.isDebugMode()) {
-          console.debug('[Analytics] Skipping flush - ad blocker detected (retry in', Math.round((this.RETRY_AFTER_MS - timeSinceBlock) / 1000), 'seconds)');
-        }
         this.eventQueue = [];
         this.backendAvailable = false;
         return;
@@ -514,9 +468,6 @@ class AnalyticsClient {
     // Skip if backend is known to be unavailable AND we're offline
     if (this.backendAvailable === false && !navigator.onLine) {
       // Silently drop events when backend is unavailable and offline
-      if (this.isDebugMode()) {
-        console.debug('[Analytics] Backend unavailable and offline, dropping', this.eventQueue.length, 'events');
-      }
       this.eventQueue = [];
       return;
     }
@@ -524,27 +475,11 @@ class AnalyticsClient {
     const events = [...this.eventQueue];
     this.eventQueue = [];
 
-    // Debug logging
-    if (this.isDebugMode() || import.meta.env.DEV) {
-      console.log('[Analytics] Flushing', events.length, 'events:', events.map(e => e.eventName));
-      this.updateDebugIndicator(0, events.length);
-    }
-
     // Use void to explicitly ignore promise rejection
     // This prevents unhandled promise rejection warnings
     void this.sendEventsToBackend(events).then((success) => {
       if (success === true) {
         this.backendAvailable = true;
-        if (this.isDebugMode()) {
-          console.log('[Analytics] Successfully sent', events.length, 'events');
-          this.updateDebugIndicator(events.length, 0);
-        }
-      } else {
-        // Already marked as unavailable in sendEventsToBackend
-        // Silently drop events
-        if (this.isDebugMode()) {
-          console.warn('[Analytics] Failed to send events');
-        }
       }
     }).catch(() => {
       // Errors are already handled in sendEventsToBackend
@@ -605,7 +540,6 @@ class AnalyticsClient {
 
       return await response.json();
     } catch (error) {
-      console.error('Failed to fetch partner analytics:', error);
       // Return empty analytics instead of mock data
       return {
         views: 0,
@@ -668,14 +602,8 @@ class AnalyticsClient {
       }
       
       const success = navigator.sendBeacon(url, payload);
-      if (success && this.isDebugMode()) {
-        console.debug('[Analytics] Events sent via sendBeacon:', events.length);
-      }
       return success;
     } catch (error) {
-      if (this.isDebugMode()) {
-        console.debug('[Analytics] sendBeacon failed:', error);
-      }
       return false;
     }
   }
@@ -708,12 +636,6 @@ class AnalyticsClient {
       const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
       const url = `${API_BASE_URL}/api/analytics/events`;
       
-      // Debug logging (only in debug mode)
-      if (this.isDebugMode()) {
-        console.debug('[Analytics] Sending events to:', url, 'Events:', backendEvents.length);
-        console.debug('[Analytics] Event payload:', JSON.stringify(backendEvents[0], null, 2));
-      }
-      
       // Send to backend with timeout
       const controller = new AbortController();
       timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
@@ -730,10 +652,6 @@ class AnalyticsClient {
         // Immediately catch fetch errors to prevent console logging
         // This catches errors before they propagate
         if (timeoutId) clearTimeout(timeoutId);
-        // Only log in debug mode
-        if (this.isDebugMode()) {
-          console.debug('[Analytics] Fetch error:', fetchError);
-        }
         throw fetchError;
       });
 
@@ -751,30 +669,17 @@ class AnalyticsClient {
                 .map((e: any) => `${e.field}: ${e.message}`)
                 .join(', ');
               errorMessage = `Validation failed: ${validationErrors}`;
-              // Log validation errors for debugging
-              console.error('[Analytics] Validation error:', validationErrors);
-              console.error('[Analytics] Failed payload:', JSON.stringify(backendEvents, null, 2));
             } else if (errorData?.detail) {
               errorMessage = `Validation failed: ${errorData.detail}`;
-              console.error('[Analytics] Validation error:', errorData.detail);
-            } else {
-              // Log the full error response for debugging
-              console.error('[Analytics] Validation error response:', errorData);
             }
           } catch (parseError) {
             // If we can't parse error, use default message
-            console.error('[Analytics] Failed to parse error response:', parseError);
           }
         }
         throw new Error(errorMessage);
       }
 
       const result = await response.json();
-      
-      // Debug logging (only in debug mode)
-      if (this.isDebugMode()) {
-        console.debug('[Analytics] Server response:', result);
-      }
       
       this.backendAvailable = true;
       this.clearBlockedState(); // Clear any blocked state on success
@@ -807,30 +712,17 @@ class AnalyticsClient {
           const beaconSuccess = this.sendEventsViaBeacon(events);
           if (beaconSuccess) {
             // sendBeacon succeeded, don't mark as blocked
-            if (this.isDebugMode()) {
-              console.debug('[Analytics] Fallback sendBeacon succeeded');
-            }
             return true;
           }
         }
         
-        // Silently fail - don't log errors (only in debug mode)
+        // Silently fail - don't log errors
         // Mark backend as unavailable to prevent future attempts
         this.backendAvailable = false;
         // Persist blocked state with timestamp
         this.setBlockedState();
         
-        // Only log in debug mode
-        if (this.isDebugMode()) {
-          console.debug('[Analytics] Request blocked/offline, events dropped:', events.length);
-        }
-        
         return false; // Return false to indicate silent failure
-      }
-      
-      // For other errors, only log in debug mode
-      if (this.isDebugMode()) {
-        console.debug('[Analytics] Events could not be sent:', error instanceof Error ? error.message : 'Unknown error');
       }
       
       // Mark backend as unavailable, but don't persist for network errors
@@ -917,74 +809,12 @@ class AnalyticsClient {
       // Normalize to /listing/{slug} format
       const normalizedSlug = `/listing/${slug}`;
       
-      // Debug logging
-      if (this.isDebugMode()) {
-        console.log('[Analytics] Extracted slug from /spaces/ route:', slug, '→ normalized:', normalizedSlug);
-      }
-      
       return {
         listingSlug: normalizedSlug
       };
     }
     
     return {};
-  }
-  
-  /**
-   * Check if debug mode is enabled
-   */
-  private isDebugMode(): boolean {
-    const urlParams = new URLSearchParams(window.location.search);
-    return urlParams.get('debugAnalytics') === '1' || localStorage.getItem('debugAnalytics') === 'true';
-  }
-
-  /**
-   * Initialize debug indicator on page (for development)
-   */
-  private initDebugIndicator(): void {
-    // Remove existing indicator if any
-    const existing = document.getElementById('analytics-debug-indicator');
-    if (existing) {
-      existing.remove();
-    }
-
-    // Create debug indicator element
-    const indicator = document.createElement('div');
-    indicator.id = 'analytics-debug-indicator';
-    indicator.style.cssText = `
-      position: fixed;
-      bottom: 10px;
-      right: 10px;
-      background: rgba(0, 0, 0, 0.8);
-      color: white;
-      padding: 8px 12px;
-      border-radius: 4px;
-      font-family: monospace;
-      font-size: 12px;
-      z-index: 9999;
-      pointer-events: none;
-    `;
-    indicator.textContent = 'Analytics: 0 queued';
-    document.body.appendChild(indicator);
-  }
-
-  /**
-   * Update debug indicator with current queue status
-   */
-  private updateDebugIndicator(sent: number, queued: number): void {
-    const indicator = document.getElementById('analytics-debug-indicator');
-    if (indicator) {
-      if (sent > 0) {
-        indicator.textContent = `Analytics: ${sent} sent, ${queued} queued`;
-        indicator.style.background = 'rgba(0, 128, 0, 0.8)';
-      } else if (queued > 0) {
-        indicator.textContent = `Analytics: ${queued} queued`;
-        indicator.style.background = 'rgba(0, 0, 0, 0.8)';
-      } else {
-        indicator.textContent = 'Analytics: idle';
-        indicator.style.background = 'rgba(0, 0, 0, 0.8)';
-      }
-    }
   }
 
   /**

@@ -14,7 +14,7 @@ export function ScrollToTop() {
           lenis.scrollTo(0, { immediate: false, duration: 1 });
           return;
         } catch (error) {
-          console.warn('Lenis scroll failed:', error);
+          // Lenis scroll failed
         }
       }
       
@@ -25,7 +25,7 @@ export function ScrollToTop() {
           globalLenis.scrollTo(0, { immediate: false, duration: 1 });
           return;
         } catch (error) {
-          console.warn('Global Lenis scroll failed:', error);
+          // Global Lenis scroll failed
         }
       }
       
@@ -36,7 +36,7 @@ export function ScrollToTop() {
           smoothScrollContainer.scrollTo({ top: 0, behavior: 'smooth' });
           return;
         } catch (error) {
-          console.warn('Container scroll failed:', error);
+          // Container scroll failed
         }
       }
       
@@ -44,7 +44,6 @@ export function ScrollToTop() {
       try {
         window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
       } catch (error) {
-        console.warn('Native scroll failed, using instant scroll');
         // Final fallback - instant scroll
         window.scrollTo(0, 0);
       }

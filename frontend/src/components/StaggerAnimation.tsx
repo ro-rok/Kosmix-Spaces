@@ -104,7 +104,6 @@ export function StaggerAnimation({
     
     // Additional safety check
     if (targetElements.length === 0) {
-      console.warn('StaggerAnimation: No target elements after processing');
       return;
     }
     

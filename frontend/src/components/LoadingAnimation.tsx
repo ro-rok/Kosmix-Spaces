@@ -77,7 +77,9 @@ export function LoadingAnimation({
   // Auto-play video when animation becomes visible
   useEffect(() => {
     if (showAnimation && videoRef.current) {
-      videoRef.current.play().catch(console.error);
+      videoRef.current.play().catch(() => {
+        // Video play failed
+      });
     }
   }, [showAnimation]);
 

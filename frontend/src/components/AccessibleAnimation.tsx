@@ -159,7 +159,6 @@ export const AccessibleAnimation = forwardRef<HTMLDivElement, AccessibleAnimatio
     } catch (error) {
       // Fallback to regular div if motion fails
       if (enableErrorRecovery) {
-        console.warn('Motion component failed, falling back to regular div:', error);
         return (
           <div
             ref={combinedRef}

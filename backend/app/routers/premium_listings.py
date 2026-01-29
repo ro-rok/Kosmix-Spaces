@@ -243,7 +243,6 @@ async def submit_listing_with_photos(
         from app.services.seo_service import update_listing_seo
         try:
             await update_listing_seo(listing_id)
-            print(f"DEBUG: Generated SEO metadata for listing {listing_id}")
         except Exception as e:
             print(f"Warning: Failed to generate SEO metadata: {e}")
             # Don't fail the whole submission if SEO generation fails
@@ -262,10 +261,6 @@ async def submit_listing_with_photos(
         }
         
     except Exception as e:
-        print(f"DEBUG: Error in submission: {str(e)}")
-        print(f"DEBUG: Error type: {type(e)}")
-        import traceback
-        print(f"DEBUG: Traceback: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=f"Failed to submit listing: {str(e)}")
 
 
@@ -332,8 +327,6 @@ async def get_listing(
     partner_id = current_user["partnerId"]
     db = get_database()
     
-    print(f"DEBUG: Partner {partner_id} requesting listing {listing_id}")
-    
     # Try to find by ObjectId first, then by slug
     listing = None
     try:
@@ -341,9 +334,9 @@ async def get_listing(
             "_id": ObjectId(listing_id),
             "partnerId": ObjectId(partner_id)
         })
-        print(f"DEBUG: Found by ObjectId: {listing is not None}")
     except Exception as e:
-        print(f"DEBUG: ObjectId lookup failed: {e}")
+        # ObjectId lookup failed, will try slug
+        pass
     
     # If not found by ID, try by slug
     if not listing:
@@ -351,7 +344,6 @@ async def get_listing(
             "slugData.slug": listing_id,
             "partnerId": ObjectId(partner_id)
         })
-        print(f"DEBUG: Found by slug: {listing is not None}")
     
     # Also try partial slug match
     if not listing:
@@ -359,13 +351,10 @@ async def get_listing(
             "slugData.slug": {"$regex": listing_id, "$options": "i"},
             "partnerId": ObjectId(partner_id)
         })
-        print(f"DEBUG: Found by partial slug: {listing is not None}")
     
     if not listing:
-        print(f"DEBUG: No listing found for partner {partner_id} with identifier {listing_id}")
         raise HTTPException(status_code=404, detail="Listing not found")
     
-    print(f"DEBUG: Returning listing: {listing['_id']}")
     return listing_to_public_response(listing)
 
 
@@ -861,18 +850,11 @@ async def upload_temporary_photo(
     """Upload photo to temporary storage without requiring listing ID."""
     partner_id = current_user["partnerId"]
     
-    # Debug logging
-    print(f"DEBUG: Upload request from partner {partner_id}")
-    print(f"DEBUG: File info - name: {file.filename}, type: {file.content_type}, size: {file.size}")
-    print(f"DEBUG: Offering type: {offering_type}")
-    
     # Enhanced file validation
     is_valid, error_message = validate_image_file(file)
-    print(f"DEBUG: Validation result - valid: {is_valid}, error: {error_message}")
     
     if not is_valid:
         error_msg = error_message or "File validation failed"
-        print(f"DEBUG: Raising ValidationError: {error_msg}")
         raise ValidationError(error_msg)
     
     try:

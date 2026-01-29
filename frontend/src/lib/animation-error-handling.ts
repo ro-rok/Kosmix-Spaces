@@ -24,16 +24,12 @@ class AnimationErrorHandler {
   }
 
   handleError(error: Error): void {
-    if (this.strategy.reportError) {
-      console.error('Animation error:', error);
-    }
+    // Error handled silently based on strategy
   }
 
   reportError(error: AnimationError): void {
     this.errors.push(error);
-    if (this.strategy.reportError) {
-      console.error('Animation error:', error);
-    }
+    // Error reported silently based on strategy
   }
 
   getErrors(): AnimationError[] {

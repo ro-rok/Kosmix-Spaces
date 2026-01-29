@@ -8,7 +8,6 @@ export function SafeAnalytics() {
     return <Analytics />;
   } catch (error) {
     // Silently fail if analytics can't load (e.g., blocked by ad blocker)
-    console.debug('Analytics not loaded:', error);
     return null;
   }
 }
@@ -21,7 +20,6 @@ export function SafeSpeedInsights() {
     return <SpeedInsights />;
   } catch (error) {
     // Silently fail if speed insights can't load (e.g., blocked by ad blocker)
-    console.debug('Speed Insights not loaded:', error);
     return null;
   }
 }

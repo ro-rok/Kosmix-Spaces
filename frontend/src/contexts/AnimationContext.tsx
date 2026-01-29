@@ -60,20 +60,13 @@ export function AnimationProvider({
   } = useAnimationPerformance({
     autoStart: true,
     onPerformanceDegradation: (metrics) => {
-      // Only log if not during initial load (first 5 seconds)
-      if (Date.now() - performance.timeOrigin > 5000) {
-        console.warn('Animation performance degraded:', metrics);
-      }
       // Automatically switch to performance preset if performance is bad
       if (metrics.fps < 20) {
         resetToPreset('performance');
       }
     },
     onPerformanceRecovery: (metrics) => {
-      // Only log recovery after initial load
-      if (Date.now() - performance.timeOrigin > 5000) {
-        console.log('Animation performance recovered:', metrics);
-      }
+      // Performance recovered
     },
   });
   
@@ -217,8 +210,6 @@ export function AnimationProvider({
       presetConfig.performance.maxConcurrentAnimations,
       30 // FPS threshold
     );
-    
-    console.log(`Animation preset changed to: ${preset}`);
   }, [animationRegistry]);
   
   // Update animation registry when device profile changes
@@ -229,7 +220,6 @@ export function AnimationProvider({
     
     // Auto-adjust config based on device performance
     if (deviceProfile.tier === 'low' && config !== animationPresets.performance) {
-      console.log('Switching to performance preset due to low device tier');
       resetToPreset('performance');
     }
   }, [deviceProfile, animationRegistry, config, resetToPreset]);

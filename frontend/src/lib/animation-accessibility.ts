@@ -126,7 +126,6 @@ export class AnimationFallbackManager {
     const fallback = this.fallbacks.get(id);
     if (fallback) {
       // Apply fallback logic
-      console.log('Applying fallback:', id, fallback);
     }
   }
 

@@ -362,7 +362,7 @@ export class PerformanceMonitor {
         this.observers.push(fidObserver);
 
       } catch (error) {
-        console.warn('Performance observer not supported:', error);
+        // Performance observer not supported
       }
     }
   }
@@ -405,11 +405,10 @@ export function preloadRoute(routeComponent: () => Promise<any>): void {
   const link = document.createElement('link');
   link.rel = 'modulepreload';
   
-  routeComponent().then(module => {
+  routeComponent().then(() => {
     // Component is now preloaded
-    console.log('Route preloaded:', module);
-  }).catch(error => {
-    console.warn('Failed to preload route:', error);
+  }).catch(() => {
+    // Failed to preload route
   });
 }
 

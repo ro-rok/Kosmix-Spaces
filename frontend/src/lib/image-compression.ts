@@ -162,7 +162,6 @@ export async function compressImages(
       const result = await compressImage(file, options);
       results.push(result);
     } catch (error) {
-      console.error(`Failed to compress ${file.name}:`, error);
       // Return original file if compression fails
       results.push({
         file,

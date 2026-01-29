@@ -178,7 +178,6 @@ export function useAnimationConfig(
 
     // Only update if significantly different
     if (JSON.stringify(config) !== JSON.stringify(recommendedConfig)) {
-      console.log(`Auto-selecting animation preset: ${recommendedPreset}`);
       contextResetToPreset(recommendedPreset);
     }
   }, [autoSelectPreset, deviceCapabilities, config, contextResetToPreset]);
@@ -416,12 +415,10 @@ export function usePerformanceAwareConfig(options: {
           
           // Adjust config based on performance
           if (fps < fpsThreshold) {
-            console.warn(`Low FPS detected (${fps}), switching to performance preset`);
             resetToPreset('performance');
           } else if (fps > 50 && deviceCapabilities.memoryLevel === 'high') {
             // Good performance, can use enhanced preset
             if (config !== animationPresets.enhanced) {
-              console.log(`Good performance detected (${fps}), switching to enhanced preset`);
               resetToPreset('enhanced');
             }
           }

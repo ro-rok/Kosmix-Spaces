@@ -36,13 +36,6 @@ export function PartnerListingDetail() {
   const isEdit = searchParams.get('edit') === 'true';
   const [isUpdatingAvailability, setIsUpdatingAvailability] = useState(false);
 
-  console.log("PartnerListingDetail debug:", {
-    id,
-    isEdit,
-    urlParams: useParams(),
-    searchParams: Object.fromEntries(searchParams.entries())
-  });
-
   const { data: listing, isLoading, error, refetch } = usePartnerListing(id || '');
 
   // Track listing view when listing is loaded (only when not editing)
@@ -69,7 +62,6 @@ export function PartnerListingDetail() {
       toast.success(`Workspace marked as ${newStatus}`);
       refetch(); // Refresh the listing data
     } catch (error) {
-      console.error('Failed to update availability:', error);
       toast.error('Failed to update availability status');
     } finally {
       setIsUpdatingAvailability(false);

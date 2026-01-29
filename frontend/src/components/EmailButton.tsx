@@ -93,7 +93,6 @@ export function EmailButton({
       }
     } catch (error) {
       // Clipboard failed, use mailto fallback
-      console.warn('Clipboard copy failed, using mailto:', error);
       window.location.href = buildEmailLink(subject);
     }
   };

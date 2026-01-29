@@ -137,7 +137,6 @@ export function LocationStep({ data, onChange, errors, disabled = false }: Locat
             description: `Coordinates: ${roundedLat}, ${roundedLng} (rounded for privacy)`,
           });
         } else {
-          console.error('Geocoding failed:', status);
           toast({
             title: "Geocoding Failed",
             description: "Unable to find coordinates for this address. Please try a more specific address or enter coordinates manually.",
@@ -147,7 +146,6 @@ export function LocationStep({ data, onChange, errors, disabled = false }: Locat
         setIsGeocoding(false);
       });
     } catch (error) {
-      console.error('Geocoding error:', error);
       toast({
         title: "Error",
         description: "Failed to geocode address. Please try again.",

@@ -346,9 +346,6 @@ class AnalyticsService:
                             # Skip events for listings that don't belong to this partner
                             continue
                 except Exception as e:
-                    import os
-                    if os.getenv("DEBUG", "False").lower() == "true":
-                        print(f"[Analytics] Error resolving slug {listing_slug}: {e}")
                     pass  # Skip if resolution fails
             
             # Only count if we have a listingId that belongs to this partner
@@ -359,16 +356,6 @@ class AnalyticsService:
                     if listing_id not in listing_stats:
                         listing_stats[listing_id] = {}
                     listing_stats[listing_id][event_name] = listing_stats[listing_id].get(event_name, 0) + doc["count"]
-                else:
-                    # Debug: log if we found a listingId that doesn't match
-                    import os
-                    if os.getenv("DEBUG", "False").lower() == "true":
-                        print(f"[Analytics] Warning: Event has listingId {listing_id} which is not in partner's listings {listing_ids}")
-        
-        # Debug logging
-        import os
-        if os.getenv("DEBUG", "False").lower() == "true" or os.getenv("APP_ENV", "").lower() in ["dev", "development"]:
-            print(f"[Analytics] Pipeline returned {total_pipeline_events} events, matched {len(listing_stats)} listings")
         
         # Calculate totals and top listings
         total_views = 0

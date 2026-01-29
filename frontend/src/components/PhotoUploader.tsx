@@ -147,7 +147,6 @@ export function PhotoUploader({
           );
         }
       } catch (error) {
-        console.error('Compression failed:', error);
         toast.error('Image compression failed, using original files');
         
         // Add original files if compression fails

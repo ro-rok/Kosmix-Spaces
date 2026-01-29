@@ -103,10 +103,7 @@ export function getPerformanceRecommendations(): string[] {
 export function createOptimizedScrollTrigger(options: any): any {
   // Check if ScrollTrigger is available
   if (!ScrollTrigger || typeof ScrollTrigger.create !== 'function') {
-    // Only warn in development to reduce console noise
-    if (import.meta.env.DEV) {
-      console.warn('ScrollTrigger not available - animations may not work correctly');
-    }
+    // ScrollTrigger not available - animations may not work correctly
     return {
       kill: () => {},
       refresh: () => {},

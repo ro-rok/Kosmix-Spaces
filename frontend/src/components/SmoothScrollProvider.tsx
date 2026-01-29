@@ -109,7 +109,6 @@ export function SmoothScrollProvider({
       }, 100);
       
     } catch (error) {
-      console.error('Failed to initialize Lenis:', error);
       setLenisInstance(null);
     }
   }, [shouldEnableSmoothing, lenisOptions, setLenisInstance]);
@@ -242,7 +241,6 @@ export function SmoothScrollProvider({
         }
       }
     } catch (error) {
-      console.error('Error during scroll operation:', error);
       // Fallback to basic native scrolling without smooth behavior
       if (typeof target === 'string') {
         const element = document.querySelector(target);

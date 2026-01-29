@@ -396,11 +396,9 @@ async def validate_listing_for_submission(listing_id: str, partner_id: str) -> L
     
     # Check amenities
     amenities = listing.get("amenities", [])
-    print(f"DEBUG: Amenities: {amenities}")
     if len(amenities) == 0:
         validation.add_warning("Consider adding amenities to make listing more attractive")
     
-    print(f"DEBUG: Validation result - isValid: {validation.isValid}, errors: {validation.errors}")
     return validation
 
 

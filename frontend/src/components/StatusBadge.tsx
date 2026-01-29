@@ -92,7 +92,6 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
   
   // Safety check - if status is not recognized, use a default
   if (!config) {
-    console.warn(`Unknown status: ${status}. Using default 'pending' status.`);
     const defaultConfig = statusConfig.pending;
     const Icon = defaultConfig.icon;
     

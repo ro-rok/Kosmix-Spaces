@@ -71,14 +71,6 @@ async function apiRequest<T>(
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       
-      // Log detailed error information for debugging
-      console.error("API Error Response:", {
-        status: response.status,
-        statusText: response.statusText,
-        url,
-        errorData
-      });
-      
       // Normalize error response structure
       const error = errorData.error || errorData;
       let errorMessage = error?.message || `HTTP ${response.status}: ${response.statusText}`;
@@ -87,7 +79,6 @@ async function apiRequest<T>(
       
       // Handle validation errors (422)
       if (response.status === 422 && error?.details?.errors) {
-        console.error("Validation errors:", error.details.errors);
         errorMessage = `Validation failed: ${error.details.errors.map((e: any) => `${e.loc?.join('.')} - ${e.msg}`).join(', ')}`;
         errorCode = "VALIDATION_ERROR";
         errorDetails = error.details.errors;

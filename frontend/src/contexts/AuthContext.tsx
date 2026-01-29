@@ -110,7 +110,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // Handle partner query errors
   React.useEffect(() => {
     if (partnerQuery.error) {
-      console.error('Partner session validation failed:', partnerQuery.error);
       const error = partnerQuery.error as any;
       if (error.status === 401) {
         setIsSessionExpired(true);
@@ -212,7 +211,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
       await currentQuery?.refetch();
       setIsSessionExpired(false);
     } catch (error) {
-      console.error('Session refresh failed:', error);
       handleSessionExpiry();
       throw error;
     }

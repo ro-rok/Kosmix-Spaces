@@ -118,12 +118,10 @@ export function createGestureRecognizer(
 
 export function showGestureToast(message: string): void {
   // Minimal implementation - could integrate with toast system
-  console.log('Gesture:', message);
 }
 
 export function trackGestureAnalytics(gesture: GestureEvent): void {
   // Minimal implementation - could integrate with analytics
-  console.log('Gesture tracked:', gesture);
 }
 
 export function validateGesture(

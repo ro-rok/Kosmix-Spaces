@@ -74,7 +74,6 @@ export function useAnimationPerformance(
     registry.cleanup();
     
     setIsPaused(true);
-    console.log('Animations paused for performance');
   }, [isPaused]);
 
   // Resume animations
@@ -85,7 +84,6 @@ export function useAnimationPerformance(
     // For now, we just clear the paused state
     sessionStorage.removeItem('pausedAnimations');
     setIsPaused(false);
-    console.log('Animations resumed');
   }, [isPaused]);
 
   // Force cleanup of all resources
@@ -94,7 +92,6 @@ export function useAnimationPerformance(
     registry.cleanup();
     globalResourceManager.cleanupAll();
     refreshMetrics();
-    console.log('Forced cleanup of all animation resources');
   }, [refreshMetrics]);
 
   // Set up performance monitoring
@@ -123,11 +120,9 @@ export function useAnimationPerformance(
     globalPerformanceMonitor.startMonitoring(
       (metrics) => {
         onPerformanceDegradation?.(metrics);
-        console.warn('Performance degradation detected:', metrics);
       },
       (metrics) => {
         onPerformanceRecovery?.(metrics);
-        console.log('Performance recovered:', metrics);
         if (isPaused) {
           resumeAnimations();
         }

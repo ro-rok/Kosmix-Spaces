@@ -18,26 +18,18 @@ async def get_admin_premium_listings(
     current_user: dict = Depends(require_admin)
 ):
     """Get premium listings with filters (admin view)."""
-    print(f"DEBUG: Admin listings request - status: {status}, page: {page}, pageSize: {pageSize}")
-    print(f"DEBUG: Admin user: {current_user}")
-    
     db = get_database()
     
     query = {}
     if status:
         query["verificationStatus"] = status
     
-    print(f"DEBUG: Query: {query}")
-    
     total = await db.premium_listings.count_documents(query)
-    print(f"DEBUG: Total listings found: {total}")
     
     skip = (page - 1) * pageSize
     
     cursor = db.premium_listings.find(query).sort("createdAt", -1).skip(skip).limit(pageSize)
     listings = await cursor.to_list(length=pageSize)
-    
-    print(f"DEBUG: Retrieved {len(listings)} listings")
     
     # Format listings using the proper response formatter
     result = []
@@ -46,13 +38,12 @@ async def get_admin_premium_listings(
             formatted_listing = listing_to_public_response(listing)
             result.append(formatted_listing)
         except Exception as e:
-            print(f"DEBUG: Error formatting listing {listing.get('_id')}: {e}")
+            print(f"Error formatting listing {listing.get('_id')}: {e}")
             # Fallback for listings that might not have all required fields
             listing["_id"] = str(listing["_id"])
             listing["partnerId"] = str(listing["partnerId"])
             result.append(listing)
     
-    print(f"DEBUG: Returning {len(result)} formatted listings")
     return result
 
 
@@ -147,11 +138,9 @@ async def approve_premium_listing(
                 
                 # Update SEO metadata for the approved listing
                 await update_listing_seo(str(listing["_id"]))
-                print(f"DEBUG: Regenerated SEO for approved listing {listing['_id']}")
                 
                 # Invalidate sitemap cache to include the new approved listing
                 invalidate_sitemap_cache()
-                print(f"DEBUG: Invalidated sitemap cache")
             except Exception as e:
                 # Don't fail the approval if SEO/sitemap update fails
                 print(f"Warning: Failed to update SEO/sitemap: {e}")

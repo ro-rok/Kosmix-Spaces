@@ -309,7 +309,7 @@ export function LoaderVideo({
     // Suppress AbortError from interrupted play() requests
     const error = (e.target as HTMLVideoElement).error;
     if (error && error.code !== error.MEDIA_ERR_ABORTED) {
-      console.warn('LoaderVideo: Failed to load video:', videoSrc);
+      // Video failed to load
     }
     setVideoLoaded(true); // Still show text even if video fails
   };

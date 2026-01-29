@@ -145,20 +145,12 @@ export function useTouchGestures(config: TouchGestureConfig = {}) {
               timestamp: Date.now(),
               identifier: touch.identifier,
             });
-            
-            if (enableDebug) {
-              console.log(`Gesture: Added finger ${touchStartRef.current.length}/${gestureConfig.requiredFingers}`);
-            }
           }
         });
         
         // If we've reached the required number of fingers, prevent default scrolling
         if (touchStartRef.current.length === gestureConfig.requiredFingers) {
           event.preventDefault();
-          
-          if (enableDebug) {
-            console.log(`Gesture: All ${gestureConfig.requiredFingers} fingers detected, ready for swipe`);
-          }
         }
       }
     };
@@ -260,7 +252,7 @@ export function useTouchGestures(config: TouchGestureConfig = {}) {
         document.removeEventListener('touchend', handleTouchEnd, options);
         document.removeEventListener('touchcancel', handleTouchCancel, options);
       } catch (error) {
-        console.error('Gesture: Failed to remove event listeners', error);
+        // Failed to remove event listeners
       }
     };
   }, [handleSwipe, gestureConfig, enableDebug]);
