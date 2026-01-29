@@ -249,7 +249,7 @@ async def update_listing_availability_admin(
         raise HTTPException(status_code=400, detail="availability_status is required")
     
     # Validate availability status
-    valid_statuses = ["available", "unavailable", "limited", "waitlist"]
+    valid_statuses = ["available", "unavailable"]
     if availability_status not in valid_statuses:
         raise HTTPException(
             status_code=400, 

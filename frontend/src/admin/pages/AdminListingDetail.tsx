@@ -533,18 +533,6 @@ export function AdminListingDetail() {
                         Unavailable
                       </div>
                     </SelectItem>
-                    <SelectItem value="limited">
-                      <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-yellow-500" />
-                        Limited
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="waitlist">
-                      <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-orange-500" />
-                        Waitlist
-                      </div>
-                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
