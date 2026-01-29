@@ -42,9 +42,10 @@ async def health_check(request: Request):
                 logger.error(f"Database health check failed: {db_error}")
         
         # Don't log keep-alive service calls - they're too frequent
-        # Only log external health checks
+        # Only log external health checks at DEBUG level to reduce log noise
+        # (Load balancers/monitoring services check frequently)
         if not is_keep_alive:
-            logger.info(f"External health check from {client_host}: {health_data['status']}")
+            logger.debug(f"Health check from {client_host}: {health_data['status']}")
         
         return health_data
         
