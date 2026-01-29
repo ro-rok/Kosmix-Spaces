@@ -1,4 +1,10 @@
-// GSAP utilities (minimal implementation without GSAP dependency)
+// GSAP utilities
+import { gsap } from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+
+// Register ScrollTrigger plugin
+gsap.registerPlugin(ScrollTrigger);
+
 export interface AnimationOptions {
   duration?: number;
   delay?: number;
@@ -54,15 +60,12 @@ const activeScrollTriggers = new Set<string>();
 export const gsapRegistry = {
   register: (id: string, animation: any) => {
     activeAnimations.add(id);
-    console.log('Registered animation:', id);
   },
   unregister: (id: string) => {
     activeAnimations.delete(id);
-    console.log('Unregistered animation:', id);
   },
   registerScrollTrigger: (id: string, trigger: any) => {
     activeScrollTriggers.add(id);
-    console.log('Registered ScrollTrigger:', id);
   },
   getPerformanceMetrics: (): GSAPPerformanceMetrics => {
     return {
@@ -98,11 +101,12 @@ export function getPerformanceRecommendations(): string[] {
 }
 
 export function createOptimizedScrollTrigger(options: any): any {
-  // Import ScrollTrigger from global if available
-  const ScrollTrigger = (window as any).ScrollTrigger;
-  
-  if (!ScrollTrigger) {
-    console.warn('ScrollTrigger not available');
+  // Check if ScrollTrigger is available
+  if (!ScrollTrigger || typeof ScrollTrigger.create !== 'function') {
+    // Only warn in development to reduce console noise
+    if (import.meta.env.DEV) {
+      console.warn('ScrollTrigger not available - animations may not work correctly');
+    }
     return {
       kill: () => {},
       refresh: () => {},
@@ -139,7 +143,6 @@ export function createBatchScrollTriggers(elements: Element[], options: any = {}
 
 export function createOptimizedAnimation(id: string, element: Element, options: any): void {
   // Minimal animation implementation - just a placeholder
-  console.log('Animation:', id);
 }
 
 export function isReducedMotionPreferred(): boolean {

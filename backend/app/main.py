@@ -50,7 +50,16 @@ async def lifespan(app: FastAPI):
     
     # Start keep-alive service if enabled
     if settings.KEEP_ALIVE_ENABLED:
-        await start_keep_alive_service()
+        try:
+            import logging
+            keep_alive_logger = logging.getLogger(__name__)
+            await start_keep_alive_service()
+            keep_alive_logger.info("Keep-alive service started successfully")
+        except Exception as e:
+            import logging
+            keep_alive_logger = logging.getLogger(__name__)
+            keep_alive_logger.error(f"Failed to start keep-alive service: {e}", exc_info=True)
+            # Don't fail startup if keep-alive fails
     
     # Initialize database optimization
     try:
@@ -199,7 +208,7 @@ app.include_router(design_system.router, prefix="/api/design-system", tags=["Des
 app.include_router(performance.router, prefix="/api/performance", tags=["Performance"])
 
 # Keep-alive service routes
-app.include_router(keep_alive.router, prefix="/api/keep-alive", tags=["Keep Alive"])
+app.include_router(keep_alive.router, prefix="/api", tags=["Keep Alive"])
 
 # Sitemap routes (no prefix for /sitemap.xml, but admin routes have prefix)
 app.include_router(sitemap.router, tags=["Sitemap"])

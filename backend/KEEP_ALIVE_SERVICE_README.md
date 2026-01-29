@@ -21,7 +21,7 @@ Add these environment variables to your `.env` file:
 # Keep Alive Service Configuration
 KEEP_ALIVE_ENABLED=true
 KEEP_ALIVE_PING_INTERVAL=840          # 14 minutes (in seconds)
-KEEP_ALIVE_HEALTH_CHECK_INTERVAL=60   # 1 minute (in seconds)
+KEEP_ALIVE_HEALTH_CHECK_INTERVAL=840  # 14 minutes (in seconds, same as ping interval)
 ```
 
 ## API Endpoints

@@ -178,6 +178,9 @@ export function EnquiryForm({ listingSlug, listingName, locality, source = "cont
           <p className="mt-2 text-sm text-muted-foreground">
             {transparencyLines.slaPromise}
           </p>
+          <div className="mt-4">
+            <LocationPrivacyNotice variant="card" />
+          </div>
           <AnimatedButton variant="whatsapp" className="mt-4" asChild intensity="enhanced">
             <a
               href={buildWhatsAppLink({

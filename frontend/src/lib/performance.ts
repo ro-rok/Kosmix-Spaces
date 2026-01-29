@@ -387,14 +387,9 @@ export class PerformanceMonitor {
     const metrics = this.getMetrics();
     
     // Log to console in development
-    if (process.env.NODE_ENV === 'development') {
-      console.table(metrics);
-    }
-
-    // Send to analytics in production
+    // Send to analytics in production (silently)
     if (process.env.NODE_ENV === 'production' && Object.keys(metrics).length > 0) {
       // This would integrate with your analytics system
-      console.log('Performance metrics:', metrics);
     }
   }
 

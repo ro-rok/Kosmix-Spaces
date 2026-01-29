@@ -140,10 +140,6 @@ async function apiRequest<T>(
 
 // Enhanced API client with comprehensive endpoint mapping
 export const api = {
-  // Health check
-  healthCheck: () => 
-    apiRequest<{ status: string; message: string }>("/health", {}, "health-check", 300000), // Cache for 5 minutes
-
   // Authentication endpoints
   auth: {
     // Partner authentication

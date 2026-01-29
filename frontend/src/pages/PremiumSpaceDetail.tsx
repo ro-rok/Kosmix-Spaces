@@ -34,6 +34,8 @@ import { transparencyLines } from "@/config/contact";
 import { cn } from "@/lib/utils";
 import { trackListingView, trackWhatsAppClick, trackCallClick, trackEnquirySubmit, trackPageView } from "@/lib/analytics";
 import { SEO, StructuredData } from "@/components/SEO";
+import { generateBreadcrumbSchema, cleanStructuredData, generateOpeningHours } from "@/lib/seo-helpers";
+import { LocationPrivacyNotice } from "@/components/LocationPrivacyNotice";
 
 // Navigation tabs for scroll-spy
 const navigationTabs = [
@@ -238,16 +240,24 @@ export default function PremiumSpaceDetail() {
     canonicalUrl: `https://kosmixspaces.in/spaces${listing.slug}`
   };
 
-  // Prepare structured data for rich snippets (LocalBusiness schema)
-  const structuredData = {
+  // Generate breadcrumb schema
+  const breadcrumbSchema = generateBreadcrumbSchema([
+    { name: "Home", url: "/" },
+    { name: "Explore", url: "/explore" },
+    { name: listing.locality, url: `/explore?locality=${listing.localityId}` },
+    { name: listing.displayName, url: `/spaces${listing.slug}` }
+  ]);
+
+  // Prepare structured data for rich snippets (CoworkingSpace schema)
+  const structuredDataRaw = {
     "@context": "https://schema.org",
-    "@type": "LocalBusiness",
+    "@type": "CoworkingSpace",
     "name": listing.displayName,
-    "description": listing.overview,
+    "description": listing.overview.substring(0, 500),
     "address": {
       "@type": "PostalAddress",
       "addressLocality": listing.locality,
-      "addressRegion": listing.city,
+      "addressRegion": listing.city || "Delhi",
       "addressCountry": "IN"
     },
     "geo": listing.approximateCoordinates ? {
@@ -255,22 +265,29 @@ export default function PremiumSpaceDetail() {
       "latitude": listing.approximateCoordinates.lat,
       "longitude": listing.approximateCoordinates.lng
     } : undefined,
-    "image": allPhotos.map(photo => photo.url),
+    "image": allPhotos.length > 0 ? allPhotos.map(photo => photo.url) : undefined,
     "priceRange": listing.budgetBand || "$$",
     "telephone": "+919555457457",
-    "url": `https://kosmixspaces.in/space/${slug}`,
-    "amenityFeature": listing.amenities.map((amenity: string) => ({
+    "url": `https://kosmixspaces.in/spaces${listing.slug}`,
+    "openingHours": generateOpeningHours(listing.accessHours),
+    "amenityFeature": listing.amenities && listing.amenities.length > 0 ? listing.amenities.map((amenity: string) => ({
       "@type": "LocationFeatureSpecification",
       "name": amenity
-    })),
-    "offers": enabledOfferings.map((offering: any) => ({
+    })) : undefined,
+    "offers": enabledOfferings.length > 0 ? enabledOfferings.map((offering: any) => ({
       "@type": "Offer",
       "name": offering.title,
       "description": offering.description,
       "price": offering.startingPrice,
-      "priceCurrency": "INR"
-    }))
+      "priceCurrency": "INR",
+      "availability": "https://schema.org/InStock"
+    })) : undefined,
+    "numberOfRooms": listing.seatCapacityMax || undefined,
+    "maximumAttendeeCapacity": listing.seatCapacityMax || undefined
   };
+
+  // Clean structured data to remove undefined/null values
+  const structuredData = cleanStructuredData(structuredDataRaw);
 
   return (
     <>
@@ -287,6 +304,7 @@ export default function PremiumSpaceDetail() {
         canonical={seoMetadata.canonicalUrl}
       />
       <StructuredData data={structuredData} />
+      <StructuredData data={breadcrumbSchema} />
       <div className="pb-24 md:pb-0">
         {/* Breadcrumb */}
       <div className="border-b border-border bg-muted/30">

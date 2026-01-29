@@ -172,6 +172,16 @@ async def update_premium_listing(listing_id: str, partner_id: str, update_data: 
         {"$set": update_doc}
     )
     
+    # Regenerate SEO metadata if content changed (displayName, overview, locality, amenities affect SEO)
+    seo_relevant_fields = ["displayName", "overview", "locality", "amenities", "heroPhotos"]
+    if any(field in update_data for field in seo_relevant_fields):
+        try:
+            from app.services.seo_service import update_listing_seo
+            await update_listing_seo(listing_id)
+        except Exception as e:
+            # Don't fail the update if SEO generation fails
+            print(f"Warning: Failed to regenerate SEO metadata: {e}")
+    
     # Return updated listing
     return await get_premium_listing(listing_id, partner_id)
 

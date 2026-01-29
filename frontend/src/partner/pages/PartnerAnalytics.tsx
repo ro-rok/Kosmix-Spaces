@@ -2,11 +2,12 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { api } from "@/lib/api";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Eye, MessageCircle, TrendingUp } from "lucide-react";
+import { Eye, MessageCircle, TrendingUp, Phone, ArrowUp, ArrowDown } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { usePartnerListings } from "@/hooks/useAuth";
 
 export function PartnerAnalytics() {
   const { user } = useAuth();
@@ -14,15 +15,21 @@ export function PartnerAnalytics() {
   
   const [dateRange, setDateRange] = useState("30"); // days
   const [granularity, setGranularity] = useState<"day" | "week" | "month">("day");
+  const [selectedListingId, setSelectedListingId] = useState<string>("all");
 
   const startDate = new Date(Date.now() - parseInt(dateRange) * 24 * 60 * 60 * 1000).toISOString();
   const endDate = new Date().toISOString();
 
+  // Get partner's listings for selector
+  const { data: listingsData } = usePartnerListings();
+  const listings = listingsData?.items || [];
+
   const { data: analytics, isLoading: analyticsLoading } = useQuery({
-    queryKey: ["partner-analytics", partnerId, dateRange],
+    queryKey: ["partner-analytics", partnerId, dateRange, selectedListingId],
     queryFn: () => api.analytics.getPartnerAnalytics(partnerId || "", {
       startDate,
-      endDate
+      endDate,
+      listingId: selectedListingId !== "all" ? selectedListingId : undefined
     }),
     enabled: !!partnerId
   });
@@ -165,9 +172,11 @@ export function PartnerAnalytics() {
                 <YAxis />
                 <Tooltip />
                 <Legend />
-                <Line type="monotone" dataKey="views" stroke="#0088FE" name="Views" />
-                <Line type="monotone" dataKey="enquiries" stroke="#00C49F" name="Enquiries" />
-                <Line type="monotone" dataKey="clicks" stroke="#FF8042" name="Clicks" />
+                <Line type="monotone" dataKey="views" stroke="#0088FE" name="Views" strokeWidth={2} />
+                <Line type="monotone" dataKey="enquiries" stroke="#00C49F" name="Enquiries" strokeWidth={2} />
+                {timeSeriesData.some(d => d.clicks) && (
+                  <Line type="monotone" dataKey="clicks" stroke="#FF8042" name="Clicks" strokeWidth={2} />
+                )}
               </LineChart>
             </ResponsiveContainer>
           ) : (

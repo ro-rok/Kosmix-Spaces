@@ -249,10 +249,6 @@ export function useTouchGestures(config: TouchGestureConfig = {}) {
       document.addEventListener('touchmove', handleTouchMove, options);
       document.addEventListener('touchend', handleTouchEnd, options);
       document.addEventListener('touchcancel', handleTouchCancel, options);
-      
-      if (enableDebug) {
-        console.log('Gesture: Event listeners attached successfully');
-      }
     } catch (error) {
       console.error('Gesture: Failed to attach event listeners', error);
     }

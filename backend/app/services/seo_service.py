@@ -34,23 +34,54 @@ def generate_listing_seo(listing: dict) -> SEOMetadata:
     hero_photos = listing.get("heroPhotos", [])
     og_image = hero_photos[0]["url"] if hero_photos and len(hero_photos) > 0 else None
     
-    # Generate meta title (60 chars max for SEO)
+    # Generate meta title (optimal: 50-60 chars, max 70 for better context)
+    # Google truncates at ~600px, but 60 chars is safe for most cases
     meta_title = f"{display_name} | Coworking Space in {locality}, {city} | Kosmix Spaces"
-    if len(meta_title) > 60:
-        # Truncate if too long
+    if len(meta_title) > 70:
+        # Try shorter version
         meta_title = f"{display_name} | {locality} | Kosmix Spaces"
+        if len(meta_title) > 70:
+            # Truncate display name if still too long
+            max_name_len = 70 - len(f" | {locality} | Kosmix Spaces")
+            if max_name_len > 0:
+                meta_title = f"{display_name[:max_name_len]}... | {locality} | Kosmix Spaces"
+            else:
+                meta_title = f"{display_name[:30]}... | Kosmix Spaces"
     
-    # Generate meta description (155 chars max for SEO)
-    # Use overview text, truncate intelligently
-    meta_description = overview[:152] + "..." if len(overview) > 155 else overview
-    if not meta_description:
+    # Generate meta description (optimal: 150-160 chars for best display)
+    # Use overview text, truncate intelligently at word boundaries when possible
+    if overview:
+        # Try to truncate at word boundary
+        if len(overview) > 160:
+            truncated = overview[:157]
+            # Find last space before 157 chars
+            last_space = truncated.rfind(' ')
+            if last_space > 140:  # Only use if we have enough content
+                meta_description = overview[:last_space] + "..."
+            else:
+                meta_description = overview[:157] + "..."
+        else:
+            meta_description = overview
+    else:
         meta_description = f"Verified coworking space in {locality}, {city}. "
         if amenities:
             meta_description += f"Amenities: {', '.join(amenities[:3])}."
     
-    # Ensure description doesn't exceed 155 chars
-    if len(meta_description) > 155:
-        meta_description = meta_description[:152] + "..."
+    # Ensure description is optimal length (150-160 chars)
+    if len(meta_description) > 160:
+        truncated = meta_description[:157]
+        last_space = truncated.rfind(' ')
+        if last_space > 140:
+            meta_description = meta_description[:last_space] + "..."
+        else:
+            meta_description = meta_description[:157] + "..."
+    elif len(meta_description) < 120 and overview:
+        # If too short, try to add more context
+        if len(overview) > len(meta_description):
+            remaining = 160 - len(meta_description)
+            if remaining > 10:
+                additional = overview[len(meta_description):len(meta_description) + remaining - 3]
+                meta_description = meta_description + " " + additional + "..."
     
     # Generate keywords
     keywords = [
@@ -77,8 +108,10 @@ def generate_listing_seo(listing: dict) -> SEOMetadata:
     # Remove duplicates and limit to 15 keywords
     keywords = list(dict.fromkeys(keywords))[:15]
     
-    # Generate canonical URL
-    canonical_url = f"{settings.SITE_URL}/spaces{slug}"
+    # Generate canonical URL (ensure absolute and properly formatted)
+    # Ensure slug starts with / if it doesn't already
+    slug_clean = slug if slug.startswith('/') else f'/{slug}'
+    canonical_url = f"{settings.SITE_URL}/spaces{slug_clean}"
     
     # OG Title (slightly different, can be longer)
     og_title = f"{display_name} - Coworking Space in {locality}, {city}"

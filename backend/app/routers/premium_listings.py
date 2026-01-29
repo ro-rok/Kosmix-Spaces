@@ -392,7 +392,7 @@ async def update_listing(
     # Check if listing was approved
     was_approved = current_listing.get("verificationStatus") in ["APPROVED", "APPROVED_VERIFIED"]
     
-    # Update the listing
+    # Update the listing (SEO will be regenerated inside update_premium_listing if needed)
     listing = await update_premium_listing(
         listing_id=listing_id,
         partner_id=partner_id,

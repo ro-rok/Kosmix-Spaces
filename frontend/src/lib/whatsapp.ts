@@ -19,13 +19,15 @@ export function buildWhatsAppLink(params: WhatsAppMessageParams = {}): string {
     return `https://wa.me/${contactConfig.whatsappNumber}?text=${encodedMessage}`;
   }
   
-  // Build structured message
+  // Build professional, high-converting message template
   let message = `Hi Kosmix Spaces! 👋\n\n`;
   
+  // Listing context (if available)
   if (listingName) {
     message += `I'm interested in: *${listingName}*\n`;
   }
   
+  // Location context
   if (locality) {
     const localityText = locality === "other-locality" 
       ? "another locality (not currently listed)" 
@@ -33,8 +35,11 @@ export function buildWhatsAppLink(params: WhatsAppMessageParams = {}): string {
     message += `📍 Location: ${localityText}\n`;
   }
   
+  // User needs (team size, budget, space type, move-in)
+  const needs: string[] = [];
+  
   if (teamSize) {
-    message += `👥 Team Size: ${teamSize}\n`;
+    needs.push(`Team: ${teamSize}`);
   }
   
   if (budgetBand) {
@@ -48,11 +53,11 @@ export function buildWhatsAppLink(params: WhatsAppMessageParams = {}): string {
       "40k-80k": "₹40k - ₹80k",
       "80k+": "₹80k+"
     };
-    message += `💰 Budget: ${budgetLabels[budgetBand] || budgetBand}\n`;
+    needs.push(`Budget: ${budgetLabels[budgetBand] || budgetBand}`);
   }
   
   if (spaceType) {
-    message += `🏢 Space Type: ${spaceType}\n`;
+    needs.push(`Type: ${spaceType}`);
   }
   
   if (moveInDate) {
@@ -63,10 +68,15 @@ export function buildWhatsAppLink(params: WhatsAppMessageParams = {}): string {
       "2-3months": "2-3 months",
       "exploring": "Just exploring"
     };
-    message += `📅 Move-in: ${moveInLabels[moveInDate] || moveInDate}\n`;
+    needs.push(`Move-in: ${moveInLabels[moveInDate] || moveInDate}`);
   }
   
-  message += `\nI'd like to schedule a visit. Please share available slots.`;
+  if (needs.length > 0) {
+    message += `\nRequirements:\n${needs.map(n => `• ${n}`).join('\n')}\n`;
+  }
+  
+  // Clear call to action
+  message += `\nPlease help me find the best options and schedule a visit.`;
   
   const encodedMessage = encodeURIComponent(message);
   return `https://wa.me/${contactConfig.whatsappNumber}?text=${encodedMessage}`;

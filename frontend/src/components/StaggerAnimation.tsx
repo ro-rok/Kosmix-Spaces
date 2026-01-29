@@ -91,7 +91,8 @@ export function StaggerAnimation({
     // Get all child elements that should be animated
     const childElements = containerRef.current.children;
     if (childElements.length === 0) {
-      console.warn('StaggerAnimation: No child elements found to animate');
+      // Silently return if no children - they may not be rendered yet
+      // This is expected during initial render or when children are conditionally rendered
       return;
     }
     

@@ -114,9 +114,11 @@ async def generate_sitemap_xml() -> str:
         
         url = SubElement(urlset, 'url')
         
-        # Location - remove leading slash from slug as SITE_URL has domain
+        # Location - ensure proper URL format
         loc = SubElement(url, 'loc')
-        listing_url = f"{settings.SITE_URL}/spaces{slug}"
+        # Ensure slug doesn't have leading slash, add it if needed
+        slug_clean = slug if slug.startswith('/') else f'/{slug}'
+        listing_url = f"{settings.SITE_URL}/spaces{slug_clean}"
         loc.text = listing_url
         
         # Last modified date

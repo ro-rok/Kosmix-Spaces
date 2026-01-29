@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
-import { MapPin } from 'lucide-react';
+import { useMemo } from 'react';
+import { MapPin, ExternalLink } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface GoogleMapProps {
   locality: string;
@@ -12,168 +13,80 @@ interface GoogleMapProps {
 }
 
 export function GoogleMap({ locality, city, approximateCoordinates, className = '' }: GoogleMapProps) {
-  const mapRef = useRef<HTMLDivElement>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    // Load Google Maps script if not already loaded
-    const loadGoogleMaps = () => {
-      if (window.google?.maps) {
-        initializeMap();
-        return;
-      }
-
-      const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-      
-      if (!apiKey) {
-        setError('Google Maps API key not configured');
-        return;
-      }
-
-      // Check if script is already loading
-      if (document.querySelector('script[src*="maps.googleapis.com"]')) {
-        const checkGoogle = setInterval(() => {
-          if (window.google?.maps) {
-            clearInterval(checkGoogle);
-            initializeMap();
-          }
-        }, 100);
-        return;
-      }
-
-      const script = document.createElement('script');
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
-      script.async = true;
-      script.defer = true;
-      script.onload = initializeMap;
-      script.onerror = () => setError('Failed to load Google Maps');
-      document.head.appendChild(script);
-    };
-
-    const initializeMap = () => {
-      if (!mapRef.current || !window.google?.maps) return;
-
-      try {
-        // Use approximate coordinates if available, otherwise geocode the locality
-        if (approximateCoordinates) {
-          createMapWithCoordinates(approximateCoordinates);
-        } else {
-          geocodeAndCreateMap();
-        }
-      } catch (err) {
-        console.error('Map initialization error:', err);
-        setError('Failed to initialize map');
-      }
-    };
-
-    const createMapWithCoordinates = (coords: { lat: number; lng: number }) => {
-      if (!mapRef.current) return;
-
-      const map = new window.google.maps.Map(mapRef.current, {
-        center: coords,
-        zoom: 14, // Good zoom level for locality view
-        disableDefaultUI: false,
-        zoomControl: true,
-        mapTypeControl: false,
-        streetViewControl: false,
-        fullscreenControl: true,
-        styles: [
-          {
-            featureType: 'poi',
-            elementType: 'labels',
-            stylers: [{ visibility: 'off' }]
-          }
-        ]
-      });
-
-      // Add a circle to show approximate area instead of exact pin
-      new window.google.maps.Circle({
-        map: map,
-        center: coords,
-        radius: 500, // 500 meter radius for approximate location
-        fillColor: '#00D9A5',
-        fillOpacity: 0.2,
-        strokeColor: '#00D9A5',
-        strokeOpacity: 0.8,
-        strokeWeight: 2,
-      });
-
-      // Add marker at center
-      new window.google.maps.Marker({
-        position: coords,
-        map: map,
-        title: `${locality}, ${city}`,
-        icon: {
-          path: window.google.maps.SymbolPath.CIRCLE,
-          scale: 8,
-          fillColor: '#00D9A5',
-          fillOpacity: 1,
-          strokeColor: '#ffffff',
-          strokeWeight: 2,
-        }
-      });
-    };
-
-    const geocodeAndCreateMap = () => {
-      if (!window.google?.maps) return;
-
-      const geocoder = new window.google.maps.Geocoder();
-      const address = `${locality}, ${city}, India`;
-
-      geocoder.geocode({ address }, (results, status) => {
-        if (status === 'OK' && results && results[0] && mapRef.current) {
-          const location = results[0].geometry.location;
-          createMapWithCoordinates({
-            lat: location.lat(),
-            lng: location.lng()
-          });
-        } else {
-          console.error('Geocoding failed:', status);
-          setError('Unable to locate address on map');
-        }
-      });
-    };
-
-    loadGoogleMaps();
+  // Generate Google Maps iframe URL (works without API key)
+  // Using Google Maps search URL which can be embedded
+  const embedUrl = useMemo(() => {
+    const query = approximateCoordinates
+      ? `${approximateCoordinates.lat},${approximateCoordinates.lng}`
+      : encodeURIComponent(`${locality}, ${city}, India`);
+    
+    // Use Google Maps URL - this format works in iframes without API key
+    // The iframe will show an interactive map
+    return `https://maps.google.com/maps?q=${query}&hl=en&z=14&output=embed`;
   }, [locality, city, approximateCoordinates]);
 
-  if (error) {
-    return (
-      <div className={`aspect-[16/9] bg-muted rounded-lg flex items-center justify-center ${className}`}>
-        <div className="text-center">
-          <MapPin className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-          <p className="text-sm text-muted-foreground">Approximate location</p>
-          <p className="text-xs text-muted-foreground mt-1">
-            {locality}, {city}
-          </p>
-          <p className="text-xs text-muted-foreground mt-1">
-            Exact address shared after enquiry
-          </p>
-        </div>
-      </div>
-    );
-  }
+  // Generate Google Maps search URL for "View on Google Maps" link
+  const mapsSearchUrl = useMemo(() => {
+    const query = approximateCoordinates
+      ? `${approximateCoordinates.lat},${approximateCoordinates.lng}`
+      : encodeURIComponent(`${locality}, ${city}, India`);
+    return `https://www.google.com/maps/search/?api=1&query=${query}`;
+  }, [locality, city, approximateCoordinates]);
 
   return (
-    <div className={`aspect-[16/9] bg-muted rounded-lg overflow-hidden ${className}`}>
-      <div ref={mapRef} className="w-full h-full" />
+    <div className={`aspect-[16/9] bg-muted rounded-lg overflow-hidden relative group ${className}`}>
+      <iframe
+        src={embedUrl}
+        width="100%"
+        height="100%"
+        style={{ border: 0 }}
+        allowFullScreen
+        loading="lazy"
+        referrerPolicy="no-referrer-when-downgrade"
+        className="w-full h-full"
+        title={`Map showing ${locality}, ${city}`}
+      />
+      
+      {/* Overlay with location info and link - shows on hover */}
+      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-background/95 via-background/80 to-transparent p-4 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <MapPin className="h-4 w-4 text-primary flex-shrink-0" />
+            <span className="text-sm font-medium text-foreground">
+              {locality}, {city}
+            </span>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            asChild
+            className="h-8 text-xs flex-shrink-0"
+          >
+            <a
+              href={mapsSearchUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1"
+            >
+              View on Google Maps
+              <ExternalLink className="h-3 w-3" />
+            </a>
+          </Button>
+        </div>
+        <p className="text-xs text-muted-foreground mt-1">
+          Exact address shared after enquiry
+        </p>
+      </div>
+      
+      {/* Always visible location badge in corner */}
+      <div className="absolute top-3 left-3 bg-background/90 backdrop-blur-sm rounded-md px-2 py-1.5 shadow-sm">
+        <div className="flex items-center gap-1.5">
+          <MapPin className="h-3.5 w-3.5 text-primary" />
+          <span className="text-xs font-medium text-foreground">
+            {locality}, {city}
+          </span>
+        </div>
+      </div>
     </div>
   );
 }
-
-// Extend Window interface for Google Maps
-declare global {
-  interface Window {
-    google?: {
-      maps: {
-        Map: any;
-        Marker: any;
-        Circle: any;
-        Geocoder: any;
-        SymbolPath: any;
-      };
-    };
-  }
-}
-
-

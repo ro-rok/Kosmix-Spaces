@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowRight, MapPin, MessageCircle, BadgeCheck, Building2, Clock, Shield, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,9 @@ import { useListings, useLocalities } from "@/hooks/useApi";
 import { teamSizeBands, BudgetBand, budgetBandLabels } from "@/types/models";
 import { buildWhatsAppLink } from "@/lib/whatsapp";
 import { transparencyLines } from "@/config/contact";
-import { SEO } from "@/components/SEO";
+import { SEO, StructuredData } from "@/components/SEO";
+import { trackPageView } from "@/lib/analytics";
+import { generateOrganizationSchema, generateWebSiteSchema, generateBreadcrumbSchema } from "@/lib/seo-helpers";
 
 const budgetBands: { value: BudgetBand; label: string }[] = [
   { value: "5k-10k", label: "₹5K-10K" },
@@ -88,6 +90,13 @@ const testimonials = [
   },
 ];
 
+  // Generate structured data
+  const organizationSchema = generateOrganizationSchema();
+  const websiteSchema = generateWebSiteSchema();
+  const breadcrumbSchema = generateBreadcrumbSchema([
+    { name: "Home", url: "/" }
+  ]);
+
   return (
     <>
       <SEO
@@ -104,6 +113,9 @@ const testimonials = [
         ]}
         canonical="https://kosmixspaces.in/"
       />
+      <StructuredData data={organizationSchema} />
+      <StructuredData data={websiteSchema} />
+      <StructuredData data={breadcrumbSchema} />
       <div className="pb-20 md:pb-0">
         {/* Hero Section */}
       <section className="relative min-h-[95vh] flex items-center pt-20 lg:pt-0">
@@ -308,7 +320,6 @@ const testimonials = [
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <ShortlistDrawer />
               <Button variant="outline" asChild className="hidden sm:inline-flex">
                 <Link to="/explore">
                   View All <ArrowRight className="h-4 w-4" />
@@ -382,7 +393,7 @@ const testimonials = [
                 },
                 { 
                   step: "2", 
-                  title: "Get Shortlist", 
+                  title: "Get Options", 
                   desc: "We curate verified options matching your needs",
                   icon: BadgeCheck
                 },
@@ -491,15 +502,15 @@ const testimonials = [
               <p className="mx-auto mt-4 max-w-xl opacity-90">
                 WhatsApp us with your requirements and we'll find the best options for you within 3 hours.
               </p>
-              <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4">
-                <AnimatedButton variant="hero-outline" size="default" asChild intensity="normal" className="w-full sm:w-auto">
-                  <a href={buildWhatsAppLink()} target="_blank" rel="noopener noreferrer" className="gap-2">
+              <div className="mt-8 flex flex-row flex-nowrap items-center justify-center gap-3 sm:gap-4">
+                <AnimatedButton variant="hero-outline" size="default" asChild intensity="normal" className="whitespace-nowrap">
+                  <a href={buildWhatsAppLink()} target="_blank" rel="noopener noreferrer" className="gap-2 flex items-center">
                     <MessageCircle className="h-4 w-4" />
                     WhatsApp Us Now
                   </a>
                 </AnimatedButton>
-                <AnimatedButton variant="hero-outline" size="default" asChild intensity="subtle" className="w-full sm:w-auto">
-                  <Link to="/explore" className="gap-2">
+                <AnimatedButton variant="hero-outline" size="default" asChild intensity="subtle" className="whitespace-nowrap">
+                  <Link to="/explore" className="gap-2 flex items-center">
                     Browse All Spaces <ArrowRight className="h-4 w-4" />
                   </Link>
                 </AnimatedButton>

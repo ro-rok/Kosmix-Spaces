@@ -38,8 +38,8 @@ class AnalyticsService:
     
     @property
     def listings_collection(self):
-        """Get listings collection."""
-        return self.db.listings
+        """Get premium listings collection."""
+        return self.db.premium_listings
     
     @property
     def partners_collection(self):
@@ -61,9 +61,12 @@ class AnalyticsService:
         return event
     
     async def track_events_batch(self, events_data: List[AnalyticsEventCreate]) -> List[AnalyticsEvent]:
-        """Track multiple analytics events in batch."""
+        """Track multiple analytics events in batch (up to 100 events)."""
         if not events_data:
             return []
+        
+        if len(events_data) > 100:
+            raise ValueError("Maximum 100 events per batch")
         
         # Enrich all events
         enriched_events = []
@@ -85,7 +88,9 @@ class AnalyticsService:
     async def get_admin_analytics(
         self, 
         start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None
+        end_date: Optional[datetime] = None,
+        portal: Optional[str] = None,
+        event_name: Optional[EventName] = None
     ) -> AnalyticsSummary:
         """Get comprehensive analytics for admin dashboard."""
         if not start_date:
@@ -100,6 +105,14 @@ class AnalyticsService:
                 "$lte": end_date
             }
         }
+        
+        # Add portal filter if specified
+        if portal:
+            date_filter["portal"] = portal
+        
+        # Add event name filter if specified
+        if event_name:
+            date_filter["eventName"] = event_name
         
         # Aggregate key metrics
         pipeline = [
@@ -141,6 +154,21 @@ class AnalyticsService:
         # Get top localities
         top_localities = await self._get_top_localities(start_date, end_date)
         
+        # Get time series data
+        time_series = await self.get_time_series(start_date, end_date)
+        time_series_data = [
+            {
+                "date": dp.date.isoformat(),
+                "views": dp.views,
+                "enquiries": dp.enquiries,
+                "searches": dp.searches
+            }
+            for dp in time_series.dataPoints
+        ]
+        
+        # Get funnel data
+        funnel = await self.get_conversion_funnel(start_date, end_date)
+        
         return AnalyticsSummary(
             totalViews=total_views,
             totalEnquiries=total_enquiries,
@@ -148,14 +176,17 @@ class AnalyticsService:
             partnerSignups=partner_signups,
             conversionRate=round(conversion_rate, 2),
             topListings=top_listings,
-            topLocalities=top_localities
+            topLocalities=top_localities,
+            timeSeries=time_series_data,
+            funnel=funnel
         )
     
     async def get_partner_analytics(
         self, 
         partner_id: str,
         start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None
+        end_date: Optional[datetime] = None,
+        listing_id: Optional[str] = None
     ) -> PartnerAnalytics:
         """Get analytics for a specific partner."""
         if not start_date:
@@ -163,26 +194,35 @@ class AnalyticsService:
         if not end_date:
             end_date = datetime.now(timezone.utc)
         
-        # Get partner's listings
-        partner_listings = await self.listings_collection.find(
-            {"partnerId": partner_id}
-        ).to_list(None)
-        
-        listing_ids = [str(listing["_id"]) for listing in partner_listings]
-        
-        if not listing_ids:
-            return PartnerAnalytics(
-                views=0,
-                enquiries=0,
-                conversionRate=0.0,
-                topListings=[]
-            )
-        
-        # Build filter for partner's listings
+        # Build filter
         date_filter = {
             "timestamp": {"$gte": start_date, "$lte": end_date},
-            "listingId": {"$in": listing_ids}
+            "partnerId": partner_id
         }
+        
+        if listing_id:
+            date_filter["listingId"] = listing_id
+        else:
+            # Get partner's listings
+            partner_listings = await self.listings_collection.find(
+                {"partnerId": partner_id}
+            ).to_list(None)
+            
+            listing_ids = [str(listing["_id"]) for listing in partner_listings]
+            
+            if not listing_ids:
+                return PartnerAnalytics(
+                    views=0,
+                    enquiries=0,
+                    whatsappClicks=0,
+                    callClicks=0,
+                    conversionRate=0.0,
+                    topListings=[],
+                    timeSeries=[],
+                    trends=None
+                )
+            
+            date_filter["listingId"] = {"$in": listing_ids}
         
         # Aggregate partner metrics
         pipeline = [
@@ -210,7 +250,18 @@ class AnalyticsService:
         # Calculate totals and top listings
         total_views = 0
         total_enquiries = 0
+        total_whatsapp_clicks = 0
+        total_call_clicks = 0
         top_listings = []
+        
+        # Get listing details if not filtering by specific listing
+        if not listing_id:
+            partner_listings = await self.listings_collection.find(
+                {"partnerId": partner_id}
+            ).to_list(None)
+        else:
+            listing = await self.listings_collection.find_one({"_id": ObjectId(listing_id)})
+            partner_listings = [listing] if listing else []
         
         for listing in partner_listings:
             listing_id = str(listing["_id"])
@@ -218,16 +269,23 @@ class AnalyticsService:
             
             views = stats.get(EventName.LISTING_VIEW, 0)
             enquiries = stats.get(EventName.ENQUIRY_SUBMIT, 0)
+            whatsapp_clicks = stats.get(EventName.WHATSAPP_CLICK, 0)
+            call_clicks = stats.get(EventName.CALL_CLICK, 0)
             
             total_views += views
             total_enquiries += enquiries
+            total_whatsapp_clicks += whatsapp_clicks
+            total_call_clicks += call_clicks
             
             if views > 0 or enquiries > 0:
                 top_listings.append({
                     "listingId": listing_id,
                     "displayName": listing.get("displayName", "Unknown"),
                     "views": views,
-                    "enquiries": enquiries
+                    "enquiries": enquiries,
+                    "whatsappClicks": whatsapp_clicks,
+                    "callClicks": call_clicks,
+                    "conversionRate": round((enquiries / views * 100) if views > 0 else 0.0, 2)
                 })
         
         # Sort top listings by views
@@ -236,11 +294,38 @@ class AnalyticsService:
         
         conversion_rate = (total_enquiries / total_views * 100) if total_views > 0 else 0.0
         
+        # Get time series data
+        time_series = await self.get_time_series(start_date, end_date, partner_id=partner_id, listing_id=listing_id)
+        time_series_data = [
+            {
+                "date": dp.date.isoformat(),
+                "views": dp.views,
+                "enquiries": dp.enquiries
+            }
+            for dp in time_series.dataPoints
+        ]
+        
+        # Calculate trends (compare with previous period)
+        prev_start = start_date - (end_date - start_date)
+        prev_time_series = await self.get_time_series(prev_start, start_date, partner_id=partner_id, listing_id=listing_id)
+        prev_views = sum(dp.views for dp in prev_time_series.dataPoints)
+        prev_enquiries = sum(dp.enquiries for dp in prev_time_series.dataPoints)
+        
+        views_change = ((total_views - prev_views) / prev_views * 100) if prev_views > 0 else 0.0
+        enquiries_change = ((total_enquiries - prev_enquiries) / prev_enquiries * 100) if prev_enquiries > 0 else 0.0
+        
         return PartnerAnalytics(
             views=total_views,
             enquiries=total_enquiries,
+            whatsappClicks=total_whatsapp_clicks,
+            callClicks=total_call_clicks,
             conversionRate=round(conversion_rate, 2),
-            topListings=top_listings
+            topListings=top_listings,
+            timeSeries=time_series_data,
+            trends={
+                "viewsChange": round(views_change, 2),
+                "enquiriesChange": round(enquiries_change, 2)
+            }
         )
     
     async def get_listing_performance(
@@ -281,9 +366,11 @@ class AnalyticsService:
         last_activity = None
         
         async for doc in self.events_collection.aggregate(pipeline):
-            stats[doc["_id"]] = doc["count"]
-            if not last_activity or doc["lastActivity"] > last_activity:
-                last_activity = doc["lastActivity"]
+            event_name = doc["_id"]
+            stats[event_name] = doc["count"]
+            activity = doc["lastActivity"]
+            if not last_activity or activity > last_activity:
+                last_activity = activity
         
         views = stats.get(EventName.LISTING_VIEW, 0)
         enquiries = stats.get(EventName.ENQUIRY_SUBMIT, 0)
@@ -306,8 +393,20 @@ class AnalyticsService:
         )
     
     async def _enrich_event_data(self, event_data: AnalyticsEventCreate) -> AnalyticsEventCreate:
-        """Enrich event data with listing/partner context."""
+        """Enrich event data with listing/partner context and derived fields."""
         enriched_data = event_data.model_copy()
+        
+        # Extract referrer domain if not provided
+        if enriched_data.referrer and not enriched_data.referrerDomain:
+            enriched_data.referrerDomain = self._extract_domain(enriched_data.referrer)
+        
+        # Detect device type from user agent if not provided
+        if enriched_data.userAgent and not enriched_data.deviceType:
+            enriched_data.deviceType = self._detect_device_type(enriched_data.userAgent)
+        
+        # Determine portal from path if not provided
+        if not enriched_data.portal:
+            enriched_data.portal = self._determine_portal(enriched_data.path)
         
         # Enrich with listing context
         if event_data.listingId:
@@ -316,14 +415,71 @@ class AnalyticsService:
                     {"_id": ObjectId(event_data.listingId)}
                 )
                 if listing:
-                    enriched_data.locality = listing.get("locality")
-                    enriched_data.city = listing.get("city")
+                    # Try to get locality from location.locality (premium format) or locality (legacy)
+                    enriched_data.locality = listing.get("location", {}).get("locality") or listing.get("locality")
+                    enriched_data.city = listing.get("location", {}).get("city") or listing.get("city", "Delhi")
                     if not enriched_data.partnerId:
                         enriched_data.partnerId = listing.get("partnerId")
             except Exception:
                 pass  # Invalid ObjectId or listing not found
+        elif event_data.listingSlug:
+            # Try to find listing by slug
+            try:
+                listing = await self.listings_collection.find_one(
+                    {"slugData.slug": event_data.listingSlug}
+                )
+                if listing:
+                    enriched_data.listingId = str(listing["_id"])
+                    enriched_data.locality = listing.get("location", {}).get("locality") or listing.get("locality")
+                    enriched_data.city = listing.get("location", {}).get("city") or listing.get("city", "Delhi")
+                    if not enriched_data.partnerId:
+                        enriched_data.partnerId = listing.get("partnerId")
+            except Exception:
+                pass
         
         return enriched_data
+    
+    def _extract_domain(self, url: str) -> Optional[str]:
+        """Extract domain from URL."""
+        try:
+            from urllib.parse import urlparse
+            parsed = urlparse(url)
+            domain = parsed.netloc
+            # Remove port if present
+            if ':' in domain:
+                domain = domain.split(':')[0]
+            return domain.lower() if domain else None
+        except Exception:
+            return None
+    
+    def _detect_device_type(self, user_agent: str) -> str:
+        """Detect device type from user agent."""
+        if not user_agent:
+            return "unknown"
+        
+        ua_lower = user_agent.lower()
+        
+        # Mobile detection
+        mobile_indicators = ['mobile', 'android', 'iphone', 'ipod', 'blackberry', 'windows phone']
+        if any(indicator in ua_lower for indicator in mobile_indicators):
+            return "mobile"
+        
+        # Tablet detection
+        tablet_indicators = ['tablet', 'ipad', 'playbook']
+        if any(indicator in ua_lower for indicator in tablet_indicators):
+            return "tablet"
+        
+        # Default to desktop
+        return "desktop"
+    
+    def _determine_portal(self, path: str) -> str:
+        """Determine portal type from path."""
+        if path.startswith('/admin'):
+            return "admin"
+        elif path.startswith('/partner'):
+            return "partner"
+        else:
+            return "public"
     
     async def _get_top_listings(
         self, 
@@ -383,11 +539,18 @@ class AnalyticsService:
                     {"_id": ObjectId(listing_id)}
                 )
                 if listing:
+                    whatsapp_clicks = stats.get(EventName.WHATSAPP_CLICK, 0)
+                    call_clicks = stats.get(EventName.CALL_CLICK, 0)
+                    conversion_rate = (stats["enquiries"] / stats["views"] * 100) if stats["views"] > 0 else 0.0
+                    
                     top_listings.append({
                         "listingId": listing_id,
                         "displayName": listing.get("displayName", "Unknown"),
                         "views": stats["views"],
-                        "enquiries": stats["enquiries"]
+                        "enquiries": stats["enquiries"],
+                        "whatsappClicks": whatsapp_clicks,
+                        "callClicks": call_clicks,
+                        "conversionRate": round(conversion_rate, 2)
                     })
             except Exception:
                 continue

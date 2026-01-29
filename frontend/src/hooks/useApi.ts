@@ -50,18 +50,14 @@ export function useListings(params: Parameters<typeof api.getListings>[0] = {}) 
 }
 
 export function useListingDetail(slug: string) {
-  console.log("DEBUG: useListingDetail called with slug:", slug);
-  
   return useQuery({
     queryKey: ["listing", slug],
     queryFn: () => {
-      console.log("DEBUG: Making API call for slug:", slug);
       return api.getListingDetail(slug);
     },
     enabled: !!slug && slug !== "/", // Don't call API for empty or root slug
     staleTime: 1000 * 60 * 10, // 10 minutes
     retry: (failureCount, error) => {
-      console.log("DEBUG: API call failed:", error);
       if (error instanceof ApiError && error.status >= 400 && error.status < 500) {
         return false;
       }
@@ -100,9 +96,6 @@ export function useCreateSiteVisit() {
 export function useUploadPhoto() {
   return useMutation({
     mutationFn: (file: File) => api.partner.uploadPhoto(file),
-    onError: (error) => {
-      console.error('Photo upload failed:', error);
-    },
   });
 }
 
@@ -110,8 +103,5 @@ export function useUploadPhoto() {
 export function useDeletePhoto() {
   return useMutation({
     mutationFn: (photoId: string) => api.partner.deletePhoto(photoId),
-    onError: (error) => {
-      console.error('Photo delete failed:', error);
-    },
   });
 }

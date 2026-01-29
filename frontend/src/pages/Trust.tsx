@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { FAQAccordion } from "@/components/FAQAccordion";
 import { buildWhatsAppLink } from "@/lib/whatsapp";
 import { transparencyLines } from "@/config/contact";
-import { SEO } from "@/components/SEO";
+import { SEO, StructuredData } from "@/components/SEO";
+import { generateBreadcrumbSchema } from "@/lib/seo-helpers";
 
 const trustPillars = [
   {

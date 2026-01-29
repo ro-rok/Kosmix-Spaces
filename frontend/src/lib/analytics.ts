@@ -13,8 +13,22 @@ export interface AnalyticsEvent {
   userRole: 'anon' | 'partner' | 'admin';
   listingId?: string;
   listingSlug?: string;
+  partnerId?: string;
   referrer?: string;
+  referrerDomain?: string;
   path: string;
+  portal?: 'public' | 'partner' | 'admin';
+  utmSource?: string;
+  utmMedium?: string;
+  utmCampaign?: string;
+  utmTerm?: string;
+  utmContent?: string;
+  deviceType?: 'mobile' | 'desktop' | 'tablet';
+  viewportWidth?: number;
+  viewportHeight?: number;
+  userAgent?: string;
+  isFirstTouch?: boolean;
+  isLastTouch?: boolean;
   metadata?: EventMetadata;
 }
 
@@ -87,21 +101,107 @@ export interface PartnerAnalytics {
 
 class AnalyticsClient {
   private eventQueue: AnalyticsEvent[] = [];
-  private batchSize = 10;
+  private batchSize = 50; // Increased batch size
   private flushInterval = 5000; // 5 seconds
   private flushTimer: NodeJS.Timeout | null = null;
   private sessionId: string;
   private backendAvailable: boolean | null = null; // Cache backend availability
+  private firstTouchUTM: Record<string, string> = {};
+  private lastTouchUTM: Record<string, string> = {};
 
   constructor() {
     // Generate or retrieve session ID
     this.sessionId = this.getOrCreateSessionId();
+    
+    // Capture UTM parameters
+    this.captureUTMParams();
+    
+    // Check if analytics was previously blocked in this session
+    // This prevents making requests that will fail
+    const wasBlocked = sessionStorage.getItem('analytics_blocked') === 'true';
+    if (wasBlocked) {
+      this.backendAvailable = false;
+    }
     
     // Start periodic flush
     this.startPeriodicFlush();
     
     // Flush on page unload
     this.setupUnloadHandler();
+  }
+  
+  /**
+   * Capture UTM parameters from URL (first-touch attribution)
+   */
+  private captureUTMParams(): void {
+    const params = new URLSearchParams(window.location.search);
+    const utm: Record<string, string> = {};
+    
+    ['source', 'medium', 'campaign', 'term', 'content'].forEach(key => {
+      const value = params.get(`utm_${key}`);
+      if (value) {
+        const camelKey = `utm${key.charAt(0).toUpperCase() + key.slice(1)}`;
+        utm[camelKey] = value;
+      }
+    });
+    
+    if (Object.keys(utm).length > 0) {
+      this.firstTouchUTM = utm;
+      sessionStorage.setItem('analytics_first_touch_utm', JSON.stringify(utm));
+    } else {
+      // Restore from session if exists
+      const stored = sessionStorage.getItem('analytics_first_touch_utm');
+      if (stored) {
+        try {
+          this.firstTouchUTM = JSON.parse(stored);
+        } catch {
+          // Invalid JSON, ignore
+        }
+      }
+    }
+  }
+  
+  /**
+   * Extract domain from URL
+   */
+  private extractDomain(url: string): string | undefined {
+    try {
+      const urlObj = new URL(url);
+      return urlObj.hostname.replace(/^www\./, '').toLowerCase();
+    } catch {
+      return undefined;
+    }
+  }
+  
+  /**
+   * Detect device type from user agent
+   */
+  private getDeviceType(): 'mobile' | 'desktop' | 'tablet' {
+    const ua = navigator.userAgent.toLowerCase();
+    
+    // Mobile detection
+    const mobileIndicators = ['mobile', 'android', 'iphone', 'ipod', 'blackberry', 'windows phone'];
+    if (mobileIndicators.some(indicator => ua.includes(indicator))) {
+      return 'mobile';
+    }
+    
+    // Tablet detection
+    const tabletIndicators = ['tablet', 'ipad', 'playbook'];
+    if (tabletIndicators.some(indicator => ua.includes(indicator))) {
+      return 'tablet';
+    }
+    
+    return 'desktop';
+  }
+  
+  /**
+   * Determine portal from path
+   */
+  private getPortal(): 'public' | 'partner' | 'admin' {
+    const path = window.location.pathname;
+    if (path.startsWith('/admin')) return 'admin';
+    if (path.startsWith('/partner')) return 'partner';
+    return 'public';
   }
 
   /**
@@ -165,35 +265,31 @@ class AnalyticsClient {
   async flush(): Promise<void> {
     if (this.eventQueue.length === 0) return;
 
+    // Skip if backend is known to be unavailable (e.g., ad blocker)
+    // This prevents making requests that will be blocked
+    if (this.backendAvailable === false) {
+      // Silently drop events when backend is unavailable
+      this.eventQueue = [];
+      return;
+    }
+
     const events = [...this.eventQueue];
     this.eventQueue = [];
 
-    try {
-      await this.sendEventsToBackend(events);
-      
-      // Mark backend as available on success
-      this.backendAvailable = true;
-      
-      if (import.meta.env.DEV) {
-        console.log(`✅ Flushed ${events.length} analytics events`);
+    // Use void to explicitly ignore promise rejection
+    // This prevents unhandled promise rejection warnings
+    void this.sendEventsToBackend(events).then((success) => {
+      if (success === true) {
+        this.backendAvailable = true;
+      } else {
+        // Already marked as unavailable in sendEventsToBackend
+        // Silently drop events
       }
-    } catch (error) {
-      // Mark backend as unavailable on network errors
-      const isNetworkError = error instanceof TypeError && error.message.includes('fetch');
-      if (isNetworkError) {
-        this.backendAvailable = false;
-      }
-      
-      // Only log in development mode to reduce console noise
-      if (import.meta.env.DEV) {
-        console.warn('⚠️ Analytics backend unavailable - events will be skipped');
-      }
-      
-      // Don't re-queue events if it's a persistent network error
-      if (!isNetworkError && this.eventQueue.length < 100) {
-        this.eventQueue.unshift(...events);
-      }
-    }
+    }).catch(() => {
+      // Errors are already handled in sendEventsToBackend
+      // This catch is just to prevent unhandled promise rejections
+      this.backendAvailable = false;
+    });
   }
 
   /**
@@ -261,8 +357,22 @@ class AnalyticsClient {
 
   /**
    * Send events to backend
+   * @returns true if successful, false if blocked/offline (silently handled)
    */
-  private async sendEventsToBackend(events: AnalyticsEvent[]): Promise<void> {
+  private async sendEventsToBackend(events: AnalyticsEvent[]): Promise<boolean> {
+    // Early exit if we know backend is unavailable
+    if (this.backendAvailable === false) {
+      return false;
+    }
+
+    // Check if offline before attempting request
+    if (!navigator.onLine) {
+      this.backendAvailable = false;
+      return false;
+    }
+
+    let timeoutId: NodeJS.Timeout | null = null;
+    
     try {
       // Convert events to backend format
       const backendEvents = events.map(event => ({
@@ -284,31 +394,73 @@ class AnalyticsClient {
       
       // Send to backend with timeout
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+      timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
       
-      const response = await fetch(`${API_BASE_URL}/api/analytics/events`, {
+      // Wrap fetch in a promise that catches all errors silently
+      const fetchPromise = fetch(`${API_BASE_URL}/api/analytics/events`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ events: backendEvents }),
         signal: controller.signal
+      }).catch((fetchError: any) => {
+        // Immediately catch fetch errors to prevent console logging
+        // This catches errors before they propagate
+        if (timeoutId) clearTimeout(timeoutId);
+        throw fetchError;
       });
 
-      clearTimeout(timeoutId);
+      const response = await fetchPromise;
+      if (timeoutId) clearTimeout(timeoutId);
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
-      const result = await response.json();
-      console.log(`✅ Successfully tracked ${result.eventsTracked} events`);
-    } catch (error) {
-      // Only log detailed errors in development
+      await response.json();
+      this.backendAvailable = true;
+      return true; // Success
+    } catch (error: any) {
+      // Clear timeout in case it wasn't cleared
+      if (timeoutId) clearTimeout(timeoutId);
+      
+      // Detect ad blocker blocking or network issues
+      // Ad blockers typically cause TypeError with 'Failed to fetch' or network errors
+      const isBlocked = 
+        error instanceof TypeError || 
+        error?.name === 'TypeError' ||
+        error?.name === 'NetworkError' ||
+        error?.message === 'Failed to fetch' ||
+        error?.message?.includes('ERR_BLOCKED_BY_CLIENT') ||
+        error?.message?.includes('NetworkError') ||
+        (error instanceof Error && error.message?.toLowerCase().includes('network')) ||
+        (error instanceof Error && error.message?.toLowerCase().includes('blocked'));
+      
+      // Also check if we're offline
+      const isOffline = !navigator.onLine;
+      
+      // Check if request was aborted (timeout or user action)
+      const isAborted = error?.name === 'AbortError' || error?.message?.includes('aborted');
+      
+      if (isBlocked || isOffline || isAborted) {
+        // Silently fail - don't log, don't re-throw
+        // Mark backend as unavailable to prevent future attempts
+        this.backendAvailable = false;
+        // Persist blocked state in sessionStorage to prevent retries
+        sessionStorage.setItem('analytics_blocked', 'true');
+        return false; // Return false to indicate silent failure
+      }
+      
+      // For other errors, only log in dev mode and don't re-throw
+      // This prevents unhandled promise rejections
       if (import.meta.env.DEV) {
         console.warn('⚠️ Analytics events could not be sent to backend:', error instanceof Error ? error.message : 'Unknown error');
       }
-      throw error;
+      
+      // Don't re-throw - silently fail to prevent console errors
+      this.backendAvailable = false;
+      return false;
     }
   }
 
@@ -425,7 +577,36 @@ class AnalyticsClient {
     
     // Synchronous flush on unload (best effort)
     if (this.eventQueue.length > 0) {
-      navigator.sendBeacon('/api/analytics/events', JSON.stringify(this.eventQueue));
+      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+      const events = this.eventQueue.map(event => ({
+        eventId: event.eventId,
+        eventName: event.eventName,
+        timestamp: new Date(event.timestamp),
+        sessionId: event.sessionId,
+        userRole: event.userRole,
+        listingId: event.listingId,
+        listingSlug: event.listingSlug,
+        partnerId: event.partnerId,
+        referrer: event.referrer,
+        referrerDomain: event.referrerDomain,
+        path: event.path,
+        portal: event.portal,
+        utmSource: event.utmSource,
+        utmMedium: event.utmMedium,
+        utmCampaign: event.utmCampaign,
+        utmTerm: event.utmTerm,
+        utmContent: event.utmContent,
+        deviceType: event.deviceType,
+        viewportWidth: event.viewportWidth,
+        viewportHeight: event.viewportHeight,
+        userAgent: event.userAgent,
+        metadata: event.metadata
+      }));
+      
+      navigator.sendBeacon(
+        `${API_BASE_URL}/api/analytics/events`,
+        JSON.stringify({ events })
+      );
     }
   }
 }

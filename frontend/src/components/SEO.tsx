@@ -45,8 +45,19 @@ export function SEO({
   const pageTwitterTitle = twitterTitle || ogTitle || title || DEFAULT_TITLE;
   const pageTwitterDescription = twitterDescription || ogDescription || description || DEFAULT_DESCRIPTION;
   const pageTwitterImage = twitterImage || ogImage || `${SITE_URL}${DEFAULT_IMAGE}`;
-  const pageCanonical = canonical || (typeof window !== 'undefined' ? window.location.href : SITE_URL);
+  // Ensure canonical URL is absolute
+  const pageCanonical = canonical 
+    ? (canonical.startsWith('http') ? canonical : `${SITE_URL}${canonical.startsWith('/') ? canonical : `/${canonical}`}`)
+    : (typeof window !== 'undefined' ? window.location.href : SITE_URL);
   const pageOgUrl = ogUrl || pageCanonical;
+  
+  // Ensure OG image is absolute URL
+  const absoluteOgImage = pageOgImage.startsWith('http') 
+    ? pageOgImage 
+    : `${SITE_URL}${pageOgImage.startsWith('/') ? pageOgImage : `/${pageOgImage}`}`;
+  const absoluteTwitterImage = pageTwitterImage.startsWith('http')
+    ? pageTwitterImage
+    : `${SITE_URL}${pageTwitterImage.startsWith('/') ? pageTwitterImage : `/${pageTwitterImage}`}`;
 
   return (
     <Helmet>
@@ -71,15 +82,17 @@ export function SEO({
       <meta property="og:url" content={pageOgUrl} />
       <meta property="og:title" content={pageOgTitle} />
       <meta property="og:description" content={pageOgDescription} />
-      <meta property="og:image" content={pageOgImage} />
+      <meta property="og:image" content={absoluteOgImage} />
+      <meta property="og:image:alt" content={pageOgTitle} />
       <meta property="og:site_name" content="Kosmix Spaces" />
+      <meta property="og:locale" content="en_IN" />
       
       {/* Twitter */}
       <meta name="twitter:card" content={twitterCard} />
       <meta name="twitter:url" content={pageOgUrl} />
       <meta name="twitter:title" content={pageTwitterTitle} />
       <meta name="twitter:description" content={pageTwitterDescription} />
-      <meta name="twitter:image" content={pageTwitterImage} />
+      <meta name="twitter:image" content={absoluteTwitterImage} />
     </Helmet>
   );
 }

@@ -11,7 +11,10 @@ from .common import PyObjectId, TimestampMixin
 class EventName(str, Enum):
     """Supported analytics event types."""
     PAGE_VIEW = "page_view"
+    BUTTON_CLICK = "button_click"
+    CTA_CLICK = "cta_click"
     LISTING_VIEW = "listing_view"
+    LISTING_IMPRESSION = "listing_impression"
     LISTING_CARD_CLICK = "listing_card_click"
     EXPLORE_SEARCH = "explore_search"  # Alias for search_performed
     SEARCH_PERFORMED = "search_performed"
@@ -21,9 +24,13 @@ class EventName(str, Enum):
     WHATSAPP_CLICK = "whatsapp_click"
     CALL_CLICK = "call_click"
     EMAIL_CLICK = "email_click"
+    FORM_SUBMIT = "form_submit"
+    NAVIGATION_CLICK = "navigation_click"
+    OUTBOUND_CLICK = "outbound_click"
     PARTNER_SIGNUP = "partner_signup"
     PARTNER_LOGIN = "partner_login"
     PARTNER_LISTING_SUBMITTED = "partner_listing_submitted"
+    ADMIN_ACTION = "admin_action"
     ADMIN_VERIFICATION_ACTION = "admin_verification_action"
 
 
@@ -50,7 +57,26 @@ class AnalyticsEvent(TimestampMixin):
     
     # Navigation context
     referrer: Optional[str] = Field(None, description="Referrer URL")
+    referrerDomain: Optional[str] = Field(None, description="Extracted domain from referrer")
     path: str = Field(..., description="Current page path")
+    portal: Optional[str] = Field(None, description="Portal type: public/partner/admin")
+    
+    # UTM attribution (first-touch)
+    utmSource: Optional[str] = Field(None, description="UTM source parameter")
+    utmMedium: Optional[str] = Field(None, description="UTM medium parameter")
+    utmCampaign: Optional[str] = Field(None, description="UTM campaign parameter")
+    utmTerm: Optional[str] = Field(None, description="UTM term parameter")
+    utmContent: Optional[str] = Field(None, description="UTM content parameter")
+    
+    # Device/viewport (no PII)
+    deviceType: Optional[str] = Field(None, description="Device type: mobile/desktop/tablet")
+    viewportWidth: Optional[int] = Field(None, description="Viewport width in pixels")
+    viewportHeight: Optional[int] = Field(None, description="Viewport height in pixels")
+    userAgent: Optional[str] = Field(None, description="Sanitized user agent (no fingerprinting)")
+    
+    # Session tracking
+    isFirstTouch: bool = Field(default=False, description="First event in session")
+    isLastTouch: bool = Field(default=False, description="Last event before conversion")
     
     # Event-specific metadata (no PII)
     metadata: Optional[Dict[str, Any]] = Field(None, description="Event-specific data")
@@ -76,13 +102,33 @@ class AnalyticsEventCreate(BaseModel):
     listingSlug: Optional[str] = None
     partnerId: Optional[str] = None
     referrer: Optional[str] = None
+    referrerDomain: Optional[str] = None
     path: str
+    portal: Optional[str] = None
+    utmSource: Optional[str] = None
+    utmMedium: Optional[str] = None
+    utmCampaign: Optional[str] = None
+    utmTerm: Optional[str] = None
+    utmContent: Optional[str] = None
+    deviceType: Optional[str] = None
+    viewportWidth: Optional[int] = None
+    viewportHeight: Optional[int] = None
+    userAgent: Optional[str] = None
+    isFirstTouch: bool = False
+    isLastTouch: bool = False
     metadata: Optional[Dict[str, Any]] = None
 
 
 class AnalyticsEventBatch(BaseModel):
     """Schema for batch event submission."""
     events: List[AnalyticsEventCreate] = Field(..., min_length=1, max_length=100)
+    
+    @classmethod
+    def validate_batch_size(cls, v):
+        """Validate batch size."""
+        if len(v) > 100:
+            raise ValueError("Maximum 100 events per batch")
+        return v
 
 
 class AnalyticsSummary(BaseModel):
@@ -93,16 +139,22 @@ class AnalyticsSummary(BaseModel):
     partnerSignups: int = Field(..., description="Total partner signups")
     conversionRate: float = Field(..., description="Views to enquiries conversion rate")
     
-    topListings: List[Dict[str, Any]] = Field(..., description="Top performing listings")
-    topLocalities: List[Dict[str, Any]] = Field(..., description="Most popular localities")
+    topListings: List[Dict[str, Any]] = Field(default_factory=list, description="Top performing listings")
+    topLocalities: List[Dict[str, Any]] = Field(default_factory=list, description="Most popular localities")
+    timeSeries: Optional[List[Dict[str, Any]]] = Field(None, description="Time series data for charts")
+    funnel: Optional[Dict[str, int]] = Field(None, description="Conversion funnel metrics")
 
 
 class PartnerAnalytics(BaseModel):
     """Analytics data for partner dashboard."""
     views: int = Field(..., description="Total views for partner listings")
     enquiries: int = Field(..., description="Total enquiries for partner listings")
+    whatsappClicks: int = Field(default=0, description="Total WhatsApp clicks")
+    callClicks: int = Field(default=0, description="Total call clicks")
     conversionRate: float = Field(..., description="Views to enquiries conversion rate")
-    topListings: List[Dict[str, Any]] = Field(..., description="Partner's top performing listings")
+    topListings: List[Dict[str, Any]] = Field(default_factory=list, description="Partner's top performing listings")
+    timeSeries: Optional[List[Dict[str, Any]]] = Field(None, description="Time series data for charts")
+    trends: Optional[Dict[str, float]] = Field(None, description="Trend metrics (percentage changes)")
 
 
 class AnalyticsFilter(BaseModel):

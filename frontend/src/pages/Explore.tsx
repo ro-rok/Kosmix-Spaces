@@ -17,7 +17,8 @@ import { useSearchWithCache } from "@/hooks/useSearchWithCache";
 import { useUrlSync } from "@/hooks/useUrlSync";
 import { trackSearchPerformed, trackFilterApplied, trackPageView } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
-import { SEO } from "@/components/SEO";
+import { SEO, StructuredData } from "@/components/SEO";
+import { generateWebSiteSchema, generateBreadcrumbSchema } from "@/lib/seo-helpers";
 
 // Initial empty filters
 const initialFilters: SearchFilters = {
@@ -208,6 +209,13 @@ export default function Explore() {
     updateSearchQuery('');
   };
 
+  // Generate breadcrumb schema
+  const breadcrumbSchema = generateBreadcrumbSchema([
+    { name: "Home", url: "/" },
+    { name: "Explore", url: "/explore" }
+  ]);
+  const websiteSchema = generateWebSiteSchema();
+
   // Generate dynamic SEO based on filters
   const seoData = useMemo(() => {
     const localities = filters.locality.length > 0 ? filters.locality.join(", ") : "";
@@ -315,7 +323,11 @@ export default function Explore() {
         description={seoData.description}
         keywords={seoData.keywords}
         canonical="https://kosmixspaces.in/explore"
+        ogTitle={seoData.title}
+        ogDescription={seoData.description}
       />
+      <StructuredData data={websiteSchema} />
+      <StructuredData data={breadcrumbSchema} />
       <div className="pb-20 md:pb-0">
         {/* Header */}
       <div className="border-b border-border/60 glass sticky-top-safe z-40">

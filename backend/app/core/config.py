@@ -40,7 +40,8 @@ class Settings(BaseSettings):
     # Keep Alive Service
     KEEP_ALIVE_ENABLED: bool = True
     KEEP_ALIVE_PING_INTERVAL: int = 840  # 14 minutes
-    KEEP_ALIVE_HEALTH_CHECK_INTERVAL: int = 60  # 1 minute
+    KEEP_ALIVE_HEALTH_CHECK_INTERVAL: int = 840  # 14 minutes (same as ping interval)
+    RENDER_EXTERNAL_URL: str | None = None  # Optional URL for Render deployment keep-alive
     
     # SEO and Sitemap
     SITE_URL: str = "https://kosmixspaces.in"

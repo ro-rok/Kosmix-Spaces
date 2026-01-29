@@ -4,7 +4,8 @@ import { EnquiryForm } from "@/components/EnquiryForm";
 import { buildWhatsAppLink, buildCallLink } from "@/lib/whatsapp";
 import { handleEmailClick } from "@/lib/email";
 import { contactConfig, transparencyLines } from "@/config/contact";
-import { SEO } from "@/components/SEO";
+import { SEO, StructuredData } from "@/components/SEO";
+import { generateBreadcrumbSchema } from "@/lib/seo-helpers";
 
 export default function Contact() {
   return (

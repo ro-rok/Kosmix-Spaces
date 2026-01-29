@@ -1,10 +1,11 @@
 import { Link } from "react-router-dom";
 import { Building2, Users, TrendingUp, Shield, MessageCircle, BadgeCheck, Clock, Handshake, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { buildWhatsAppLink } from "@/lib/whatsapp";
+import { buildWhatsAppLink, buildEmailLink } from "@/lib/whatsapp";
 import { handleEmailClick } from "@/lib/email";
 import { contactConfig } from "@/config/contact";
-import { SEO } from "@/components/SEO";
+import { SEO, StructuredData } from "@/components/SEO";
+import { generateBreadcrumbSchema } from "@/lib/seo-helpers";
 
 const benefits = [
   {

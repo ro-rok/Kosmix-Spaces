@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { buildWhatsAppLink } from "@/lib/whatsapp";
 import { transparencyLines } from "@/config/contact";
 import { SEO } from "@/components/SEO";
+import { generateBreadcrumbSchema } from "@/lib/seo-helpers";
 
 const steps = [
   {
@@ -13,7 +14,7 @@ const steps = [
   },
   {
     icon: ListChecks,
-    title: "Shortlist Options",
+    title: "Compare Options",
     description: "Compare multiple spaces side by side. Check amenities, budget ranges, and availability. No need to visit every option – we help you narrow down.",
   },
   {
@@ -52,6 +53,11 @@ const benefits = [
 ];
 
 export default function HowItWorks() {
+  const breadcrumbSchema = generateBreadcrumbSchema([
+    { name: "Home", url: "/" },
+    { name: "How It Works", url: "/how-it-works" }
+  ]);
+
   return (
     <>
       <SEO

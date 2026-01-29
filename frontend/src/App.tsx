@@ -22,6 +22,8 @@ import { PartnerRoute } from "@/components/PartnerRoute";
 import { InlineLoading } from "@/components/ui/loading";
 import { performanceMonitor } from "@/lib/performance";
 import { SafeAnalytics, SafeSpeedInsights } from "@/components/SafeAnalytics";
+import { trackPageView } from "@/lib/analytics";
+import { useLocation } from "react-router-dom";
 
 // Public pages - loaded immediately for better UX
 import Index from "./pages/Index";
@@ -43,12 +45,14 @@ const AdminLeads = lazy(() => import("@/admin/pages/AdminLeads").then(m => ({ de
 const AdminVisits = lazy(() => import("@/admin/pages/AdminVisits").then(m => ({ default: m.AdminVisits })));
 const AdminPartners = lazy(() => import("@/admin/pages/AdminPartners").then(m => ({ default: m.AdminPartners })));
 const AdminLocalities = lazy(() => import("@/admin/pages/AdminLocalities"));
+const AdminAnalytics = lazy(() => import("@/admin/pages/AdminAnalytics").then(m => ({ default: m.AdminAnalytics })));
 const AdminLogin = lazy(() => import("@/admin/pages/AdminLogin").then(m => ({ default: m.AdminLogin })));
 
 // Partner pages - lazy loaded to reduce initial bundle size
 const PartnerLayout = lazy(() => import("@/partner/PartnerLayout").then(m => ({ default: m.PartnerLayout })));
 const PartnerLogin = lazy(() => import("@/partner/pages/PartnerLogin").then(m => ({ default: m.PartnerLogin })));
 const PartnerDashboard = lazy(() => import("@/partner/pages/PartnerDashboard").then(m => ({ default: m.PartnerDashboard })));
+const PartnerAnalytics = lazy(() => import("@/partner/pages/PartnerAnalytics").then(m => ({ default: m.PartnerAnalytics })));
 const PartnerListings = lazy(() => import("@/partner/pages/PartnerListings").then(m => ({ default: m.PartnerListings })));
 const PartnerListingDetail = lazy(() => import("@/partner/pages/PartnerListingDetail").then(m => ({ default: m.PartnerListingDetail })));
 const SubmitListing = lazy(() => import("@/partner/pages/SubmitListing").then(m => ({ default: m.SubmitListing })));
@@ -80,10 +84,26 @@ const RouteLoadingFallback = ({ text = "Loading..." }: { text?: string }) => {
   );
 };
 
+// Component to track page views on route changes
+function PageViewTracker() {
+  const location = useLocation();
+  
+  useEffect(() => {
+    // Track page view on route change
+    trackPageView(location.pathname, {
+      search: location.search,
+      hash: location.hash,
+    });
+  }, [location]);
+  
+  return null;
+}
+
 // Wrapper component to handle page transitions
 const AnimatedRoutes = () => {
   return (
     <PageTransition>
+      <PageViewTracker />
       <Routes>
         {/* Public Routes - No lazy loading for better UX */}
         <Route element={<Layout />}>
@@ -121,6 +141,14 @@ const AnimatedRoutes = () => {
             element={
               <Suspense fallback={<InlineLoading text="Loading dashboard..." />}>
                 <AdminDashboard />
+              </Suspense>
+            } 
+          />
+          <Route 
+            path="analytics" 
+            element={
+              <Suspense fallback={<InlineLoading text="Loading analytics..." />}>
+                <AdminAnalytics />
               </Suspense>
             } 
           />
@@ -202,6 +230,14 @@ const AnimatedRoutes = () => {
             } 
           />
           <Route 
+            path="analytics" 
+            element={
+              <Suspense fallback={<InlineLoading text="Loading analytics..." />}>
+                <PartnerAnalytics />
+              </Suspense>
+            } 
+          />
+          <Route 
             path="listings" 
             element={
               <Suspense fallback={<InlineLoading text="Loading listings..." />}>
@@ -248,26 +284,6 @@ const App = () => {
     } else {
       window.addEventListener('load', reportInitialMetrics);
     }
-
-    // Preload logo assets for better UX
-    const preloadLogoAssets = () => {
-      const LOGO_VERSION = 'v2';
-      const assets = [
-        `/favicon-32x32.png?${LOGO_VERSION}`,
-        `/favicon-16x16.png?${LOGO_VERSION}`,
-        `/favicon.ico?${LOGO_VERSION}`,
-        `/logo.png?${LOGO_VERSION}`,
-        `/apple-touch-icon.png?${LOGO_VERSION}`,
-      ];
-      assets.forEach(src => {
-        const link = document.createElement('link');
-        link.rel = 'preload';
-        link.as = 'image';
-        link.href = src;
-        document.head.appendChild(link);
-      });
-    };
-    preloadLogoAssets();
 
     return () => {
       window.removeEventListener('load', reportInitialMetrics);

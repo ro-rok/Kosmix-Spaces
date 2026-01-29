@@ -27,12 +27,18 @@ async def track_events(
     batch: AnalyticsEventBatch
 ):
     """
-    Track analytics events in batch.
+    Track analytics events in batch (up to 100 events).
     
     This endpoint accepts batches of analytics events for tracking user interactions.
     No authentication required as this is used for anonymous user tracking.
     """
     try:
+        if len(batch.events) > 100:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Maximum 100 events per batch"
+            )
+        
         analytics_service = get_analytics_service()
         events = await analytics_service.track_events_batch(batch.events)
         return {
@@ -40,6 +46,11 @@ async def track_events(
             "eventsTracked": len(events),
             "message": f"Successfully tracked {len(events)} events"
         }
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -76,13 +87,16 @@ async def track_single_event(
 async def get_admin_analytics(
     admin_data: dict = Depends(verify_admin_token),
     start_date: Optional[datetime] = Query(None, description="Start date for analytics (ISO format)"),
-    end_date: Optional[datetime] = Query(None, description="End date for analytics (ISO format)")
+    end_date: Optional[datetime] = Query(None, description="End date for analytics (ISO format)"),
+    portal: Optional[str] = Query(None, description="Filter by portal: public/partner/admin"),
+    event_name: Optional[str] = Query(None, description="Filter by event name")
 ):
     """
     Get comprehensive analytics for admin dashboard.
     
     Requires admin authentication.
-    Returns aggregated metrics including views, enquiries, conversions, and top performers.
+    Returns aggregated metrics including views, enquiries, conversions, top performers,
+    time series data, and conversion funnel.
     """
     try:
         # Default to last 30 days if no dates provided
@@ -91,9 +105,35 @@ async def get_admin_analytics(
         if not end_date:
             end_date = datetime.now(timezone.utc)
         
+        # Validate portal filter
+        if portal and portal not in ["public", "partner", "admin"]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid portal. Must be: public, partner, or admin"
+            )
+        
+        # Parse event name if provided
+        event_name_enum = None
+        if event_name:
+            try:
+                from app.models.analytics import EventName
+                event_name_enum = EventName(event_name)
+            except ValueError:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Invalid event name: {event_name}"
+                )
+        
         analytics_service = get_analytics_service()
-        analytics = await analytics_service.get_admin_analytics(start_date, end_date)
+        analytics = await analytics_service.get_admin_analytics(
+            start_date=start_date,
+            end_date=end_date,
+            portal=portal,
+            event_name=event_name_enum
+        )
         return analytics
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -106,13 +146,15 @@ async def get_partner_analytics(
     partner_id: str,
     current_user: dict = Depends(get_current_user),
     start_date: Optional[datetime] = Query(None, description="Start date for analytics (ISO format)"),
-    end_date: Optional[datetime] = Query(None, description="End date for analytics (ISO format)")
+    end_date: Optional[datetime] = Query(None, description="End date for analytics (ISO format)"),
+    listing_id: Optional[str] = Query(None, description="Filter by specific listing ID")
 ):
     """
     Get analytics for a specific partner.
     
     Requires partner authentication. Partners can only access their own analytics.
     Admins can access any partner's analytics.
+    Returns views, enquiries, conversion rate, top listings, time series, and trends.
     """
     try:
         # Check if user is admin or the partner themselves
@@ -137,7 +179,12 @@ async def get_partner_analytics(
             end_date = datetime.now(timezone.utc)
         
         analytics_service = get_analytics_service()
-        analytics = await analytics_service.get_partner_analytics(partner_id, start_date, end_date)
+        analytics = await analytics_service.get_partner_analytics(
+            partner_id=partner_id,
+            start_date=start_date,
+            end_date=end_date,
+            listing_id=listing_id
+        )
         return analytics
     except AppError:
         raise
@@ -283,6 +330,117 @@ async def get_conversion_funnel(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to fetch conversion funnel: {str(e)}"
+        )
+
+
+@router.get("/export")
+async def export_analytics_csv(
+    admin_data: dict = Depends(verify_admin_token),
+    start_date: Optional[datetime] = Query(None, description="Start date for analytics (ISO format)"),
+    end_date: Optional[datetime] = Query(None, description="End date for analytics (ISO format)"),
+    portal: Optional[str] = Query(None, description="Filter by portal: public/partner/admin"),
+    event_name: Optional[str] = Query(None, description="Filter by event name")
+):
+    """
+    Export analytics data as CSV.
+    
+    Requires admin authentication.
+    Returns CSV file with analytics events.
+    """
+    try:
+        from fastapi.responses import Response
+        import csv
+        from io import StringIO
+        
+        # Default to last 30 days if no dates provided
+        if not start_date:
+            start_date = datetime.now(timezone.utc) - timedelta(days=30)
+        if not end_date:
+            end_date = datetime.now(timezone.utc)
+        
+        # Build filter
+        filter_query = {
+            "timestamp": {
+                "$gte": start_date,
+                "$lte": end_date
+            }
+        }
+        
+        if portal:
+            filter_query["portal"] = portal
+        
+        if event_name:
+            try:
+                from app.models.analytics import EventName
+                filter_query["eventName"] = EventName(event_name)
+            except ValueError:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Invalid event name: {event_name}"
+                )
+        
+        # Fetch events
+        analytics_service = get_analytics_service()
+        cursor = analytics_service.events_collection.find(filter_query).sort("timestamp", -1).limit(10000)
+        events = await cursor.to_list(length=10000)
+        
+        # Generate CSV
+        output = StringIO()
+        writer = csv.writer(output)
+        
+        # Write header
+        writer.writerow([
+            "Event ID", "Event Name", "Timestamp", "Session ID", "User Role",
+            "Portal", "Path", "Listing ID", "Listing Slug", "Partner ID",
+            "Locality", "City", "Referrer", "Referrer Domain",
+            "UTM Source", "UTM Medium", "UTM Campaign", "UTM Term", "UTM Content",
+            "Device Type", "Viewport Width", "Viewport Height"
+        ])
+        
+        # Write rows
+        for event in events:
+            writer.writerow([
+                event.get("eventId", ""),
+                event.get("eventName", ""),
+                event.get("timestamp", "").isoformat() if event.get("timestamp") else "",
+                event.get("sessionId", ""),
+                event.get("userRole", ""),
+                event.get("portal", ""),
+                event.get("path", ""),
+                event.get("listingId", ""),
+                event.get("listingSlug", ""),
+                event.get("partnerId", ""),
+                event.get("locality", ""),
+                event.get("city", ""),
+                event.get("referrer", ""),
+                event.get("referrerDomain", ""),
+                event.get("utmSource", ""),
+                event.get("utmMedium", ""),
+                event.get("utmCampaign", ""),
+                event.get("utmTerm", ""),
+                event.get("utmContent", ""),
+                event.get("deviceType", ""),
+                event.get("viewportWidth", ""),
+                event.get("viewportHeight", "")
+            ])
+        
+        csv_content = output.getvalue()
+        output.close()
+        
+        # Return CSV file
+        return Response(
+            content=csv_content,
+            media_type="text/csv",
+            headers={
+                "Content-Disposition": f"attachment; filename=analytics_export_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.csv"
+            }
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to export analytics: {str(e)}"
         )
 
 
