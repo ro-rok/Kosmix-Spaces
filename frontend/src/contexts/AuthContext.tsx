@@ -89,6 +89,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
     queryKey: ['auth', 'partner', forceUpdate],
     queryFn: async () => {
       const data = await api.auth.getPartnerMe();
+      // Store partnerId in localStorage for analytics
+      localStorage.setItem('kosmix_partner_id', data.partnerId);
       return {
         id: data.partnerId,
         email: data.email,
@@ -97,6 +99,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         contactName: data.contactName,
         phone: data.phone,
         status: data.status,
+        partnerId: data.partnerId, // Also include partnerId directly
       };
     },
     enabled: !!storedToken && storedUserType === 'partner',

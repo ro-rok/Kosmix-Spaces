@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useEffect } from "react";
+import React, { Suspense, lazy, useEffect, useRef } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -238,14 +238,6 @@ const AnimatedRoutes = () => {
             } 
           />
           <Route 
-            path="listings" 
-            element={
-              <Suspense fallback={<InlineLoading text="Loading listings..." />}>
-                <PartnerListings />
-              </Suspense>
-            } 
-          />
-          <Route 
             path="listings/new" 
             element={
               <Suspense fallback={<InlineLoading text="Loading listing builder..." />}>
@@ -258,6 +250,14 @@ const AnimatedRoutes = () => {
             element={
               <Suspense fallback={<InlineLoading text="Loading listing details..." />}>
                 <PartnerListingDetail />
+              </Suspense>
+            } 
+          />
+          <Route 
+            path="listings" 
+            element={
+              <Suspense fallback={<InlineLoading text="Loading listings..." />}>
+                <PartnerListings />
               </Suspense>
             } 
           />

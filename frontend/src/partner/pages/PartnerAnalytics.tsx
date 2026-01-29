@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { api } from "@/lib/api";
@@ -6,12 +6,14 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Eye, MessageCircle, TrendingUp, Phone, ArrowUp, ArrowDown } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
-import { usePartnerListings } from "@/hooks/useAuth";
+import { useAuth } from "@/contexts/AuthContext";
+import { usePartnerListings, usePartnerMe } from "@/hooks/useAuth";
 
 export function PartnerAnalytics() {
   const { user } = useAuth();
-  const partnerId = user?.partnerId;
+  const { data: partner } = usePartnerMe();
+  // Use partner.partnerId instead of user.id - this matches PartnerDashboard
+  const partnerId = partner?.partnerId || user?.id;
   
   const [dateRange, setDateRange] = useState("30"); // days
   const [granularity, setGranularity] = useState<"day" | "week" | "month">("day");
@@ -22,19 +24,20 @@ export function PartnerAnalytics() {
 
   // Get partner's listings for selector
   const { data: listingsData } = usePartnerListings();
-  const listings = listingsData?.items || [];
+  const listings = listingsData || [];
 
-  const { data: analytics, isLoading: analyticsLoading } = useQuery({
+  const { data: analytics, isLoading: analyticsLoading, error: analyticsError } = useQuery({
     queryKey: ["partner-analytics", partnerId, dateRange, selectedListingId],
     queryFn: () => api.analytics.getPartnerAnalytics(partnerId || "", {
       startDate,
       endDate,
       listingId: selectedListingId !== "all" ? selectedListingId : undefined
     }),
-    enabled: !!partnerId
+    enabled: !!partnerId,
+    retry: false
   });
 
-  const { data: timeSeries, isLoading: timeSeriesLoading } = useQuery({
+  const { data: timeSeries, isLoading: timeSeriesLoading, error: timeSeriesError } = useQuery({
     queryKey: ["partner-time-series", partnerId, dateRange, granularity],
     queryFn: () => api.analytics.getTimeSeries({
       startDate,
@@ -42,7 +45,8 @@ export function PartnerAnalytics() {
       partnerId: partnerId,
       granularity
     }),
-    enabled: !!partnerId
+    enabled: !!partnerId,
+    retry: false
   });
 
   if (!partnerId) {
@@ -69,6 +73,66 @@ export function PartnerAnalytics() {
       </div>
     );
   }
+
+  if (analyticsError || timeSeriesError) {
+    console.error("Analytics error:", analyticsError || timeSeriesError);
+    return (
+      <div className="container py-8 space-y-6">
+        <div className="space-y-2">
+          <h1 className="text-3xl font-bold">Your Analytics</h1>
+          <p className="text-muted-foreground mt-1">
+            Performance metrics for your listings
+          </p>
+        </div>
+        <Card>
+          <CardContent className="py-8">
+            <p className="text-destructive">
+              {analyticsError ? `Error loading analytics: ${(analyticsError as any)?.message || 'Unknown error'}` : 
+               timeSeriesError ? `Error loading time series: ${(timeSeriesError as any)?.message || 'Unknown error'}` : 
+               'Failed to load analytics data'}
+            </p>
+            <p className="text-sm text-muted-foreground mt-2">
+              Please try refreshing the page or contact support if the issue persists.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Debug logging
+  console.log("Partner Analytics Debug:", {
+    partnerId,
+    user: user,
+    partner: partner,
+    analytics,
+    timeSeries,
+    listingsCount: listings.length,
+    listings: listings.map(l => ({ id: l.listingId, slug: l.slug }))
+  });
+  
+  // Debug: Check what events exist (only in dev mode)
+  useEffect(() => {
+    if (!partnerId || !import.meta.env.DEV) return;
+    
+    const checkEvents = async () => {
+      try {
+        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+        const response = await fetch(`${API_BASE_URL}/api/analytics/debug/partner/${partnerId}`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('kosmix_auth_token') || ''}`
+          }
+        });
+        if (response.ok) {
+          const debugData = await response.json();
+          console.log("Analytics Debug Data:", debugData);
+        }
+      } catch (error) {
+        console.error("Debug query failed:", error);
+      }
+    };
+    checkEvents();
+  }, [partnerId]);
 
   const timeSeriesData = timeSeries?.dataPoints?.map(point => ({
     date: new Date(point.date).toLocaleDateString('en-US', { 

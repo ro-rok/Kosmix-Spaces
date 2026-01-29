@@ -1,11 +1,13 @@
 import { Link } from "react-router-dom";
-import { Plus, FileText, Clock, CheckCircle, XCircle, Shield, Eye, MessageSquare, TrendingUp, BarChart3 } from "lucide-react";
+import { Plus, FileText, Clock, CheckCircle, XCircle, Shield, Eye, MessageSquare, TrendingUp, BarChart3, User, Mail, Phone, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { usePartnerMe, usePartnerListingsStats, usePartnerAnalytics } from "@/hooks/useAuth";
+import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 
 export function PartnerDashboard() {
+  const { user } = useAuth();
   const { data: partner, isLoading, error } = usePartnerMe();
   const { data: listingsStats } = usePartnerListingsStats();
   const { data: analytics } = usePartnerAnalytics(partner?.partnerId || "");
@@ -90,43 +92,61 @@ export function PartnerDashboard() {
         </Card>
       )}
 
-      {/* Profile Summary */}
-      <Card>
+      {/* Partner Profile - Prominent Display */}
+      <Card className="border-2">
         <CardHeader>
-          <CardTitle>Partner Profile</CardTitle>
-          <CardDescription>Your workspace information</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          <div>
-            <p className="text-sm text-muted-foreground">Workspace Name</p>
-            <p className="font-medium">{partner.workspaceBrandName}</p>
-          </div>
-          <div>
-            <p className="text-sm text-muted-foreground">Contact Name</p>
-            <p className="font-medium">{partner.contactName}</p>
-          </div>
-          <div>
-            <p className="text-sm text-muted-foreground">Email</p>
-            <p className="font-medium">{partner.email}</p>
-          </div>
-          <div>
-            <p className="text-sm text-muted-foreground">Phone</p>
-            <p className="font-medium">{partner.phone}</p>
-          </div>
-          <div>
-            <p className="text-sm text-muted-foreground">Account Status</p>
+          <div className="flex items-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+              <User className="h-6 w-6 text-primary" />
+            </div>
+            <div className="flex-1">
+              <CardTitle className="text-xl">Partner Profile</CardTitle>
+              <CardDescription>Your workspace account information</CardDescription>
+            </div>
             <div className="flex items-center gap-2">
-              {partner.status === "ACTIVE" && <CheckCircle className="h-4 w-4 text-green-600" />}
-              {partner.status === "PENDING" && <Clock className="h-4 w-4 text-yellow-600" />}
-              {partner.status === "SUSPENDED" && <XCircle className="h-4 w-4 text-red-600" />}
+              {partner.status === "ACTIVE" && <CheckCircle className="h-5 w-5 text-green-600" />}
+              {partner.status === "PENDING" && <Clock className="h-5 w-5 text-yellow-600" />}
+              {partner.status === "SUSPENDED" && <XCircle className="h-5 w-5 text-red-600" />}
               <span className={cn(
-                "font-medium",
+                "font-semibold text-sm",
                 partner.status === "ACTIVE" && "text-green-600",
                 partner.status === "PENDING" && "text-yellow-600",
                 partner.status === "SUSPENDED" && "text-red-600"
               )}>
                 {partner.status}
               </span>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Building2 className="h-4 w-4" />
+                <span>Workspace Name</span>
+              </div>
+              <p className="font-semibold text-foreground">{partner.workspaceBrandName}</p>
+            </div>
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <User className="h-4 w-4" />
+                <span>Contact Name</span>
+              </div>
+              <p className="font-semibold text-foreground">{partner.contactName}</p>
+            </div>
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Mail className="h-4 w-4" />
+                <span>Email</span>
+              </div>
+              <p className="font-semibold text-foreground break-all">{partner.email}</p>
+            </div>
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Phone className="h-4 w-4" />
+                <span>Phone</span>
+              </div>
+              <p className="font-semibold text-foreground">{partner.phone}</p>
             </div>
           </div>
         </CardContent>

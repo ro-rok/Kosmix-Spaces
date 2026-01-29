@@ -49,10 +49,7 @@ export default function Index() {
   // State for city selection
   const [selectedCity, setSelectedCity] = useState("");
 
-  // Track page view
-  useEffect(() => {
-    trackPageView('home');
-  }, []);
+  // Note: page_view is already tracked by App.tsx PageViewTracker
 
   const whatsappLink = buildWhatsAppLink({
     locality: selectedLocality,

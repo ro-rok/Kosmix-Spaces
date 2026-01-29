@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { 
   ArrowLeft, 
@@ -33,7 +33,7 @@ import { Separator } from "@/components/ui/separator";
 import { useAdminPremiumListing, useApprovePremiumListing, useNeedsInfoPremiumListing, useRejectPremiumListing, useUpdateListingAvailability } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { ApprovalWarningDialog } from "@/components/ApprovalWarningDialog";
-import { trackAdminVerificationAction } from "@/lib/analytics";
+import { trackAdminVerificationAction, trackListingView } from "@/lib/analytics";
 
 export function AdminListingDetail() {
   const { listingId } = useParams<{ listingId: string }>();
@@ -44,6 +44,19 @@ export function AdminListingDetail() {
 
   // Get the premium listing
   const { data: listing, isLoading, error } = useAdminPremiumListing(listingId!);
+
+  // Track listing view when listing is loaded
+  useEffect(() => {
+    if (listing && listingId) {
+      const slug = listing.slug || listing.slugData?.slug || listingId;
+      trackListingView(listingId, slug, {
+        verificationStatus: listing.verificationStatus,
+        locality: listing.locality || listing.location?.locality,
+        city: listing.city || listing.location?.city,
+        adminView: true
+      });
+    }
+  }, [listing, listingId]);
   const approveMutation = useApprovePremiumListing();
   const needsInfoMutation = useNeedsInfoPremiumListing();
   const rejectMutation = useRejectPremiumListing();

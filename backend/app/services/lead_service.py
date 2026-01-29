@@ -13,25 +13,67 @@ def build_whatsapp_link(
     preferred_localities: list,
     budget_band: Optional[str] = None,
     team_size: Optional[str] = None,
-    space_type: Optional[str] = None
+    space_type: Optional[str] = None,
+    listing_name: Optional[str] = None,
+    listing_locality: Optional[str] = None
 ) -> str:
-    """Build WhatsApp deep link for lead."""
-    message_parts = [f"Hi! I'm {name}"]
+    """Build professional WhatsApp deep link for lead."""
+    import urllib.parse
     
-    if preferred_localities:
-        message_parts.append(f"Looking for workspace in: {', '.join(preferred_localities)}")
+    # Budget band labels
+    budget_labels = {
+        "₹": "Under ₹10k",
+        "₹₹": "₹10k - ₹25k",
+        "₹₹₹": "₹25k+",
+        "5k-10k": "₹5k - ₹10k",
+        "10k-20k": "₹10k - ₹20k",
+        "20k-40k": "₹20k - ₹40k",
+        "40k-80k": "₹40k - ₹80k",
+        "80k+": "₹80k+"
+    }
+    
+    # Build professional message
+    message = f"Hi Kosmix Spaces! 👋\n\n"
+    
+    # Context - listing or general enquiry
+    if listing_name:
+        message += f"I'm interested in: *{listing_name}*"
+        if listing_locality:
+            message += f" in {listing_locality}"
+        message += ".\n\n"
+    elif preferred_localities:
+        localities_str = ", ".join(preferred_localities)
+        message += f"I'm looking for a workspace in {localities_str}.\n\n"
+    else:
+        message += f"I'm looking for a workspace.\n\n"
+    
+    # Requirements section
+    needs = []
     
     if team_size:
-        message_parts.append(f"Team size: {team_size}")
+        needs.append(f"Team size: {team_size}")
     
     if budget_band:
-        message_parts.append(f"Budget: {budget_band}")
+        budget_label = budget_labels.get(budget_band, budget_band)
+        needs.append(f"Budget: {budget_label}")
     
     if space_type:
-        message_parts.append(f"Space type: {space_type}")
+        needs.append(f"Space type: {space_type}")
     
-    message = "%0A".join(message_parts)
-    return f"https://wa.me/919876543210?text={message}"  # Replace with actual WhatsApp number
+    if needs:
+        message += "📋 Requirements:\n"
+        for need in needs:
+            message += f"• {need}\n"
+        message += "\n"
+    
+    # Call to action
+    message += "Please help me find the best options and schedule a visit."
+    
+    # Encode message for URL
+    encoded_message = urllib.parse.quote(message)
+    # WhatsApp number from contact config (should match frontend)
+    whatsapp_number = "919555457457"  # Swati Kapoor - matches frontend config
+    return f"https://wa.me/{whatsapp_number}?text={encoded_message}"
 
 
 async def create_lead(lead_data: dict, session_id: Optional[str] = None) -> dict:

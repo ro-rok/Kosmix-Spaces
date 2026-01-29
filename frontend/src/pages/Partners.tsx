@@ -55,7 +55,7 @@ const howItWorks = [
 
 export default function Partners() {
   const partnerWhatsApp = buildWhatsAppLink({
-    listingName: "[Partner Enquiry]",
+    messageType: 'partner',
   });
 
   return (

@@ -79,14 +79,11 @@ export default function PremiumSpaceDetail() {
     }
   }, [slug]);
 
-  // Track page view and listing view when listing data is loaded
+  // Track listing view when listing data is loaded
+  // Note: page_view is already tracked by App.tsx PageViewTracker
   useEffect(() => {
     if (listing && slug) {
-      trackPageView('detail', {
-        listingSlug: slug,
-        locality: listing.locality
-      });
-      trackListingView(listing.slug, slug, {
+      trackListingView(listing.listingId, slug, {
         verificationStatus: listing.verificationStatus,
         locality: listing.locality,
         city: listing.city

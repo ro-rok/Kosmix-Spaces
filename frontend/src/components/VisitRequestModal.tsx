@@ -94,24 +94,26 @@ export function VisitRequestModal({
     onOpenChange(false);
   };
 
-  const formatVisitDetails = () => {
-    const dates = formData.preferredDates.map(date => 
-      new Date(date).toLocaleDateString("en-IN", { day: "numeric", month: "short" })
-    ).join(", ");
-    
-    return `Visit Request for ${listingName}
-Name: ${formData.name}
-Phone: ${formData.phone}
-${formData.email ? `Email: ${formData.email}` : ''}
-Preferred Dates: ${dates}
-Time: ${formData.timeWindow}
-Visitors: ${formData.visitorCount}`;
+  // Format time window for display
+  const formatTimeWindow = (time: string): string => {
+    const timeLabels: Record<string, string> = {
+      morning: "Morning (9 AM - 12 PM)",
+      afternoon: "Afternoon (12 PM - 5 PM)",
+      evening: "Evening (5 PM - 7 PM)"
+    };
+    return timeLabels[time] || time;
   };
 
   const whatsappLink = buildWhatsAppLink({ 
     listingName, 
     locality,
-    customMessage: step === "success" ? formatVisitDetails() : undefined
+    messageType: step === "success" ? "visit" : undefined,
+    visitDates: step === "success" ? formData.preferredDates : undefined,
+    visitTime: step === "success" ? formatTimeWindow(formData.timeWindow) : undefined,
+    visitorCount: step === "success" ? formData.visitorCount.toString() : undefined,
+    visitorName: step === "success" ? formData.name : undefined,
+    visitorPhone: step === "success" ? formData.phone : undefined,
+    visitorEmail: step === "success" ? formData.email || undefined : undefined,
   });
 
   if (step === "success") {

@@ -78,10 +78,7 @@ export default function Explore() {
   const { items: listings, total, pageSize } = searchData;
   const totalPages = Math.ceil(total / pageSize);
 
-  // Track page view
-  useEffect(() => {
-    trackPageView('explore');
-  }, []);
+  // Note: page_view is already tracked by App.tsx PageViewTracker
 
   // Sync URL when filters, sort, or page changes
   useEffect(() => {

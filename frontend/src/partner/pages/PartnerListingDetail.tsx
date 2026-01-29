@@ -25,8 +25,9 @@ import { ListingBuilder } from "@/components/ListingBuilder";
 import { AdminNotesPanel } from "@/components/AdminNotesPanel";
 import { usePartnerListing } from "@/hooks/useAuth";
 import { api } from "@/lib/api";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
+import { trackListingView } from "@/lib/analytics";
 
 export function PartnerListingDetail() {
   const { id } = useParams<{ id: string }>();
@@ -43,6 +44,19 @@ export function PartnerListingDetail() {
   });
 
   const { data: listing, isLoading, error, refetch } = usePartnerListing(id || '');
+
+  // Track listing view when listing is loaded (only when not editing)
+  useEffect(() => {
+    if (listing && id && !isEdit) {
+      const slug = listing.slug || listing.slugData?.slug || id;
+      trackListingView(id, slug, {
+        verificationStatus: listing.verificationStatus,
+        locality: listing.locality || listing.location?.locality,
+        city: listing.city || listing.location?.city,
+        partnerView: true
+      });
+    }
+  }, [listing, id, isEdit]);
 
   const handleAvailabilityToggle = async () => {
     if (!listing || !id) return;

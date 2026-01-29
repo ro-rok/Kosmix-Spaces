@@ -48,10 +48,12 @@ export function SearchEmptyState({
 
   // Build WhatsApp link with current search context
   const whatsappLink = buildWhatsAppLink({
-    city: isDefaultDelhiNCR ? 'Delhi NCR' : filters.city.join(', '),
-    locality: filters.locality.join(', '),
-    budgetBand: filters.budgetBand.join(', '),
+    messageType: 'search',
+    city: isDefaultDelhiNCR ? undefined : (filters.city.length > 0 ? filters.city : undefined),
+    locality: filters.locality.length > 0 ? filters.locality : undefined,
+    budgetBand: filters.budgetBand.length > 0 ? filters.budgetBand : undefined,
     teamSize: filters.teamSize,
+    spaceType: filters.spaceType,
     searchQuery,
   });
 

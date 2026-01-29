@@ -1,16 +1,41 @@
 import { Link } from "react-router-dom";
-import { Building2, Calendar, TrendingUp, AlertCircle, CheckCircle, Eye, MessageSquare, Search } from "lucide-react";
+import { Building2, Calendar, TrendingUp, AlertCircle, CheckCircle, Eye, MessageSquare, Search, MapPin, Users } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAdminPartners, useAdminAnalytics } from "@/hooks/useAuth";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@/lib/api";
 
 export function AdminDashboard() {
   // Fetch real data
   const { data: partnersData } = useAdminPartners();
   const { data: analytics } = useAdminAnalytics();
   
+  // Fetch visits data
+  const { data: visitsData } = useQuery({
+    queryKey: ["admin", "visits", "dashboard"],
+    queryFn: () => api.admin.getSiteVisits({ page: 1, pageSize: 100 }),
+    staleTime: 1000 * 60 * 2, // 2 minutes
+  });
+
+  // Fetch localities data
+  const { data: localitiesData } = useQuery({
+    queryKey: ["admin", "localities", "dashboard"],
+    queryFn: () => api.admin.getLocalities({ page: 1, pageSize: 100 }),
+    staleTime: 1000 * 60 * 2, // 2 minutes
+  });
+  
   const totalPartners = partnersData?.total || 0;
   const pendingPartners = partnersData?.items.filter(p => p.status === "PENDING").length || 0;
   const activePartners = partnersData?.items.filter(p => p.status === "ACTIVE").length || 0;
+
+  // Visit statistics
+  const totalVisits = visitsData?.length || 0;
+  const pendingVisits = visitsData?.filter((v: any) => v.status === "REQUESTED").length || 0;
+  const confirmedVisits = visitsData?.filter((v: any) => v.status === "CONFIRMED").length || 0;
+
+  // Locality statistics
+  const totalLocalities = localitiesData?.totalCount || 0;
+  const pendingLocalities = localitiesData?.pendingCount || 0;
 
   return (
     <div className="space-y-6">
@@ -20,7 +45,7 @@ export function AdminDashboard() {
       </div>
 
       {/* Urgent Alerts */}
-      {(pendingPartners > 0) && (
+      {(pendingPartners > 0 || pendingVisits > 0 || pendingLocalities > 0) && (
         <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4">
           <div className="flex items-center gap-2 text-destructive">
             <AlertCircle className="h-5 w-5" />
@@ -28,14 +53,32 @@ export function AdminDashboard() {
           </div>
           <div className="mt-2 space-y-1 text-sm">
             {pendingPartners > 0 && (
-              <p>{pendingPartners} partner{pendingPartners > 1 ? "s" : ""} awaiting approval</p>
+              <p>
+                <Link to="/admin/partners" className="hover:underline">
+                  {pendingPartners} partner{pendingPartners > 1 ? "s" : ""} awaiting approval
+                </Link>
+              </p>
+            )}
+            {pendingVisits > 0 && (
+              <p>
+                <Link to="/admin/visits" className="hover:underline">
+                  {pendingVisits} visit{pendingVisits > 1 ? "s" : ""} requested
+                </Link>
+              </p>
+            )}
+            {pendingLocalities > 0 && (
+              <p>
+                <Link to="/admin/localities" className="hover:underline">
+                  {pendingLocalities} localit{pendingLocalities > 1 ? "ies" : "y"} pending review
+                </Link>
+              </p>
             )}
           </div>
         </div>
       )}
 
       {/* Stats Grid */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
         <Link to="/admin/partners">
           <Card className="hover:border-primary/30 transition-colors">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -46,6 +89,36 @@ export function AdminDashboard() {
               <div className="text-2xl font-bold">{totalPartners}</div>
               <p className="text-xs text-muted-foreground">
                 {activePartners} active, {pendingPartners} pending
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
+
+        <Link to="/admin/visits">
+          <Card className="hover:border-primary/30 transition-colors">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Visits</CardTitle>
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{totalVisits}</div>
+              <p className="text-xs text-muted-foreground">
+                {confirmedVisits} confirmed, {pendingVisits} pending
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
+
+        <Link to="/admin/localities">
+          <Card className="hover:border-primary/30 transition-colors">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Localities</CardTitle>
+              <MapPin className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{totalLocalities}</div>
+              <p className="text-xs text-muted-foreground">
+                {pendingLocalities} pending review
               </p>
             </CardContent>
           </Card>
@@ -103,7 +176,7 @@ export function AdminDashboard() {
       </div>
 
       {/* Recent Activity */}
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 lg:grid-cols-3">
         {/* Recent Partners */}
         <Card>
           <CardHeader>
@@ -135,6 +208,45 @@ export function AdminDashboard() {
             ) : (
               <div className="text-center text-muted-foreground py-8">
                 <p>No partners registered yet</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Recent Visits */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Recent Site Visits</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {visitsData && visitsData.length > 0 ? (
+              <div className="space-y-3">
+                {visitsData.slice(0, 5).map((visit: any) => (
+                  <div key={visit.visitRequestId} className="flex items-center justify-between border-b border-border pb-3 last:border-0 last:pb-0">
+                    <div>
+                      <p className="font-medium text-foreground text-sm">
+                        Visit {visit.visitRequestId.substring(0, 8)}...
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {visit.visitorCount} visitor{visit.visitorCount > 1 ? "s" : ""} • {new Date(visit.createdAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-xs px-2 py-1 rounded-full ${
+                        visit.status === "CONFIRMED" ? "bg-green-100 text-green-800" :
+                        visit.status === "REQUESTED" ? "bg-yellow-100 text-yellow-800" :
+                        visit.status === "COMPLETED" ? "bg-purple-100 text-purple-800" :
+                        "bg-gray-100 text-gray-800"
+                      }`}>
+                        {visit.status}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center text-muted-foreground py-8">
+                <p>No visits yet</p>
               </div>
             )}
           </CardContent>

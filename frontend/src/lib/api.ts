@@ -615,7 +615,7 @@ export const api = {
         approvedCount: number;
         pendingCount: number;
         rejectedCount: number;
-      }>(`/locations/localities/search?${searchParams}`);
+      }>(`/admin/localities/search?${searchParams}`);
     },
 
     approveLocality: (localityId: string, data: {
@@ -788,10 +788,12 @@ export const api = {
     getPartnerAnalytics: (partnerId: string, params?: {
       startDate?: string;
       endDate?: string;
+      listingId?: string;
     }) => {
       const searchParams = new URLSearchParams();
       if (params?.startDate) searchParams.append('start_date', params.startDate);
       if (params?.endDate) searchParams.append('end_date', params.endDate);
+      if (params?.listingId) searchParams.append('listing_id', params.listingId);
       
       const queryString = searchParams.toString();
       return apiRequest<{

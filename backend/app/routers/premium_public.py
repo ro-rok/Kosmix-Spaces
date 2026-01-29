@@ -236,11 +236,19 @@ async def create_enhanced_lead(lead: EnquiryLeadCreate, request: Request):
     lead_data = lead.model_dump()
     created_lead = await create_lead(lead_data, session_id=session_id)
     
-    # If lead is for a specific listing, increment enquiry count
+    # If lead is for a specific listing, increment enquiry count and get listing details
+    listing_name = None
+    listing_locality = None
     if lead.listingSlug:
         listing = await find_listing_by_slug(lead.listingSlug)
         if listing and "slugData" in listing:  # Premium listing
             await increment_listing_enquiry(str(listing["_id"]))
+            # Extract listing details for WhatsApp message
+            if "displayName" in listing:
+                listing_name = listing["displayName"]
+            if "locationData" in listing and listing["locationData"]:
+                if "locality" in listing["locationData"]:
+                    listing_locality = listing["locationData"]["locality"]
     
     whatsapp_link = build_whatsapp_link(
         name=lead.name,
@@ -248,7 +256,9 @@ async def create_enhanced_lead(lead: EnquiryLeadCreate, request: Request):
         preferred_localities=lead.preferredLocalities,
         budget_band=lead.budgetBandId,
         team_size=lead.teamSizeBand,
-        space_type=lead.spaceType
+        space_type=lead.spaceType,
+        listing_name=listing_name,
+        listing_locality=listing_locality
     )
     
     return LeadCreateResponse(
