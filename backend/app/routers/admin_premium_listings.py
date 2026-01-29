@@ -233,3 +233,64 @@ async def reject_premium_listing(
         return {"ok": True, "message": "Premium listing rejected"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to reject premium listing: {str(e)}")
+
+
+@router.put("/premium-listings/{listing_id}/availability")
+async def update_listing_availability_admin(
+    listing_id: str,
+    request: dict,
+    current_user: dict = Depends(require_admin)
+):
+    """Update listing availability status (admin only)."""
+    db = get_database()
+    
+    availability_status = request.get("availability_status")
+    if not availability_status:
+        raise HTTPException(status_code=400, detail="availability_status is required")
+    
+    # Validate availability status
+    valid_statuses = ["available", "unavailable", "limited", "waitlist"]
+    if availability_status not in valid_statuses:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Invalid availability status. Must be one of: {', '.join(valid_statuses)}"
+        )
+    
+    try:
+        # Find the listing first (by ID or slug)
+        listing = None
+        try:
+            listing = await db.premium_listings.find_one({"_id": ObjectId(listing_id)})
+        except:
+            listing = await db.premium_listings.find_one({"slug": listing_id})
+        
+        if not listing:
+            raise HTTPException(status_code=404, detail="Premium listing not found")
+        
+        # Update using the actual ObjectId
+        result = await db.premium_listings.update_one(
+            {"_id": listing["_id"]},
+            {
+                "$set": {
+                    "availabilityStatus": availability_status,
+                    "updatedAt": datetime.datetime.utcnow()
+                }
+            }
+        )
+        
+        if result.matched_count == 0:
+            raise HTTPException(status_code=404, detail="Listing not found")
+        
+        # Get updated listing
+        updated_listing = await db.premium_listings.find_one({"_id": listing["_id"]})
+        
+        return {
+            "ok": True,
+            "message": f"Availability status updated to {availability_status}",
+            "listing": listing_to_public_response(updated_listing)
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update availability: {str(e)}")

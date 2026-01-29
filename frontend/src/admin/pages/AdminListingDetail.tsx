@@ -28,8 +28,9 @@ import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { useAdminPremiumListing, useApprovePremiumListing, useNeedsInfoPremiumListing, useRejectPremiumListing } from "@/hooks/useAuth";
+import { useAdminPremiumListing, useApprovePremiumListing, useNeedsInfoPremiumListing, useRejectPremiumListing, useUpdateListingAvailability } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { ApprovalWarningDialog } from "@/components/ApprovalWarningDialog";
 
@@ -38,12 +39,39 @@ export function AdminListingDetail() {
   const [notes, setNotes] = useState("");
   const [reason, setReason] = useState("");
   const [showApprovalWarning, setShowApprovalWarning] = useState(false);
+  const [availabilityStatus, setAvailabilityStatus] = useState<string>("");
 
   // Get the premium listing
   const { data: listing, isLoading, error } = useAdminPremiumListing(listingId!);
   const approveMutation = useApprovePremiumListing();
   const needsInfoMutation = useNeedsInfoPremiumListing();
   const rejectMutation = useRejectPremiumListing();
+  const updateAvailabilityMutation = useUpdateListingAvailability();
+
+  // Set initial availability status when listing loads
+  useState(() => {
+    if (listing?.availabilityStatus) {
+      setAvailabilityStatus(listing.availabilityStatus);
+    }
+  });
+
+  const handleAvailabilityChange = async (newStatus: string) => {
+    if (!listing) return;
+    
+    setAvailabilityStatus(newStatus);
+    
+    try {
+      await updateAvailabilityMutation.mutateAsync({ 
+        listingId: listing.listingId, 
+        availabilityStatus: newStatus 
+      });
+      toast.success(`Availability updated to ${newStatus}`);
+    } catch (error: any) {
+      toast.error(`Failed to update availability: ${error.message}`);
+      // Revert on error
+      setAvailabilityStatus(listing.availabilityStatus);
+    }
+  };
 
   const handleApproveClick = () => {
     // Show warning dialog before approving
@@ -484,14 +512,41 @@ export function AdminListingDetail() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Availability</p>
-                <Badge 
-                  variant={listing.availabilityStatus === 'available' ? 'default' : 'secondary'}
-                  className={listing.availabilityStatus === 'available' ? 'bg-green-500 hover:bg-green-600' : 'bg-red-500 hover:bg-red-600 text-white'}
+                <Select
+                  value={availabilityStatus || listing.availabilityStatus}
+                  onValueChange={handleAvailabilityChange}
+                  disabled={updateAvailabilityMutation.isPending}
                 >
-                  {listing.availabilityStatus === 'available' ? 'Available' : 
-                   listing.availabilityStatus === 'unavailable' ? 'Unavailable' :
-                   listing.availabilityStatus === 'limited' ? 'Limited' : 'Waitlist'}
-                </Badge>
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="available">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-green-500" />
+                        Available
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="unavailable">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-red-500" />
+                        Unavailable
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="limited">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-yellow-500" />
+                        Limited
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="waitlist">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-orange-500" />
+                        Waitlist
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Published</p>

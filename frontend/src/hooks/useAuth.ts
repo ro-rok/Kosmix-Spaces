@@ -259,6 +259,19 @@ export function useRejectPremiumListing() {
   });
 }
 
+export function useUpdateListingAvailability() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: ({ listingId, availabilityStatus }: { listingId: string; availabilityStatus: string }) => 
+      api.admin.updateListingAvailability(listingId, availabilityStatus),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "premium-listings"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "premium-listing"] });
+    },
+  });
+}
+
 // Partner listing hooks
 export function usePartnerListings(params: {
   page?: number;

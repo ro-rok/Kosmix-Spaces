@@ -549,6 +549,12 @@ export const api = {
         body: JSON.stringify({ reason }),
       }),
 
+    updateListingAvailability: (listingId: string, availabilityStatus: string) =>
+      apiRequest<{ ok: boolean; message: string; listing: any }>(`/admin/premium-listings/${listingId}/availability`, {
+        method: "PUT",
+        body: JSON.stringify({ availability_status: availabilityStatus }),
+      }),
+
     // Locality management
     getLocalities: (params: {
       query?: string;
