@@ -129,8 +129,60 @@ async def get_enhanced_listings(
     # Team size filter
     team_size_filter = teamSize or teamSizeBand
     if team_size_filter:
-        # Add team size logic based on offerings capacity
-        pass  # TODO: Implement team size filtering based on offerings
+        # Filter by offerings that can accommodate the team size
+        # Team size can be a number or a range string like "1-5", "10-20", etc.
+        try:
+            if isinstance(team_size_filter, str):
+                # Parse range like "1-5" or single number
+                if '-' in team_size_filter:
+                    min_size, max_size = map(int, team_size_filter.split('-'))
+                else:
+                    min_size = int(team_size_filter)
+                    max_size = min_size
+            else:
+                min_size = int(team_size_filter)
+                max_size = min_size
+            
+            # Add filter for offerings that can accommodate this team size
+            # Check if any enabled offering has capacity that matches
+            team_size_filters = []
+            for offering_type in ["private-offices", "dedicated-desks", "hot-desks", "meeting-rooms", "event-spaces"]:
+                # Check if offering is enabled and has capacity
+                capacity_path = f"offerings.{offering_type}.capacity"
+                enabled_path = f"offerings.{offering_type}.enabled"
+                
+                # For private offices, check minSeats/maxSeats
+                if offering_type == "private-offices":
+                    team_size_filters.append({
+                        enabled_path: True,
+                        f"{capacity_path}.minSeats": {"$lte": max_size},
+                        f"{capacity_path}.maxSeats": {"$gte": min_size}
+                    })
+                # For other offerings, check if capacity matches
+                else:
+                    team_size_filters.append({
+                        enabled_path: True,
+                        "$or": [
+                            {f"{capacity_path}.seats": {"$gte": min_size, "$lte": max_size}},
+                            {f"{capacity_path}.minSeats": {"$lte": max_size}, f"{capacity_path}.maxSeats": {"$gte": min_size}},
+                            {f"{capacity_path}.capacity": {"$gte": min_size, "$lte": max_size}}
+                        ]
+                    })
+            
+            if team_size_filters:
+                # Add to existing $or or create new one
+                if "$or" in query_filter:
+                    # Merge with existing $or conditions
+                    existing_or = query_filter.get("$or", [])
+                    if isinstance(existing_or, list):
+                        query_filter["$or"] = existing_or + team_size_filters
+                    else:
+                        query_filter["$or"] = [existing_or] + team_size_filters
+                else:
+                    query_filter["$or"] = team_size_filters
+        except (ValueError, AttributeError):
+            # Invalid team size format, skip filtering
+            pass
     
     # Verified only filter
     if verifiedOnly:
@@ -159,7 +211,9 @@ async def get_enhanced_listings(
             query_filter["amenities"] = {"$in": amenity_list}
     
     # Build sort criteria
+    use_aggregation = False
     sort_criteria = []
+    
     if sort == "recommended" or sort == "best_match":
         # Sort by view count and enquiry count
         sort_criteria = [("viewCount", -1), ("enquiryCount", -1), ("updatedAt", -1)]
@@ -167,19 +221,58 @@ async def get_enhanced_listings(
         sort_criteria = [("enquiryCount", -1), ("viewCount", -1)]
     elif sort == "budget_low":
         # Sort by lowest starting price in enabled offerings
-        sort_criteria = [("updatedAt", -1)]  # TODO: Implement price-based sorting
+        # Use aggregation pipeline to compute minimum price from enabled offerings
+        use_aggregation = True
     else:
         sort_criteria = [("updatedAt", -1)]
     
     # Execute query with pagination
     skip = (page - 1) * pageSize
     
-    # Query premium listings only
-    cursor = db.premium_listings.find(query_filter).sort(sort_criteria).skip(skip).limit(pageSize)
-    listings = await cursor.to_list(length=pageSize)
-    
-    # Get total count
-    total = await db.premium_listings.count_documents(query_filter)
+    if use_aggregation and sort == "budget_low":
+        # Use aggregation pipeline to compute min price and sort
+        pipeline = [
+            {"$match": query_filter},
+            {
+                "$addFields": {
+                    "minPrice": {
+                        "$min": {
+                            "$map": {
+                                "input": {
+                                    "$filter": {
+                                        "input": {"$objectToArray": "$offerings"},
+                                        "as": "offering",
+                                        "cond": {"$eq": ["$$offering.v.enabled", True]}
+                                    }
+                                },
+                                "as": "offering",
+                                "in": {
+                                    "$cond": {
+                                        "if": {"$ne": ["$$offering.v.startingPrice", None]},
+                                        "then": "$$offering.v.startingPrice",
+                                        "else": 999999999  # Very high number for listings without price
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            {"$sort": {"minPrice": 1, "updatedAt": -1}},
+            {"$skip": skip},
+            {"$limit": pageSize},
+            {"$unset": "minPrice"}  # Remove computed field from output
+        ]
+        
+        listings = await db.premium_listings.aggregate(pipeline).to_list(length=pageSize)
+        # Get total count separately
+        total = await db.premium_listings.count_documents(query_filter)
+    else:
+        # Standard query with sort
+        cursor = db.premium_listings.find(query_filter).sort(sort_criteria).skip(skip).limit(pageSize)
+        listings = await cursor.to_list(length=pageSize)
+        # Get total count
+        total = await db.premium_listings.count_documents(query_filter)
     
     # Convert premium listings to public format
     items = [listing_to_public_response(listing) for listing in listings]

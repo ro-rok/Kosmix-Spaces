@@ -79,6 +79,7 @@ async function apiRequest<T>(
       
       // Handle validation errors (422)
       if (response.status === 422 && error?.details?.errors) {
+        console.error("Validation errors:", error.details.errors);
         errorMessage = `Validation failed: ${error.details.errors.map((e: any) => `${e.loc?.join('.')} - ${e.msg}`).join(', ')}`;
         errorCode = "VALIDATION_ERROR";
         errorDetails = error.details.errors;
@@ -793,6 +794,271 @@ export const api = {
         conversionRate: number;
         topListings: Array<{ listingId: string; displayName: string; views: number; enquiries: number }>;
       }>(`/analytics/partner/${partnerId}${queryString ? `?${queryString}` : ''}`, {}, `partner-analytics-${partnerId}-${queryString}`, 300000);
+    },
+
+    // Admin Analytics - New endpoints
+    admin: {
+      // Get admin analytics overview with period comparison
+      getOverview: (params?: {
+        start?: string;
+        end?: string;
+      }) => {
+        const searchParams = new URLSearchParams();
+        if (params?.start) searchParams.append('start', params.start);
+        if (params?.end) searchParams.append('end', params.end);
+        
+        const queryString = searchParams.toString();
+        return apiRequest<{
+          views: { current: number; previous: number; change: number; trend: 'up' | 'down' | 'neutral' };
+          clicks: { current: number; previous: number; change: number; trend: 'up' | 'down' | 'neutral' };
+          enquiries: { current: number; previous: number; change: number; trend: 'up' | 'down' | 'neutral' };
+          whatsappClicks: { current: number; previous: number; change: number; trend: 'up' | 'down' | 'neutral' };
+          callClicks: { current: number; previous: number; change: number; trend: 'up' | 'down' | 'neutral' };
+          emailClicks: { current: number; previous: number; change: number; trend: 'up' | 'down' | 'neutral' };
+          clickToEnquiryRate: number;
+          viewToEnquiryRate: number;
+          whatsappShareRate: number;
+          currentPeriodStart: string;
+          currentPeriodEnd: string;
+          previousPeriodStart: string;
+          previousPeriodEnd: string;
+        }>(`/admin/analytics/overview${queryString ? `?${queryString}` : ''}`, {}, `admin-analytics-overview-${queryString}`, 60000);
+      },
+
+      // Get admin analytics time series
+      getTimeSeries: (params?: {
+        start?: string;
+        end?: string;
+        metric?: 'views' | 'clicks' | 'enquiries' | 'whatsapp' | 'calls' | 'emails';
+      }) => {
+        const searchParams = new URLSearchParams();
+        if (params?.start) searchParams.append('start', params.start);
+        if (params?.end) searchParams.append('end', params.end);
+        if (params?.metric) searchParams.append('metric', params.metric);
+        
+        const queryString = searchParams.toString();
+        return apiRequest<{
+          dataPoints: Array<{
+            date: string;
+            views: number;
+            enquiries: number;
+            searches: number;
+            clicks: number;
+            whatsapp: number;
+            calls: number;
+            emails: number;
+          }>;
+          startDate: string;
+          endDate: string;
+        }>(`/admin/analytics/timeseries${queryString ? `?${queryString}` : ''}`, {}, `admin-analytics-timeseries-${queryString}`, 60000);
+      },
+
+      // Get top workspaces
+      getTopWorkspaces: (params?: {
+        start?: string;
+        end?: string;
+        limit?: number;
+      }) => {
+        const searchParams = new URLSearchParams();
+        if (params?.start) searchParams.append('start', params.start);
+        if (params?.end) searchParams.append('end', params.end);
+        if (params?.limit) searchParams.append('limit', params.limit.toString());
+        
+        const queryString = searchParams.toString();
+        return apiRequest<Array<{
+          partnerId: string;
+          workspaceBrandName?: string;
+          views: number;
+          enquiries: number;
+          conversionRate: number;
+        }>>(`/admin/analytics/top-workspaces${queryString ? `?${queryString}` : ''}`, {}, `admin-top-workspaces-${queryString}`, 60000);
+      },
+
+      // Get top localities
+      getTopLocalities: (params?: {
+        start?: string;
+        end?: string;
+        limit?: number;
+      }) => {
+        const searchParams = new URLSearchParams();
+        if (params?.start) searchParams.append('start', params.start);
+        if (params?.end) searchParams.append('end', params.end);
+        if (params?.limit) searchParams.append('limit', params.limit.toString());
+        
+        const queryString = searchParams.toString();
+        return apiRequest<Array<{
+          locality: string;
+          city?: string;
+          views: number;
+          enquiries: number;
+          conversionRate: number;
+        }>>(`/admin/analytics/top-localities${queryString ? `?${queryString}` : ''}`, {}, `admin-top-localities-${queryString}`, 60000);
+      },
+
+      // Get conversion funnel
+      getFunnel: (params?: {
+        start?: string;
+        end?: string;
+      }) => {
+        const searchParams = new URLSearchParams();
+        if (params?.start) searchParams.append('start', params.start);
+        if (params?.end) searchParams.append('end', params.end);
+        
+        const queryString = searchParams.toString();
+        return apiRequest<{
+          stages: Array<{
+            stage: string;
+            count: number;
+            conversionRate: number;
+            dropOff: number;
+          }>;
+          totalViews: number;
+          totalClicks: number;
+          totalEnquiries: number;
+          totalWhatsAppCalls: number;
+        }>(`/admin/analytics/funnel${queryString ? `?${queryString}` : ''}`, {}, `admin-funnel-${queryString}`, 60000);
+      },
+
+      // Get admin insights
+      getInsights: (params?: {
+        start?: string;
+        end?: string;
+      }) => {
+        const searchParams = new URLSearchParams();
+        if (params?.start) searchParams.append('start', params.start);
+        if (params?.end) searchParams.append('end', params.end);
+        
+        const queryString = searchParams.toString();
+        return apiRequest<{
+          insights: Array<{
+            type: string;
+            message: string;
+            value?: any;
+          }>;
+        }>(`/admin/analytics/insights${queryString ? `?${queryString}` : ''}`, {}, `admin-insights-${queryString}`, 60000);
+      },
+    },
+
+    // Partner Analytics - New endpoints
+    partner: {
+      // Get partner analytics overview with period comparison
+      getOverview: (params?: {
+        start?: string;
+        end?: string;
+      }) => {
+        const searchParams = new URLSearchParams();
+        if (params?.start) searchParams.append('start', params.start);
+        if (params?.end) searchParams.append('end', params.end);
+        
+        const queryString = searchParams.toString();
+        return apiRequest<{
+          views: { current: number; previous: number; change: number; trend: 'up' | 'down' | 'neutral' };
+          clicks: { current: number; previous: number; change: number; trend: 'up' | 'down' | 'neutral' };
+          enquiries: { current: number; previous: number; change: number; trend: 'up' | 'down' | 'neutral' };
+          whatsappClicks: { current: number; previous: number; change: number; trend: 'up' | 'down' | 'neutral' };
+          callClicks: { current: number; previous: number; change: number; trend: 'up' | 'down' | 'neutral' };
+          emailClicks: { current: number; previous: number; change: number; trend: 'up' | 'down' | 'neutral' };
+          clickToEnquiryRate: number;
+          viewToEnquiryRate: number;
+          whatsappShareRate: number;
+          currentPeriodStart: string;
+          currentPeriodEnd: string;
+          previousPeriodStart: string;
+          previousPeriodEnd: string;
+        }>(`/partner/analytics/overview${queryString ? `?${queryString}` : ''}`, {}, `partner-analytics-overview-${queryString}`, 60000);
+      },
+
+      // Get partner analytics time series
+      getTimeSeries: (params?: {
+        start?: string;
+        end?: string;
+        metric?: 'views' | 'clicks' | 'enquiries' | 'whatsapp' | 'calls' | 'emails';
+      }) => {
+        const searchParams = new URLSearchParams();
+        if (params?.start) searchParams.append('start', params.start);
+        if (params?.end) searchParams.append('end', params.end);
+        if (params?.metric) searchParams.append('metric', params.metric);
+        
+        const queryString = searchParams.toString();
+        return apiRequest<{
+          dataPoints: Array<{
+            date: string;
+            views: number;
+            enquiries: number;
+            searches: number;
+            clicks: number;
+            whatsapp: number;
+            calls: number;
+            emails: number;
+          }>;
+          startDate: string;
+          endDate: string;
+        }>(`/partner/analytics/timeseries${queryString ? `?${queryString}` : ''}`, {}, `partner-analytics-timeseries-${queryString}`, 60000);
+      },
+
+      // Get top localities for partner
+      getTopLocalities: (params?: {
+        start?: string;
+        end?: string;
+        limit?: number;
+      }) => {
+        const searchParams = new URLSearchParams();
+        if (params?.start) searchParams.append('start', params.start);
+        if (params?.end) searchParams.append('end', params.end);
+        if (params?.limit) searchParams.append('limit', params.limit.toString());
+        
+        const queryString = searchParams.toString();
+        return apiRequest<Array<{
+          locality: string;
+          city?: string;
+          views: number;
+          enquiries: number;
+          conversionRate: number;
+        }>>(`/partner/analytics/top-localities${queryString ? `?${queryString}` : ''}`, {}, `partner-top-localities-${queryString}`, 60000);
+      },
+
+      // Get partner conversion funnel
+      getFunnel: (params?: {
+        start?: string;
+        end?: string;
+      }) => {
+        const searchParams = new URLSearchParams();
+        if (params?.start) searchParams.append('start', params.start);
+        if (params?.end) searchParams.append('end', params.end);
+        
+        const queryString = searchParams.toString();
+        return apiRequest<{
+          stages: Array<{
+            stage: string;
+            count: number;
+            conversionRate: number;
+            dropOff: number;
+          }>;
+          totalViews: number;
+          totalClicks: number;
+          totalEnquiries: number;
+          totalWhatsAppCalls: number;
+        }>(`/partner/analytics/funnel${queryString ? `?${queryString}` : ''}`, {}, `partner-funnel-${queryString}`, 60000);
+      },
+
+      // Get partner insights
+      getInsights: (params?: {
+        start?: string;
+        end?: string;
+      }) => {
+        const searchParams = new URLSearchParams();
+        if (params?.start) searchParams.append('start', params.start);
+        if (params?.end) searchParams.append('end', params.end);
+        
+        const queryString = searchParams.toString();
+        return apiRequest<{
+          insights: Array<{
+            type: string;
+            message: string;
+            value?: any;
+          }>;
+        }>(`/partner/analytics/insights${queryString ? `?${queryString}` : ''}`, {}, `partner-insights-${queryString}`, 60000);
+      },
     },
   },
 

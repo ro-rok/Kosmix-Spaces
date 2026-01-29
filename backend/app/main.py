@@ -196,11 +196,14 @@ app.include_router(premium_listings.router, prefix="/api/partner", tags=["Partne
 # Admin routes (premium only)
 app.include_router(admin_premium_listings.router, prefix="/api/admin", tags=["Admin Premium Listings"])
 app.include_router(admin_partners.router, prefix="/api/admin", tags=["Admin Partners"])
+app.include_router(admin_locations.router, prefix="/api/admin", tags=["Admin Locations"])
 app.include_router(leads.router, prefix="/api/admin", tags=["Admin Leads"])
 app.include_router(visits.router, prefix="/api/admin", tags=["Admin Visits"])
 
 # Analytics routes
 app.include_router(analytics.router, prefix="/api/analytics", tags=["Analytics"])
+app.include_router(analytics.admin_router, prefix="/api/admin", tags=["Admin Analytics"])
+app.include_router(analytics.partner_router, prefix="/api/partner", tags=["Partner Analytics"])
 
 # Design system routes
 app.include_router(design_system.router, prefix="/api/design-system", tags=["Design System"])

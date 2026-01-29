@@ -119,7 +119,7 @@ export function ListingBuilder({ listingId, isEdit = false }: ListingBuilderProp
     const offerings = initializeAllOfferings();
     
     // Map existing backend data to new offering structure
-    // This is a placeholder - actual mapping depends on backend structure
+    // Maps backend offering data to the form structure used by the listing builder
     if (listing.offerings) {
       Object.entries(listing.offerings).forEach(([type, data]: [string, any]) => {
         if (offerings[type as OfferingType]) {

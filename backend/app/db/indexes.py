@@ -113,6 +113,14 @@ async def create_indexes():
     await safe_create_index(db.analytics_events, [("locality", 1), ("eventName", 1), ("timestamp", -1)])
     await safe_create_index(db.analytics_events, [("eventName", 1), ("timestamp", -1), ("portal", 1)])
     await safe_create_index(db.analytics_events, [("utmSource", 1), ("utmCampaign", 1), ("timestamp", -1)])
+    
+    # Optimized compound indexes for analytics queries (using timestamp field, not createdAt)
+    # Note: analytics_events uses 'timestamp' field, not 'createdAt'
+    await safe_create_index(db.analytics_events, [("eventName", 1), ("timestamp", -1)])  # Event-based time queries
+    await safe_create_index(db.analytics_events, [("listingId", 1), ("timestamp", -1)])  # Listing analytics (already exists, but ensure it's there)
+    await safe_create_index(db.analytics_events, [("partnerId", 1), ("timestamp", -1)])  # Partner analytics (already exists)
+    await safe_create_index(db.analytics_events, [("locality", 1), ("timestamp", -1)])  # Locality analytics
+    await safe_create_index(db.analytics_events, [("eventName", 1), ("partnerId", 1), ("timestamp", -1)])  # Partner event queries
 
     # Design system indexes
     await safe_create_index(db.design_system_config, "environment", unique=True)

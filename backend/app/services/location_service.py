@@ -255,6 +255,10 @@ class LocationService:
     
     async def approve_locality(self, request: LocalityApprovalRequest, admin_id: str) -> Locality:
         """Approve or reject a locality."""
+        # Ensure localityId is set
+        if not request.localityId:
+            raise ValueError("Locality ID is required")
+        
         # Find locality
         locality_data = await self.localities_collection.find_one({"id": request.localityId})
         if not locality_data:

@@ -61,8 +61,8 @@ export default function AdminLocalities() {
   });
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCity, setSelectedCity] = useState<string>("");
-  const [selectedStatus, setSelectedStatus] = useState<string>("PENDING");
+  const [selectedCity, setSelectedCity] = useState<string>("all");
+  const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [selectedLocality, setSelectedLocality] = useState<Locality | null>(null);
   const [showApprovalDialog, setShowApprovalDialog] = useState(false);
   const [approvalAction, setApprovalAction] = useState<"APPROVE" | "REJECT">("APPROVE");
@@ -81,8 +81,8 @@ export default function AdminLocalities() {
       setLoading(true);
       const response = await api.admin.getLocalities({
         query: searchQuery || undefined,
-        cityId: selectedCity || undefined,
-        status: selectedStatus || undefined,
+        cityId: selectedCity && selectedCity !== "all" ? selectedCity : undefined,
+        status: selectedStatus && selectedStatus !== "all" ? selectedStatus : undefined,
         page: 1,
         pageSize: 100
       });
@@ -252,7 +252,7 @@ export default function AdminLocalities() {
                   <SelectValue placeholder="All cities" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All cities</SelectItem>
+                  <SelectItem value="all">All cities</SelectItem>
                   {cities.map((city) => (
                     <SelectItem key={city.id} value={city.id}>
                       {city.name}
@@ -269,7 +269,7 @@ export default function AdminLocalities() {
                   <SelectValue placeholder="All statuses" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All statuses</SelectItem>
+                  <SelectItem value="all">All statuses</SelectItem>
                   <SelectItem value="PENDING">Pending</SelectItem>
                   <SelectItem value="APPROVED">Approved</SelectItem>
                   <SelectItem value="REJECTED">Rejected</SelectItem>

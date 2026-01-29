@@ -9,7 +9,8 @@ from app.db.mongodb import get_database
 from app.models.analytics import (
     AnalyticsEvent, AnalyticsEventCreate, AnalyticsSummary, PartnerAnalytics,
     EventName, UserRole, ListingPerformance, LocalityPerformance, PartnerPerformance,
-    AnalyticsTimeSeries, TimeSeriesDataPoint
+    AnalyticsTimeSeries, TimeSeriesDataPoint, AnalyticsOverview, PeriodComparison,
+    TopWorkspace, TopLocality, ConversionFunnel, FunnelStage, AnalyticsInsights, Insight
 )
 from app.models.partner import PartnerAccount
 
@@ -506,6 +507,11 @@ class AnalyticsService:
         """Enrich event data with listing/partner context and derived fields."""
         enriched_data = event_data.model_copy()
         
+        # Normalize event names (backward compatibility)
+        # Map listing_card_click to listing_click for consistency
+        if enriched_data.eventName == EventName.LISTING_CARD_CLICK:
+            enriched_data.eventName = EventName.LISTING_CLICK
+        
         # Extract referrer domain if not provided
         if enriched_data.referrer and not enriched_data.referrerDomain:
             enriched_data.referrerDomain = self._extract_domain(enriched_data.referrer)
@@ -795,22 +801,22 @@ class AnalyticsService:
         end_date: datetime,
         partner_id: Optional[str] = None,
         listing_id: Optional[str] = None,
-        granularity: str = "day"  # "day", "week", "month"
+        granularity: str = "day",  # "day", "week", "month"
+        metrics: Optional[List[str]] = None  # ["views", "clicks", "enquiries", "whatsapp", "calls", "emails"]
     ) -> AnalyticsTimeSeries:
         """Get time-series data for charts."""
-        # Build match filter
+        # Build match filter - partner filtering will be done in post-processing
         match_filter = {
             "timestamp": {"$gte": start_date, "$lte": end_date}
         }
-        if partner_id:
-            match_filter["partnerId"] = partner_id
+        # Note: partner_id filtering is handled in post-processing to support events without partnerId
         if listing_id:
             match_filter["listingId"] = listing_id
         
         # Determine date truncation unit
         date_trunc_unit = granularity
         
-        # Group by date and event type
+        # Group by date and event type (include partnerId/listingId for filtering)
         pipeline = [
             {"$match": match_filter},
             {
@@ -822,7 +828,10 @@ class AnalyticsService:
                                 "date": "$timestamp"
                             }
                         },
-                        "eventName": "$eventName"
+                        "eventName": "$eventName",
+                        "partnerId": "$partnerId",
+                        "listingId": "$listingId",
+                        "listingSlug": "$listingSlug"
                     },
                     "count": {"$sum": 1}
                 }
@@ -834,26 +843,73 @@ class AnalyticsService:
         cursor = self.events_collection.aggregate(pipeline)
         results = await cursor.to_list(length=None)
         
-        # Transform to time-series format
+        # Transform to time-series format with partner filtering
         date_map: Dict[str, Dict[str, int]] = {}
         
         for doc in results:
             date_str = doc["_id"]["date"]
             event_name = doc["_id"]["eventName"]
+            event_partner_id = doc["_id"].get("partnerId")
+            listing_id = doc["_id"].get("listingId")
+            listing_slug = doc["_id"].get("listingSlug")
             count = doc["count"]
             
+            # Filter by partner_id if provided
+            if partner_id:
+                belongs_to_partner = False
+                
+                # Direct partnerId match
+                if event_partner_id and str(event_partner_id) == str(partner_id):
+                    belongs_to_partner = True
+                
+                # If no direct match, try to resolve from listing
+                if not belongs_to_partner and (listing_id or listing_slug):
+                    try:
+                        listing = None
+                        if listing_id:
+                            try:
+                                listing = await self.listings_collection.find_one({"_id": ObjectId(listing_id)})
+                            except Exception:
+                                pass
+                        
+                        if not listing and listing_slug:
+                            normalized_slug = listing_slug if listing_slug.startswith('/listing/') else f"/listing/{listing_slug.lstrip('/')}"
+                            listing = await self.listings_collection.find_one({"slugData.slug": normalized_slug})
+                        
+                        if listing:
+                            listing_partner_id = listing.get("partnerId")
+                            if listing_partner_id:
+                                listing_partner_id_str = str(listing_partner_id) if not isinstance(listing_partner_id, str) else listing_partner_id
+                                if listing_partner_id_str == str(partner_id):
+                                    belongs_to_partner = True
+                    except Exception:
+                        pass
+                
+                if not belongs_to_partner:
+                    continue
+            
             if date_str not in date_map:
-                date_map[date_str] = {"views": 0, "enquiries": 0, "searches": 0, "clicks": 0}
+                date_map[date_str] = {"views": 0, "enquiries": 0, "searches": 0, "clicks": 0, "whatsapp": 0, "calls": 0, "emails": 0}
             
             # Map event names to metrics
+            # Normalize listing_card_click to listing_click
+            if event_name == EventName.LISTING_CARD_CLICK:
+                event_name = EventName.LISTING_CLICK
+            
             if event_name in [EventName.LISTING_VIEW, EventName.PAGE_VIEW]:
                 date_map[date_str]["views"] += count
             elif event_name == EventName.ENQUIRY_SUBMIT:
                 date_map[date_str]["enquiries"] += count
             elif event_name in [EventName.SEARCH_PERFORMED, EventName.EXPLORE_SEARCH]:
                 date_map[date_str]["searches"] += count
-            elif event_name in [EventName.LISTING_CARD_CLICK, EventName.WHATSAPP_CLICK, EventName.CALL_CLICK, EventName.EMAIL_CLICK]:
+            elif event_name == EventName.LISTING_CLICK:
                 date_map[date_str]["clicks"] += count
+            elif event_name == EventName.WHATSAPP_CLICK:
+                date_map[date_str]["whatsapp"] = date_map[date_str].get("whatsapp", 0) + count
+            elif event_name == EventName.CALL_CLICK:
+                date_map[date_str]["calls"] = date_map[date_str].get("calls", 0) + count
+            elif event_name == EventName.EMAIL_CLICK:
+                date_map[date_str]["emails"] = date_map[date_str].get("emails", 0) + count
         
         # Convert to list of TimeSeriesDataPoint
         data_points = []
@@ -873,10 +929,13 @@ class AnalyticsService:
             
             data_points.append(TimeSeriesDataPoint(
                 date=date_obj,
-                views=metrics["views"],
-                enquiries=metrics["enquiries"],
-                searches=metrics["searches"],
-                clicks=metrics["clicks"]
+                views=metrics.get("views", 0),
+                enquiries=metrics.get("enquiries", 0),
+                searches=metrics.get("searches", 0),
+                clicks=metrics.get("clicks", 0),
+                whatsapp=metrics.get("whatsapp", 0),
+                calls=metrics.get("calls", 0),
+                emails=metrics.get("emails", 0)
             ))
         
         return AnalyticsTimeSeries(
@@ -927,6 +986,676 @@ class AnalyticsService:
         }
         
         return funnel
+    
+    async def get_analytics_overview(
+        self,
+        start_date: datetime,
+        end_date: datetime,
+        partner_id: Optional[str] = None
+    ) -> AnalyticsOverview:
+        """Get analytics overview with period comparison."""
+        # Calculate previous period (same duration)
+        period_duration = end_date - start_date
+        previous_end = start_date
+        previous_start = previous_end - period_duration
+        
+        # Build match filter - if partner_id is provided, match by partnerId OR by listingId (then filter by partner)
+        match_filter_current = {
+            "timestamp": {"$gte": start_date, "$lte": end_date}
+        }
+        match_filter_previous = {
+            "timestamp": {"$gte": previous_start, "$lte": previous_end}
+        }
+        
+        # For partner filtering, we'll handle it in post-processing to support events without partnerId
+        # but with listingId that belongs to the partner
+        
+        # Aggregate current period metrics
+        # If partner_id is provided, we need to filter events that belong to this partner
+        # This includes events with partnerId matching OR events with listingId belonging to this partner
+        pipeline_current = [
+            {"$match": match_filter_current},
+            {
+                "$group": {
+                    "_id": {
+                        "eventName": "$eventName",
+                        "partnerId": "$partnerId",
+                        "listingId": "$listingId",
+                        "listingSlug": "$listingSlug"
+                    },
+                    "count": {"$sum": 1}
+                }
+            }
+        ]
+        
+        current_stats = {}
+        async for doc in self.events_collection.aggregate(pipeline_current):
+            event_name = doc["_id"]["eventName"]
+            event_partner_id = doc["_id"].get("partnerId")
+            listing_id = doc["_id"].get("listingId")
+            listing_slug = doc["_id"].get("listingSlug")
+            
+            # Filter by partner_id if provided
+            if partner_id:
+                # Check if event belongs to this partner
+                belongs_to_partner = False
+                
+                # Direct partnerId match
+                if event_partner_id:
+                    # Handle both string and ObjectId formats
+                    if str(event_partner_id) == str(partner_id):
+                        belongs_to_partner = True
+                
+                # If no direct match, try to resolve from listing
+                if not belongs_to_partner and (listing_id or listing_slug):
+                    try:
+                        listing = None
+                        if listing_id:
+                            try:
+                                listing = await self.listings_collection.find_one({"_id": ObjectId(listing_id)})
+                            except Exception:
+                                pass
+                        
+                        if not listing and listing_slug:
+                            normalized_slug = listing_slug if listing_slug.startswith('/listing/') else f"/listing/{listing_slug.lstrip('/')}"
+                            listing = await self.listings_collection.find_one({"slugData.slug": normalized_slug})
+                        
+                        if listing:
+                            listing_partner_id = listing.get("partnerId")
+                            if listing_partner_id:
+                                listing_partner_id_str = str(listing_partner_id) if not isinstance(listing_partner_id, str) else listing_partner_id
+                                if listing_partner_id_str == str(partner_id):
+                                    belongs_to_partner = True
+                    except Exception:
+                        pass
+                
+                if not belongs_to_partner:
+                    continue
+            
+            # Normalize listing_card_click to listing_click
+            if event_name == EventName.LISTING_CARD_CLICK:
+                event_name = EventName.LISTING_CLICK
+            
+            current_stats[event_name] = current_stats.get(event_name, 0) + doc["count"]
+        
+        # Aggregate previous period metrics
+        pipeline_previous = [
+            {"$match": match_filter_previous},
+            {
+                "$group": {
+                    "_id": {
+                        "eventName": "$eventName",
+                        "partnerId": "$partnerId",
+                        "listingId": "$listingId",
+                        "listingSlug": "$listingSlug"
+                    },
+                    "count": {"$sum": 1}
+                }
+            }
+        ]
+        
+        previous_stats = {}
+        async for doc in self.events_collection.aggregate(pipeline_previous):
+            event_name = doc["_id"]["eventName"]
+            event_partner_id = doc["_id"].get("partnerId")
+            listing_id = doc["_id"].get("listingId")
+            listing_slug = doc["_id"].get("listingSlug")
+            
+            # Filter by partner_id if provided
+            if partner_id:
+                # Check if event belongs to this partner
+                belongs_to_partner = False
+                
+                # Direct partnerId match
+                if event_partner_id:
+                    if str(event_partner_id) == str(partner_id):
+                        belongs_to_partner = True
+                
+                # If no direct match, try to resolve from listing
+                if not belongs_to_partner and (listing_id or listing_slug):
+                    try:
+                        listing = None
+                        if listing_id:
+                            try:
+                                listing = await self.listings_collection.find_one({"_id": ObjectId(listing_id)})
+                            except Exception:
+                                pass
+                        
+                        if not listing and listing_slug:
+                            normalized_slug = listing_slug if listing_slug.startswith('/listing/') else f"/listing/{listing_slug.lstrip('/')}"
+                            listing = await self.listings_collection.find_one({"slugData.slug": normalized_slug})
+                        
+                        if listing:
+                            listing_partner_id = listing.get("partnerId")
+                            if listing_partner_id:
+                                listing_partner_id_str = str(listing_partner_id) if not isinstance(listing_partner_id, str) else listing_partner_id
+                                if listing_partner_id_str == str(partner_id):
+                                    belongs_to_partner = True
+                    except Exception:
+                        pass
+                
+                if not belongs_to_partner:
+                    continue
+            
+            # Normalize listing_card_click to listing_click
+            if event_name == EventName.LISTING_CARD_CLICK:
+                event_name = EventName.LISTING_CLICK
+            
+            previous_stats[event_name] = previous_stats.get(event_name, 0) + doc["count"]
+        
+        # Calculate metrics
+        def calculate_period_comparison(current_val: int, previous_val: int) -> PeriodComparison:
+            if previous_val == 0:
+                change = 100.0 if current_val > 0 else 0.0
+                trend = "up" if current_val > 0 else "neutral"
+            else:
+                change = ((current_val - previous_val) / previous_val) * 100
+                trend = "up" if change > 0 else ("down" if change < 0 else "neutral")
+            return PeriodComparison(
+                current=current_val,
+                previous=previous_val,
+                change=round(change, 2),
+                trend=trend
+            )
+        
+        views_current = current_stats.get(EventName.LISTING_VIEW, 0)
+        views_previous = previous_stats.get(EventName.LISTING_VIEW, 0)
+        
+        clicks_current = current_stats.get(EventName.LISTING_CLICK, 0) + current_stats.get(EventName.LISTING_CARD_CLICK, 0)
+        clicks_previous = previous_stats.get(EventName.LISTING_CLICK, 0) + previous_stats.get(EventName.LISTING_CARD_CLICK, 0)
+        
+        enquiries_current = current_stats.get(EventName.ENQUIRY_SUBMIT, 0)
+        enquiries_previous = previous_stats.get(EventName.ENQUIRY_SUBMIT, 0)
+        
+        whatsapp_current = current_stats.get(EventName.WHATSAPP_CLICK, 0)
+        whatsapp_previous = previous_stats.get(EventName.WHATSAPP_CLICK, 0)
+        
+        call_current = current_stats.get(EventName.CALL_CLICK, 0)
+        call_previous = previous_stats.get(EventName.CALL_CLICK, 0)
+        
+        email_current = current_stats.get(EventName.EMAIL_CLICK, 0)
+        email_previous = previous_stats.get(EventName.EMAIL_CLICK, 0)
+        
+        # Calculate conversion rates
+        click_to_enquiry = (enquiries_current / clicks_current * 100) if clicks_current > 0 else 0.0
+        view_to_enquiry = (enquiries_current / views_current * 100) if views_current > 0 else 0.0
+        whatsapp_share = (whatsapp_current / enquiries_current * 100) if enquiries_current > 0 else 0.0
+        
+        return AnalyticsOverview(
+            views=calculate_period_comparison(views_current, views_previous),
+            clicks=calculate_period_comparison(clicks_current, clicks_previous),
+            enquiries=calculate_period_comparison(enquiries_current, enquiries_previous),
+            whatsappClicks=calculate_period_comparison(whatsapp_current, whatsapp_previous),
+            callClicks=calculate_period_comparison(call_current, call_previous),
+            emailClicks=calculate_period_comparison(email_current, email_previous),
+            clickToEnquiryRate=round(click_to_enquiry, 2),
+            viewToEnquiryRate=round(view_to_enquiry, 2),
+            whatsappShareRate=round(whatsapp_share, 2),
+            currentPeriodStart=start_date,
+            currentPeriodEnd=end_date,
+            previousPeriodStart=previous_start,
+            previousPeriodEnd=previous_end
+        )
+    
+    async def get_top_workspaces(
+        self,
+        start_date: datetime,
+        end_date: datetime,
+        limit: int = 10,
+        partner_id: Optional[str] = None
+    ) -> List[TopWorkspace]:
+        """Get top performing workspaces (partners)."""
+        # Match events with listing context (either partnerId or listingId)
+        match_filter = {
+            "timestamp": {"$gte": start_date, "$lte": end_date},
+            "eventName": {"$in": [EventName.LISTING_VIEW, EventName.ENQUIRY_SUBMIT]},
+            "$or": [
+                {"partnerId": {"$exists": True, "$ne": None}},
+                {"listingId": {"$exists": True, "$ne": None}},
+                {"listingSlug": {"$exists": True, "$ne": None}}
+            ]
+        }
+        
+        if partner_id:
+            match_filter["partnerId"] = partner_id
+        
+        # Aggregate by partner (from partnerId or from listingId)
+        pipeline = [
+            {"$match": match_filter},
+            {
+                "$group": {
+                    "_id": {
+                        "partnerId": "$partnerId",
+                        "listingId": "$listingId",
+                        "listingSlug": "$listingSlug",
+                        "eventName": "$eventName"
+                    },
+                    "count": {"$sum": 1}
+                }
+            }
+        ]
+        
+        # Collect stats by partner
+        partner_stats = {}
+        async for doc in self.events_collection.aggregate(pipeline):
+            event_name = doc["_id"]["eventName"]
+            # Normalize listing_card_click to listing_click
+            if event_name == EventName.LISTING_CARD_CLICK:
+                event_name = EventName.LISTING_CLICK
+            
+            # Try to get partnerId from event or resolve from listing
+            partner_id_from_event = doc["_id"].get("partnerId")
+            listing_id = doc["_id"].get("listingId")
+            listing_slug = doc["_id"].get("listingSlug")
+            
+            # If no partnerId, try to resolve from listing
+            if not partner_id_from_event and (listing_id or listing_slug):
+                try:
+                    listing = None
+                    if listing_id:
+                        try:
+                            listing = await self.listings_collection.find_one({"_id": ObjectId(listing_id)})
+                        except Exception:
+                            pass
+                    
+                    if not listing and listing_slug:
+                        normalized_slug = listing_slug if listing_slug.startswith('/listing/') else f"/listing/{listing_slug.lstrip('/')}"
+                        listing = await self.listings_collection.find_one({"slugData.slug": normalized_slug})
+                    
+                    if listing:
+                        partner_id_from_event = listing.get("partnerId")
+                        if partner_id_from_event:
+                            partner_id_from_event = str(partner_id_from_event) if not isinstance(partner_id_from_event, str) else partner_id_from_event
+                except Exception:
+                    pass
+            
+            if not partner_id_from_event:
+                continue
+            
+            # Filter by partner_id if specified
+            if partner_id and partner_id_from_event != partner_id:
+                continue
+            
+            if partner_id_from_event not in partner_stats:
+                partner_stats[partner_id_from_event] = {"views": 0, "enquiries": 0}
+            
+            if event_name == EventName.LISTING_VIEW:
+                partner_stats[partner_id_from_event]["views"] += doc["count"]
+            elif event_name == EventName.ENQUIRY_SUBMIT:
+                partner_stats[partner_id_from_event]["enquiries"] += doc["count"]
+        
+        # Get partner details
+        top_workspaces = []
+        for partner_id_str, stats in partner_stats.items():
+            if stats["views"] == 0 and stats["enquiries"] == 0:
+                continue
+                
+            try:
+                partner_obj_id = ObjectId(partner_id_str)
+                partner = await self.partners_collection.find_one({"_id": partner_obj_id})
+                
+                conversion_rate = (stats["enquiries"] / stats["views"] * 100) if stats["views"] > 0 else 0.0
+                
+                top_workspaces.append(TopWorkspace(
+                    partnerId=partner_id_str,
+                    workspaceBrandName=partner.get("workspaceBrandName") if partner else None,
+                    views=stats["views"],
+                    enquiries=stats["enquiries"],
+                    conversionRate=round(conversion_rate, 2)
+                ))
+            except Exception:
+                # Skip invalid partner IDs
+                continue
+        
+        # Sort by views and limit
+        top_workspaces.sort(key=lambda x: x.views, reverse=True)
+        return top_workspaces[:limit]
+    
+    async def get_top_localities(
+        self,
+        start_date: datetime,
+        end_date: datetime,
+        limit: int = 10,
+        partner_id: Optional[str] = None
+    ) -> List[TopLocality]:
+        """Get top performing localities."""
+        # Match events with listing context (either locality or listingId to resolve locality)
+        match_filter = {
+            "timestamp": {"$gte": start_date, "$lte": end_date},
+            "eventName": {"$in": [EventName.LISTING_VIEW, EventName.ENQUIRY_SUBMIT]},
+            "$or": [
+                {"locality": {"$exists": True, "$ne": None}},
+                {"listingId": {"$exists": True, "$ne": None}},
+                {"listingSlug": {"$exists": True, "$ne": None}}
+            ]
+        }
+        
+        # Note: partner_id filtering is handled in post-processing
+        
+        # Aggregate by locality (from event or resolved from listing)
+        pipeline = [
+            {"$match": match_filter},
+            {
+                "$group": {
+                    "_id": {
+                        "locality": "$locality",
+                        "city": "$city",
+                        "listingId": "$listingId",
+                        "listingSlug": "$listingSlug",
+                        "eventName": "$eventName",
+                        "partnerId": "$partnerId"
+                    },
+                    "count": {"$sum": 1}
+                }
+            }
+        ]
+        
+        locality_stats = {}
+        async for doc in self.events_collection.aggregate(pipeline):
+            event_name = doc["_id"]["eventName"]
+            locality = doc["_id"].get("locality")
+            city = doc["_id"].get("city")
+            listing_id = doc["_id"].get("listingId")
+            listing_slug = doc["_id"].get("listingSlug")
+            event_partner_id = doc["_id"].get("partnerId")
+            
+            # Filter by partner_id if provided
+            if partner_id:
+                belongs_to_partner = False
+                
+                # Direct partnerId match
+                if event_partner_id and str(event_partner_id) == str(partner_id):
+                    belongs_to_partner = True
+                
+                # If no direct match, try to resolve from listing
+                if not belongs_to_partner and (listing_id or listing_slug):
+                    try:
+                        listing = None
+                        if listing_id:
+                            try:
+                                listing = await self.listings_collection.find_one({"_id": ObjectId(listing_id)})
+                            except Exception:
+                                pass
+                        
+                        if not listing and listing_slug:
+                            normalized_slug = listing_slug if listing_slug.startswith('/listing/') else f"/listing/{listing_slug.lstrip('/')}"
+                            listing = await self.listings_collection.find_one({"slugData.slug": normalized_slug})
+                        
+                        if listing:
+                            listing_partner_id = listing.get("partnerId")
+                            if listing_partner_id:
+                                listing_partner_id_str = str(listing_partner_id) if not isinstance(listing_partner_id, str) else listing_partner_id
+                                if listing_partner_id_str == str(partner_id):
+                                    belongs_to_partner = True
+                    except Exception:
+                        pass
+                
+                if not belongs_to_partner:
+                    continue
+            
+            # If no locality, try to resolve from listing
+            if not locality and (listing_id or listing_slug):
+                try:
+                    listing = None
+                    if listing_id:
+                        try:
+                            listing = await self.listings_collection.find_one({"_id": ObjectId(listing_id)})
+                        except Exception:
+                            pass
+                    
+                    if not listing and listing_slug:
+                        normalized_slug = listing_slug if listing_slug.startswith('/listing/') else f"/listing/{listing_slug.lstrip('/')}"
+                        listing = await self.listings_collection.find_one({"slugData.slug": normalized_slug})
+                    
+                    if listing:
+                        locality = listing.get("location", {}).get("locality") or listing.get("locality")
+                        if not city:
+                            city = listing.get("location", {}).get("city") or listing.get("city", "Delhi")
+                except Exception:
+                    pass
+            
+            if not locality:
+                continue
+            
+            if locality not in locality_stats:
+                locality_stats[locality] = {
+                    "city": city,
+                    "views": 0,
+                    "enquiries": 0
+                }
+            
+            if event_name == EventName.LISTING_VIEW:
+                locality_stats[locality]["views"] += doc["count"]
+            elif event_name == EventName.ENQUIRY_SUBMIT:
+                locality_stats[locality]["enquiries"] += doc["count"]
+        
+        # Convert to list and calculate conversion rates
+        top_localities = []
+        for locality, stats in locality_stats.items():
+            if stats["views"] == 0 and stats["enquiries"] == 0:
+                continue
+                
+            conversion_rate = (stats["enquiries"] / stats["views"] * 100) if stats["views"] > 0 else 0.0
+            
+            top_localities.append(TopLocality(
+                locality=locality,
+                city=stats["city"],
+                views=stats["views"],
+                enquiries=stats["enquiries"],
+                conversionRate=round(conversion_rate, 2)
+            ))
+        
+        # Sort by views and limit
+        top_localities.sort(key=lambda x: x.views, reverse=True)
+        return top_localities[:limit]
+    
+    async def get_enhanced_funnel(
+        self,
+        start_date: datetime,
+        end_date: datetime,
+        partner_id: Optional[str] = None
+    ) -> ConversionFunnel:
+        """Get enhanced conversion funnel with stages."""
+        match_filter = {
+            "timestamp": {"$gte": start_date, "$lte": end_date}
+        }
+        
+        if partner_id:
+            match_filter["partnerId"] = partner_id
+        
+        # Aggregate by event type
+        pipeline = [
+            {"$match": match_filter},
+            {
+                "$group": {
+                    "_id": "$eventName",
+                    "count": {"$sum": 1}
+                }
+            }
+        ]
+        
+        event_counts = {}
+        async for doc in self.events_collection.aggregate(pipeline):
+            event_name = doc["_id"]
+            # Normalize listing_card_click to listing_click
+            if event_name == EventName.LISTING_CARD_CLICK:
+                event_name = EventName.LISTING_CLICK
+            event_counts[event_name] = doc["count"]
+        
+        # Calculate funnel stages
+        views = event_counts.get(EventName.LISTING_VIEW, 0)
+        clicks = event_counts.get(EventName.LISTING_CLICK, 0) + event_counts.get(EventName.LISTING_CARD_CLICK, 0)
+        enquiries = event_counts.get(EventName.ENQUIRY_SUBMIT, 0)
+        whatsapp = event_counts.get(EventName.WHATSAPP_CLICK, 0)
+        calls = event_counts.get(EventName.CALL_CLICK, 0)
+        total_whatsapp_calls = whatsapp + calls
+        
+        stages = []
+        
+        # Stage 1: Views
+        stages.append(FunnelStage(
+            stage="Views",
+            count=views,
+            conversionRate=100.0,
+            dropOff=0
+        ))
+        
+        # Stage 2: Clicks
+        click_conversion = (clicks / views * 100) if views > 0 else 0.0
+        click_dropoff = views - clicks
+        stages.append(FunnelStage(
+            stage="Clicks",
+            count=clicks,
+            conversionRate=round(click_conversion, 2),
+            dropOff=click_dropoff
+        ))
+        
+        # Stage 3: Enquiries
+        enquiry_conversion = (enquiries / clicks * 100) if clicks > 0 else 0.0
+        enquiry_dropoff = clicks - enquiries
+        stages.append(FunnelStage(
+            stage="Enquiries",
+            count=enquiries,
+            conversionRate=round(enquiry_conversion, 2),
+            dropOff=enquiry_dropoff
+        ))
+        
+        # Stage 4: WhatsApp/Call
+        whatsapp_call_conversion = (total_whatsapp_calls / enquiries * 100) if enquiries > 0 else 0.0
+        whatsapp_call_dropoff = enquiries - total_whatsapp_calls
+        stages.append(FunnelStage(
+            stage="WhatsApp/Call",
+            count=total_whatsapp_calls,
+            conversionRate=round(whatsapp_call_conversion, 2),
+            dropOff=whatsapp_call_dropoff
+        ))
+        
+        return ConversionFunnel(
+            stages=stages,
+            totalViews=views,
+            totalClicks=clicks,
+            totalEnquiries=enquiries,
+            totalWhatsAppCalls=total_whatsapp_calls
+        )
+    
+    async def get_analytics_insights(
+        self,
+        start_date: datetime,
+        end_date: datetime,
+        partner_id: Optional[str] = None
+    ) -> AnalyticsInsights:
+        """Get computed analytics insights."""
+        insights = []
+        
+        # Get total metrics first for general insights
+        overview = await self.get_analytics_overview(start_date, end_date, partner_id=partner_id)
+        
+        # Add insight about total activity if there's any
+        total_activity = overview.views.current + overview.clicks.current + overview.enquiries.current
+        if total_activity > 0:
+            insights.append(Insight(
+                type="activity_summary",
+                message=f"Total activity: {overview.views.current} views, {overview.enquiries.current} enquiries in this period",
+                value={
+                    "views": overview.views.current,
+                    "enquiries": overview.enquiries.current,
+                    "clicks": overview.clicks.current
+                }
+            ))
+        
+        # Get top locality
+        top_localities = await self.get_top_localities(start_date, end_date, limit=1, partner_id=partner_id)
+        if top_localities and len(top_localities) > 0:
+            best_locality = top_localities[0]
+            if best_locality.views > 0:
+                insights.append(Insight(
+                    type="best_locality",
+                    message=f"Best performing locality: {best_locality.locality} with {best_locality.views} views and {best_locality.enquiries} enquiries",
+                    value={
+                        "locality": best_locality.locality,
+                        "views": best_locality.views,
+                        "enquiries": best_locality.enquiries,
+                        "conversionRate": best_locality.conversionRate
+                    }
+                ))
+        
+        # Get channel analysis (only if there are enquiries)
+        if overview.enquiries.current > 0:
+            match_filter = {
+                "timestamp": {"$gte": start_date, "$lte": end_date},
+                "eventName": EventName.ENQUIRY_SUBMIT,
+                "referrerDomain": {"$exists": True, "$ne": None}
+            }
+            
+            if partner_id:
+                match_filter["partnerId"] = partner_id
+            
+            # Check referrer domain for enquiries
+            pipeline = [
+                {"$match": match_filter},
+                {
+                    "$group": {
+                        "_id": "$referrerDomain",
+                        "count": {"$sum": 1}
+                    }
+                },
+                {"$sort": {"count": -1}},
+                {"$limit": 1}
+            ]
+            
+            top_referrer = None
+            top_referrer_count = 0
+            async for doc in self.events_collection.aggregate(pipeline):
+                top_referrer = doc["_id"]
+                top_referrer_count = doc["count"]
+                break
+            
+            if top_referrer and top_referrer_count > 0:
+                insights.append(Insight(
+                    type="top_channel",
+                    message=f"Most enquiries ({top_referrer_count}) come from {top_referrer}",
+                    value={"channel": top_referrer, "count": top_referrer_count}
+                ))
+        
+        # Add insight about conversion rate
+        if overview.viewToEnquiryRate > 5.0:  # Above 5% is good
+            insights.append(Insight(
+                type="conversion_rate",
+                message=f"Great conversion rate! {overview.viewToEnquiryRate:.1f}% of views convert to enquiries",
+                value={"rate": overview.viewToEnquiryRate}
+            ))
+        elif overview.viewToEnquiryRate > 0:
+            insights.append(Insight(
+                type="conversion_rate",
+                message=f"Current conversion rate: {overview.viewToEnquiryRate:.1f}% (views to enquiries)",
+                value={"rate": overview.viewToEnquiryRate}
+            ))
+        
+        # Add insight about engagement if clicks are high
+        if overview.clicks.current > 0 and overview.views.current > 0:
+            click_rate = (overview.clicks.current / overview.views.current * 100) if overview.views.current > 0 else 0
+            if click_rate > 30:  # Above 30% click rate is good
+                insights.append(Insight(
+                    type="engagement",
+                    message=f"High engagement! {click_rate:.1f}% of viewers click on listings",
+                    value={"clickRate": click_rate}
+                ))
+            elif click_rate > 0:
+                insights.append(Insight(
+                    type="engagement",
+                    message=f"Click-through rate: {click_rate:.1f}% (clicks per view)",
+                    value={"clickRate": click_rate}
+                ))
+        
+        # If no insights yet, add a helpful message
+        if not insights and total_activity == 0:
+            insights.append(Insight(
+                type="no_data",
+                message="No analytics data available for this period. Start tracking events to see insights.",
+                value=None
+            ))
+        
+        return AnalyticsInsights(insights=insights)
 
 
 # Global service instance - lazy initialization

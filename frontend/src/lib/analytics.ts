@@ -35,7 +35,8 @@ export interface AnalyticsEvent {
 export type EventName = 
   | 'page_view'
   | 'listing_view'
-  | 'listing_card_click'
+  | 'listing_card_click'  // Legacy alias, use listing_click instead
+  | 'listing_click'  // Standardized name for listing card clicks
   | 'explore_search'
   | 'search_performed'
   | 'filter_change'
@@ -986,7 +987,7 @@ export const trackListingCardClick = (listingSlug: string, position: number, met
     ? listingSlug 
     : `/listing/${listingSlug.startsWith('/') ? listingSlug.slice(1) : listingSlug}`;
   
-  analytics.track('listing_card_click', {
+    analytics.track('listing_click', {
     listingSlug: normalizedSlug,
     position,
     ...metadata

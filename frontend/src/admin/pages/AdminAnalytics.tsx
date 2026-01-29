@@ -1,90 +1,132 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { api } from "@/lib/api";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
-import { TrendingUp, Eye, MessageCircle, Search, Users, Download, Filter } from "lucide-react";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Label } from "@/components/ui/label";
-
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
+import { RefreshCw, Eye, MousePointerClick, MessageCircle, Phone, Mail, MessageSquare } from "lucide-react";
+import { KPICard } from "@/components/analytics/KPICard";
+import { DateRangePicker, DateRangePreset } from "@/components/analytics/DateRangePicker";
+import { MetricSelect, Metric } from "@/components/analytics/MetricSelect";
+import { TimeseriesLineChart } from "@/components/analytics/TimeseriesLineChart";
+import { FunnelBar } from "@/components/analytics/FunnelBar";
+import { TopTable } from "@/components/analytics/TopTable";
+import { InsightsPanel } from "@/components/analytics/InsightsPanel";
 
 export function AdminAnalytics() {
-  const [dateRange, setDateRange] = useState("30"); // days
-  const [granularity, setGranularity] = useState<"day" | "week" | "month">("day");
+  const [dateRange, setDateRange] = useState<DateRangePreset>("7d");
+  const [selectedMetrics, setSelectedMetrics] = useState<Metric[]>(['views', 'enquiries']);
+  const [customStartDate, setCustomStartDate] = useState<Date | undefined>();
+  const [customEndDate, setCustomEndDate] = useState<Date | undefined>();
 
-  const startDate = new Date(Date.now() - parseInt(dateRange) * 24 * 60 * 60 * 1000).toISOString();
-  const endDate = new Date().toISOString();
+  // Calculate date range
+  const { startDate, endDate } = useMemo(() => {
+    const end = customEndDate || new Date();
+    let start: Date;
+    
+    if (dateRange === "custom" && customStartDate) {
+      start = customStartDate;
+    } else {
+      const days = dateRange === "7d" ? 7 : dateRange === "14d" ? 14 : 30;
+      start = new Date(end);
+      start.setDate(start.getDate() - days);
+    }
+    
+    return {
+      startDate: start.toISOString(),
+      endDate: end.toISOString()
+    };
+  }, [dateRange, customStartDate, customEndDate]);
 
-  const { data: analytics, isLoading: analyticsLoading } = useQuery({
-    queryKey: ["admin-analytics", dateRange],
-    queryFn: () => api.analytics.getAdminAnalytics({
-      startDate,
-      endDate
-    })
+  // Fetch overview data
+  const { data: overview, isLoading: overviewLoading, refetch: refetchOverview } = useQuery({
+    queryKey: ["admin-analytics-overview", startDate, endDate],
+    queryFn: () => api.analytics.admin.getOverview({ start: startDate, end: endDate }),
+    staleTime: 60000, // 1 minute
+    refetchOnWindowFocus: true,
   });
 
-  const { data: timeSeries, isLoading: timeSeriesLoading } = useQuery({
-    queryKey: ["admin-time-series", dateRange, granularity],
-    queryFn: () => api.analytics.getTimeSeries({
-      startDate,
-      endDate,
-      granularity
-    })
+  // Fetch time series data
+  const { data: timeSeries, isLoading: timeSeriesLoading, refetch: refetchTimeSeries } = useQuery({
+    queryKey: ["admin-analytics-timeseries", startDate, endDate, selectedMetrics],
+    queryFn: () => api.analytics.admin.getTimeSeries({ start: startDate, end: endDate }),
+    staleTime: 60000,
+    refetchOnWindowFocus: true,
   });
 
-  const { data: funnel, isLoading: funnelLoading } = useQuery({
-    queryKey: ["admin-funnel", dateRange],
-    queryFn: () => api.analytics.getConversionFunnel({
-      startDate,
-      endDate
-    })
+  // Fetch top workspaces
+  const { data: topWorkspaces, isLoading: workspacesLoading, refetch: refetchWorkspaces } = useQuery({
+    queryKey: ["admin-top-workspaces", startDate, endDate],
+    queryFn: () => api.analytics.admin.getTopWorkspaces({ start: startDate, end: endDate, limit: 10 }),
+    staleTime: 60000,
+    refetchOnWindowFocus: true,
   });
 
-  if (analyticsLoading || timeSeriesLoading || funnelLoading) {
-    return (
-      <div className="container py-8 space-y-6">
-        <div className="space-y-2">
-          <Skeleton className="h-8 w-64" />
-          <Skeleton className="h-4 w-96" />
-        </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {[...Array(4)].map((_, i) => (
-            <Skeleton key={i} className="h-32" />
-          ))}
-        </div>
-        <Skeleton className="h-96" />
-      </div>
-    );
-  }
+  // Fetch top localities
+  const { data: topLocalities, isLoading: localitiesLoading, refetch: refetchLocalities } = useQuery({
+    queryKey: ["admin-top-localities", startDate, endDate],
+    queryFn: () => api.analytics.admin.getTopLocalities({ start: startDate, end: endDate, limit: 10 }),
+    staleTime: 60000,
+    refetchOnWindowFocus: true,
+  });
 
-  const timeSeriesData = timeSeries?.dataPoints?.map(point => ({
-    date: new Date(point.date).toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric',
-      ...(granularity === 'week' && { week: 'numeric' }),
-      ...(granularity === 'month' && { month: 'short' })
-    }),
-    views: point.views,
-    enquiries: point.enquiries,
-    searches: point.searches,
-    clicks: point.clicks
-  })) || [];
+  // Fetch funnel data
+  const { data: funnel, isLoading: funnelLoading, refetch: refetchFunnel } = useQuery({
+    queryKey: ["admin-funnel", startDate, endDate],
+    queryFn: () => api.analytics.admin.getFunnel({ start: startDate, end: endDate }),
+    staleTime: 60000,
+    refetchOnWindowFocus: true,
+  });
 
-  const funnelData = funnel ? [
-    { name: 'Page Views', value: funnel.page_views },
-    { name: 'Listing Views', value: funnel.listing_views },
-    { name: 'Enquiries', value: funnel.enquiries },
-    { name: 'WhatsApp Clicks', value: funnel.whatsapp_clicks },
-    { name: 'Call Clicks', value: funnel.call_clicks },
-    { name: 'Email Clicks', value: funnel.email_clicks }
-  ].filter(item => item.value > 0) : [];
+  // Fetch insights
+  const { data: insights, isLoading: insightsLoading, refetch: refetchInsights } = useQuery({
+    queryKey: ["admin-insights", startDate, endDate],
+    queryFn: () => api.analytics.admin.getInsights({ start: startDate, end: endDate }),
+    staleTime: 60000,
+    refetchOnWindowFocus: true,
+  });
+
+  const handleRefresh = () => {
+    refetchOverview();
+    refetchTimeSeries();
+    refetchWorkspaces();
+    refetchLocalities();
+    refetchFunnel();
+  };
+
+  // Prepare time series data with selected metrics
+  const timeSeriesData = useMemo(() => {
+    if (!timeSeries?.dataPoints) return [];
+    return timeSeries.dataPoints;
+  }, [timeSeries]);
+
+  // Prepare top workspaces data
+  const workspacesTableData = useMemo(() => {
+    if (!topWorkspaces) return [];
+    return topWorkspaces.map(ws => ({
+      id: ws.partnerId,
+      name: ws.workspaceBrandName || `Partner ${ws.partnerId.slice(0, 8)}`,
+      views: ws.views,
+      enquiries: ws.enquiries,
+      conversionRate: ws.conversionRate,
+    }));
+  }, [topWorkspaces]);
+
+  // Prepare top localities data
+  const localitiesTableData = useMemo(() => {
+    if (!topLocalities) return [];
+    return topLocalities.map(loc => ({
+      id: loc.locality,
+      name: loc.locality,
+      views: loc.views,
+      enquiries: loc.enquiries,
+      conversionRate: loc.conversionRate,
+    }));
+  }, [topLocalities]);
+
+  const isLoading = overviewLoading || timeSeriesLoading || workspacesLoading || localitiesLoading || funnelLoading;
 
   return (
     <div className="container py-8 space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Analytics Dashboard</h1>
@@ -92,197 +134,132 @@ export function AdminAnalytics() {
             Comprehensive insights into platform performance
           </p>
         </div>
-        <div className="flex gap-4">
-          <Select value={dateRange} onValueChange={setDateRange}>
-            <SelectTrigger className="w-40">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="7">Last 7 days</SelectItem>
-              <SelectItem value="30">Last 30 days</SelectItem>
-              <SelectItem value="90">Last 90 days</SelectItem>
-              <SelectItem value="365">Last year</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={granularity} onValueChange={(v) => setGranularity(v as "day" | "week" | "month")}>
-            <SelectTrigger className="w-32">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="day">Daily</SelectItem>
-              <SelectItem value="week">Weekly</SelectItem>
-              <SelectItem value="month">Monthly</SelectItem>
-            </SelectContent>
-          </Select>
+        <div className="flex items-center gap-4">
+          <DateRangePicker
+            value={dateRange}
+            onChange={setDateRange}
+            startDate={customStartDate}
+            endDate={customEndDate}
+            onCustomRangeChange={(start, end) => {
+              setCustomStartDate(start);
+              setCustomEndDate(end);
+            }}
+          />
+          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isLoading}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
         </div>
       </div>
 
-      {/* Key Metrics */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Views</CardTitle>
-            <Eye className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{analytics?.totalViews?.toLocaleString() || 0}</div>
-            <p className="text-xs text-muted-foreground">
-              Listing detail views
-            </p>
-          </CardContent>
-        </Card>
+      {/* KPI Cards */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-6">
+        <KPICard
+          title="Views"
+          icon={Eye}
+          value={overview?.views || { current: 0, previous: 0, change: 0, trend: 'neutral' }}
+          isLoading={overviewLoading}
+        />
+        <KPICard
+          title="Clicks"
+          icon={MousePointerClick}
+          value={overview?.clicks || { current: 0, previous: 0, change: 0, trend: 'neutral' }}
+          isLoading={overviewLoading}
+        />
+        <KPICard
+          title="Enquiries"
+          icon={MessageCircle}
+          value={overview?.enquiries || { current: 0, previous: 0, change: 0, trend: 'neutral' }}
+          isLoading={overviewLoading}
+        />
+        <KPICard
+          title="WhatsApp"
+          icon={MessageSquare}
+          value={overview?.whatsappClicks || { current: 0, previous: 0, change: 0, trend: 'neutral' }}
+          isLoading={overviewLoading}
+        />
+        <KPICard
+          title="Calls"
+          icon={Phone}
+          value={overview?.callClicks || { current: 0, previous: 0, change: 0, trend: 'neutral' }}
+          isLoading={overviewLoading}
+        />
+        <KPICard
+          title="Emails"
+          icon={Mail}
+          value={overview?.emailClicks || { current: 0, previous: 0, change: 0, trend: 'neutral' }}
+          isLoading={overviewLoading}
+        />
+      </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Enquiries</CardTitle>
-            <MessageCircle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{analytics?.totalEnquiries?.toLocaleString() || 0}</div>
-            <p className="text-xs text-muted-foreground">
-              Conversion rate: {analytics?.conversionRate?.toFixed(1) || 0}%
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Searches</CardTitle>
-            <Search className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{analytics?.totalSearches?.toLocaleString() || 0}</div>
-            <p className="text-xs text-muted-foreground">
-              Search queries performed
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Partner Signups</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{analytics?.partnerSignups?.toLocaleString() || 0}</div>
-            <p className="text-xs text-muted-foreground">
-              New partner registrations
-            </p>
-          </CardContent>
-        </Card>
+      {/* Conversion Rates */}
+      <div className="grid gap-4 md:grid-cols-3">
+        <KPICard
+          title="Click → Enquiry"
+          icon={MousePointerClick}
+          value={overview?.clickToEnquiryRate || 0}
+          subtitle="Conversion rate"
+          formatValue={(v) => `${v.toFixed(1)}%`}
+          isLoading={overviewLoading}
+        />
+        <KPICard
+          title="View → Enquiry"
+          icon={Eye}
+          value={overview?.viewToEnquiryRate || 0}
+          subtitle="Conversion rate"
+          formatValue={(v) => `${v.toFixed(1)}%`}
+          isLoading={overviewLoading}
+        />
+        <KPICard
+          title="WhatsApp Share"
+          icon={MessageSquare}
+          value={overview?.whatsappShareRate || 0}
+          subtitle="Share rate"
+          formatValue={(v) => `${v.toFixed(1)}%`}
+          isLoading={overviewLoading}
+        />
       </div>
 
       {/* Time Series Chart */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Activity Over Time</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {timeSeriesData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={400}>
-              <LineChart data={timeSeriesData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Line type="monotone" dataKey="views" stroke="#0088FE" name="Views" />
-                <Line type="monotone" dataKey="enquiries" stroke="#00C49F" name="Enquiries" />
-                <Line type="monotone" dataKey="searches" stroke="#FFBB28" name="Searches" />
-                <Line type="monotone" dataKey="clicks" stroke="#FF8042" name="Clicks" />
-              </LineChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="h-96 flex items-center justify-center text-muted-foreground">
-              No data available for the selected period
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-semibold">Activity Over Time</h2>
+          <MetricSelect
+            selected={selectedMetrics}
+            onChange={setSelectedMetrics}
+          />
+        </div>
+        <TimeseriesLineChart
+          data={timeSeriesData}
+          selectedMetrics={selectedMetrics}
+          isLoading={timeSeriesLoading}
+        />
+      </div>
 
-      {/* Conversion Funnel */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Conversion Funnel</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {funnelData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={funnelData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="value" fill="#0088FE" />
-              </BarChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="h-96 flex items-center justify-center text-muted-foreground">
-              No funnel data available
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Top Listings and Localities */}
+      {/* Funnel and Insights */}
       <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Top Listings</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {analytics?.topListings && analytics.topListings.length > 0 ? (
-              <div className="space-y-4">
-                {analytics.topListings.slice(0, 5).map((listing: any, index: number) => (
-                  <div key={listing.listingId} className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold">
-                        {index + 1}
-                      </div>
-                      <div>
-                        <p className="font-medium">{listing.displayName}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {listing.views} views • {listing.enquiries} enquiries
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-muted-foreground">No listing data available</p>
-            )}
-          </CardContent>
-        </Card>
+        <FunnelBar
+          stages={funnel?.stages || []}
+          isLoading={funnelLoading}
+        />
+        <InsightsPanel
+          insights={insights?.insights || []}
+          isLoading={insightsLoading}
+        />
+      </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Top Localities</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {analytics?.topLocalities && analytics.topLocalities.length > 0 ? (
-              <div className="space-y-4">
-                {analytics.topLocalities.slice(0, 5).map((locality: any, index: number) => (
-                  <div key={locality.locality} className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold">
-                        {index + 1}
-                      </div>
-                      <div>
-                        <p className="font-medium">{locality.locality}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {locality.searches} searches • {locality.views} views
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-muted-foreground">No locality data available</p>
-            )}
-          </CardContent>
-        </Card>
+      {/* Top Performers */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <TopTable
+          title="Top Workspaces"
+          data={workspacesTableData}
+          isLoading={workspacesLoading}
+        />
+        <TopTable
+          title="Top Localities"
+          data={localitiesTableData}
+          isLoading={localitiesLoading}
+        />
       </div>
     </div>
   );

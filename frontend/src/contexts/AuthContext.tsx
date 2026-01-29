@@ -14,6 +14,7 @@ export interface AuthUser {
   email: string;
   role: UserRole;
   // Partner-specific fields
+  partnerId?: string; // Explicitly include partnerId for partner users
   workspaceBrandName?: string;
   contactName?: string;
   phone?: string;
@@ -211,6 +212,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       await currentQuery?.refetch();
       setIsSessionExpired(false);
     } catch (error) {
+      console.error('Session refresh failed:', error);
       handleSessionExpiry();
       throw error;
     }

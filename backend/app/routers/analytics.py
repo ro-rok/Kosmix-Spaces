@@ -6,7 +6,9 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 from app.models.analytics import (
     AnalyticsEventCreate, AnalyticsEventBatch, AnalyticsSummary, 
-    PartnerAnalytics, ListingPerformance, AnalyticsTimeSeries
+    PartnerAnalytics, ListingPerformance, AnalyticsTimeSeries,
+    AnalyticsOverview, TopWorkspace, TopLocality, ConversionFunnel, 
+    AnalyticsInsights, FunnelStage, Insight
 )
 from app.services.analytics_service import get_analytics_service
 from app.core.security import verify_admin_token, verify_partner_token, get_current_partner, get_current_user
@@ -14,6 +16,8 @@ from app.core.errors import AppError
 from app.core.config import get_settings
 
 router = APIRouter()
+admin_router = APIRouter()
+partner_router = APIRouter()
 security = HTTPBearer()
 settings = get_settings()
 
@@ -467,4 +471,460 @@ async def analytics_health():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=f"Analytics service unhealthy: {str(e)}"
+        )
+
+
+@router.get("/debug/partner/{partner_id}")
+async def debug_partner_analytics(
+    partner_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Debug endpoint to check what events exist for a partner.
+    Admin only or partner viewing their own data.
+    """
+    try:
+        # Authorization check
+        if current_user.get("role") == "PARTNER":
+            if current_user.get("partnerId") != partner_id:
+                raise AppError(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    code="ACCESS_DENIED",
+                    message="Partners can only access their own analytics"
+                )
+        elif current_user.get("role") != "ADMIN":
+            raise AppError(
+                status_code=status.HTTP_403_FORBIDDEN,
+                code="ACCESS_DENIED",
+                message="Admin or partner access required"
+            )
+        
+        from app.db.mongodb import get_database
+        from bson import ObjectId
+        from datetime import datetime, timezone, timedelta
+        
+        db = get_database()
+        
+        # Get partner's listings
+        partner_listings = await db.premium_listings.find(
+            {"partnerId": ObjectId(partner_id)}
+        ).to_list(None)
+        
+        listing_ids = [str(listing["_id"]) for listing in partner_listings]
+        
+        # Check events with listingId
+        events_with_listing_id = await db.analytics_events.find(
+            {"listingId": {"$in": listing_ids}}
+        ).limit(10).to_list(10)
+        
+        # Check events with partnerId
+        events_with_partner_id = await db.analytics_events.find(
+            {"partnerId": partner_id}
+        ).limit(10).to_list(10)
+        
+        # Check events with listingSlug
+        listing_slugs = [listing.get("slugData", {}).get("slug", "") for listing in partner_listings if listing.get("slugData", {}).get("slug")]
+        events_with_slug = []
+        if listing_slugs:
+            events_with_slug = await db.analytics_events.find(
+                {"listingSlug": {"$in": listing_slugs}}
+            ).limit(10).to_list(10)
+        
+        return {
+            "partnerId": partner_id,
+            "listings": {
+                "count": len(partner_listings),
+                "ids": listing_ids,
+                "slugs": listing_slugs
+            },
+            "events": {
+                "withListingId": {
+                    "count": len(events_with_listing_id),
+                    "sample": [{"eventName": e.get("eventName"), "listingId": e.get("listingId"), "listingSlug": e.get("listingSlug"), "partnerId": e.get("partnerId")} for e in events_with_listing_id]
+                },
+                "withPartnerId": {
+                    "count": len(events_with_partner_id),
+                    "sample": [{"eventName": e.get("eventName"), "listingId": e.get("listingId"), "listingSlug": e.get("listingSlug"), "partnerId": e.get("partnerId")} for e in events_with_partner_id]
+                },
+                "withSlug": {
+                    "count": len(events_with_slug),
+                    "sample": [{"eventName": e.get("eventName"), "listingId": e.get("listingId"), "listingSlug": e.get("listingSlug"), "partnerId": e.get("partnerId")} for e in events_with_slug]
+                }
+            }
+        }
+    except AppError:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Debug query failed: {str(e)}"
+        )
+
+
+# Admin Analytics Endpoints
+@admin_router.get("/analytics/overview", response_model=AnalyticsOverview)
+async def get_admin_analytics_overview(
+    admin_data: dict = Depends(verify_admin_token),
+    start: Optional[datetime] = Query(None, description="Start date (ISO format)"),
+    end: Optional[datetime] = Query(None, description="End date (ISO format)")
+):
+    """Get admin analytics overview with period comparison."""
+    try:
+        # Default to last 7 days
+        if not end:
+            end = datetime.now(timezone.utc)
+        if not start:
+            start = end - timedelta(days=7)
+        
+        analytics_service = get_analytics_service()
+        overview = await analytics_service.get_analytics_overview(start, end)
+        return overview
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch admin analytics overview: {str(e)}"
+        )
+
+
+@admin_router.get("/analytics/timeseries", response_model=AnalyticsTimeSeries)
+async def get_admin_analytics_timeseries(
+    admin_data: dict = Depends(verify_admin_token),
+    start: Optional[datetime] = Query(None, description="Start date (ISO format)"),
+    end: Optional[datetime] = Query(None, description="End date (ISO format)"),
+    metric: Optional[str] = Query(None, description="Filter by metric: views, clicks, enquiries, whatsapp, calls, emails")
+):
+    """Get admin analytics time series data."""
+    try:
+        # Default to last 7 days
+        if not end:
+            end = datetime.now(timezone.utc)
+        if not start:
+            start = end - timedelta(days=7)
+        
+        metrics_list = None
+        if metric:
+            metrics_list = [metric]
+        
+        analytics_service = get_analytics_service()
+        time_series = await analytics_service.get_time_series(start, end, metrics=metrics_list)
+        return time_series
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch admin analytics time series: {str(e)}"
+        )
+
+
+@admin_router.get("/analytics/top-workspaces", response_model=List[TopWorkspace])
+async def get_admin_top_workspaces(
+    admin_data: dict = Depends(verify_admin_token),
+    start: Optional[datetime] = Query(None, description="Start date (ISO format)"),
+    end: Optional[datetime] = Query(None, description="End date (ISO format)"),
+    limit: int = Query(10, ge=1, le=50, description="Number of results")
+):
+    """Get top performing workspaces (partners)."""
+    try:
+        # Default to last 7 days
+        if not end:
+            end = datetime.now(timezone.utc)
+        if not start:
+            start = end - timedelta(days=7)
+        
+        analytics_service = get_analytics_service()
+        top_workspaces = await analytics_service.get_top_workspaces(start, end, limit)
+        return top_workspaces
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch top workspaces: {str(e)}"
+        )
+
+
+@admin_router.get("/analytics/top-localities", response_model=List[TopLocality])
+async def get_admin_top_localities(
+    admin_data: dict = Depends(verify_admin_token),
+    start: Optional[datetime] = Query(None, description="Start date (ISO format)"),
+    end: Optional[datetime] = Query(None, description="End date (ISO format)"),
+    limit: int = Query(10, ge=1, le=50, description="Number of results")
+):
+    """Get top performing localities."""
+    try:
+        # Default to last 7 days
+        if not end:
+            end = datetime.now(timezone.utc)
+        if not start:
+            start = end - timedelta(days=7)
+        
+        analytics_service = get_analytics_service()
+        top_localities = await analytics_service.get_top_localities(start, end, limit)
+        return top_localities
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch top localities: {str(e)}"
+        )
+
+
+@admin_router.get("/analytics/funnel", response_model=ConversionFunnel)
+async def get_admin_funnel(
+    admin_data: dict = Depends(verify_admin_token),
+    start: Optional[datetime] = Query(None, description="Start date (ISO format)"),
+    end: Optional[datetime] = Query(None, description="End date (ISO format)")
+):
+    """Get admin conversion funnel."""
+    try:
+        # Default to last 7 days
+        if not end:
+            end = datetime.now(timezone.utc)
+        if not start:
+            start = end - timedelta(days=7)
+        
+        analytics_service = get_analytics_service()
+        funnel = await analytics_service.get_enhanced_funnel(start, end)
+        return funnel
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch conversion funnel: {str(e)}"
+        )
+
+
+@admin_router.get("/analytics/insights", response_model=AnalyticsInsights)
+async def get_admin_insights(
+    admin_data: dict = Depends(verify_admin_token),
+    start: Optional[datetime] = Query(None, description="Start date (ISO format)"),
+    end: Optional[datetime] = Query(None, description="End date (ISO format)")
+):
+    """Get admin analytics insights."""
+    try:
+        # Default to last 7 days
+        if not end:
+            end = datetime.now(timezone.utc)
+        if not start:
+            start = end - timedelta(days=7)
+        
+        analytics_service = get_analytics_service()
+        insights = await analytics_service.get_analytics_insights(start, end)
+        return insights
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch insights: {str(e)}"
+        )
+
+
+# Partner Analytics Endpoints
+@partner_router.get("/analytics/overview", response_model=AnalyticsOverview)
+async def get_partner_analytics_overview(
+    current_user: dict = Depends(get_current_user),
+    start: Optional[datetime] = Query(None, description="Start date (ISO format)"),
+    end: Optional[datetime] = Query(None, description="End date (ISO format)")
+):
+    """Get partner analytics overview with period comparison."""
+    try:
+        # Verify partner access
+        if current_user.get("role") != "PARTNER":
+            raise AppError(
+                status_code=status.HTTP_403_FORBIDDEN,
+                code="ACCESS_DENIED",
+                message="Partner access required"
+            )
+        
+        partner_id = current_user.get("partnerId")
+        if not partner_id:
+            raise AppError(
+                status_code=status.HTTP_403_FORBIDDEN,
+                code="ACCESS_DENIED",
+                message="Partner ID not found"
+            )
+        
+        # Default to last 7 days
+        if not end:
+            end = datetime.now(timezone.utc)
+        if not start:
+            start = end - timedelta(days=7)
+        
+        analytics_service = get_analytics_service()
+        overview = await analytics_service.get_analytics_overview(start, end, partner_id=partner_id)
+        return overview
+    except AppError:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch partner analytics overview: {str(e)}"
+        )
+
+
+@partner_router.get("/analytics/timeseries", response_model=AnalyticsTimeSeries)
+async def get_partner_analytics_timeseries(
+    current_user: dict = Depends(get_current_user),
+    start: Optional[datetime] = Query(None, description="Start date (ISO format)"),
+    end: Optional[datetime] = Query(None, description="End date (ISO format)"),
+    metric: Optional[str] = Query(None, description="Filter by metric: views, clicks, enquiries, whatsapp, calls, emails")
+):
+    """Get partner analytics time series data."""
+    try:
+        # Verify partner access
+        if current_user.get("role") != "PARTNER":
+            raise AppError(
+                status_code=status.HTTP_403_FORBIDDEN,
+                code="ACCESS_DENIED",
+                message="Partner access required"
+            )
+        
+        partner_id = current_user.get("partnerId")
+        if not partner_id:
+            raise AppError(
+                status_code=status.HTTP_403_FORBIDDEN,
+                code="ACCESS_DENIED",
+                message="Partner ID not found"
+            )
+        
+        # Default to last 7 days
+        if not end:
+            end = datetime.now(timezone.utc)
+        if not start:
+            start = end - timedelta(days=7)
+        
+        metrics_list = None
+        if metric:
+            metrics_list = [metric]
+        
+        analytics_service = get_analytics_service()
+        time_series = await analytics_service.get_time_series(start, end, partner_id=partner_id, metrics=metrics_list)
+        return time_series
+    except AppError:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch partner analytics time series: {str(e)}"
+        )
+
+
+@partner_router.get("/analytics/top-localities", response_model=List[TopLocality])
+async def get_partner_top_localities(
+    current_user: dict = Depends(get_current_user),
+    start: Optional[datetime] = Query(None, description="Start date (ISO format)"),
+    end: Optional[datetime] = Query(None, description="End date (ISO format)"),
+    limit: int = Query(10, ge=1, le=50, description="Number of results")
+):
+    """Get top performing localities for partner."""
+    try:
+        # Verify partner access
+        if current_user.get("role") != "PARTNER":
+            raise AppError(
+                status_code=status.HTTP_403_FORBIDDEN,
+                code="ACCESS_DENIED",
+                message="Partner access required"
+            )
+        
+        partner_id = current_user.get("partnerId")
+        if not partner_id:
+            raise AppError(
+                status_code=status.HTTP_403_FORBIDDEN,
+                code="ACCESS_DENIED",
+                message="Partner ID not found"
+            )
+        
+        # Default to last 7 days
+        if not end:
+            end = datetime.now(timezone.utc)
+        if not start:
+            start = end - timedelta(days=7)
+        
+        analytics_service = get_analytics_service()
+        top_localities = await analytics_service.get_top_localities(start, end, limit, partner_id=partner_id)
+        return top_localities
+    except AppError:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch top localities: {str(e)}"
+        )
+
+
+@partner_router.get("/analytics/funnel", response_model=ConversionFunnel)
+async def get_partner_funnel(
+    current_user: dict = Depends(get_current_user),
+    start: Optional[datetime] = Query(None, description="Start date (ISO format)"),
+    end: Optional[datetime] = Query(None, description="End date (ISO format)")
+):
+    """Get partner conversion funnel."""
+    try:
+        # Verify partner access
+        if current_user.get("role") != "PARTNER":
+            raise AppError(
+                status_code=status.HTTP_403_FORBIDDEN,
+                code="ACCESS_DENIED",
+                message="Partner access required"
+            )
+        
+        partner_id = current_user.get("partnerId")
+        if not partner_id:
+            raise AppError(
+                status_code=status.HTTP_403_FORBIDDEN,
+                code="ACCESS_DENIED",
+                message="Partner ID not found"
+            )
+        
+        # Default to last 7 days
+        if not end:
+            end = datetime.now(timezone.utc)
+        if not start:
+            start = end - timedelta(days=7)
+        
+        analytics_service = get_analytics_service()
+        funnel = await analytics_service.get_enhanced_funnel(start, end, partner_id=partner_id)
+        return funnel
+    except AppError:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch conversion funnel: {str(e)}"
+        )
+
+
+@partner_router.get("/analytics/insights", response_model=AnalyticsInsights)
+async def get_partner_insights(
+    current_user: dict = Depends(get_current_user),
+    start: Optional[datetime] = Query(None, description="Start date (ISO format)"),
+    end: Optional[datetime] = Query(None, description="End date (ISO format)")
+):
+    """Get partner analytics insights."""
+    try:
+        # Verify partner access
+        if current_user.get("role") != "PARTNER":
+            raise AppError(
+                status_code=status.HTTP_403_FORBIDDEN,
+                code="ACCESS_DENIED",
+                message="Partner access required"
+            )
+        
+        partner_id = current_user.get("partnerId")
+        if not partner_id:
+            raise AppError(
+                status_code=status.HTTP_403_FORBIDDEN,
+                code="ACCESS_DENIED",
+                message="Partner ID not found"
+            )
+        
+        # Default to last 7 days
+        if not end:
+            end = datetime.now(timezone.utc)
+        if not start:
+            start = end - timedelta(days=7)
+        
+        analytics_service = get_analytics_service()
+        insights = await analytics_service.get_analytics_insights(start, end, partner_id=partner_id)
+        return insights
+    except AppError:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch insights: {str(e)}"
         )

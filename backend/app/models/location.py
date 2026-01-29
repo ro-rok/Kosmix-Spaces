@@ -87,7 +87,8 @@ class LocalityRequest(BaseModel):
 
 class LocalityApprovalRequest(BaseModel):
     """Request to approve/reject a locality."""
-    localityId: str
+    # Note: localityId comes from the path parameter, will be set by the router
+    localityId: Optional[str] = None  # Set from path parameter in router
     action: str  # "APPROVE" or "REJECT"
     rejectionReason: Optional[str] = None
     popular: bool = False  # Mark as popular when approving

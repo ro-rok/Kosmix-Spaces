@@ -15,7 +15,8 @@ class EventName(str, Enum):
     CTA_CLICK = "cta_click"
     LISTING_VIEW = "listing_view"
     LISTING_IMPRESSION = "listing_impression"
-    LISTING_CARD_CLICK = "listing_card_click"
+    LISTING_CARD_CLICK = "listing_card_click"  # Legacy alias for listing_click
+    LISTING_CLICK = "listing_click"  # Standardized name for listing card clicks
     EXPLORE_SEARCH = "explore_search"  # Alias for search_performed
     SEARCH_PERFORMED = "search_performed"
     FILTER_CHANGE = "filter_change"  # Alias for filter_applied
@@ -223,6 +224,9 @@ class TimeSeriesDataPoint(BaseModel):
     enquiries: int = 0
     searches: int = 0
     clicks: int = 0
+    whatsapp: int = 0
+    calls: int = 0
+    emails: int = 0
 
 
 class AnalyticsTimeSeries(BaseModel):
@@ -230,3 +234,80 @@ class AnalyticsTimeSeries(BaseModel):
     dataPoints: List[TimeSeriesDataPoint] = Field(default_factory=list)
     startDate: datetime
     endDate: datetime
+
+
+class PeriodComparison(BaseModel):
+    """Period comparison metrics."""
+    current: int = Field(..., description="Current period value")
+    previous: int = Field(..., description="Previous period value")
+    change: float = Field(..., description="Percentage change")
+    trend: str = Field(..., description="Trend direction: 'up', 'down', or 'neutral'")
+
+
+class AnalyticsOverview(BaseModel):
+    """Overview analytics with period comparison."""
+    # Core metrics
+    views: PeriodComparison = Field(..., description="Listing views")
+    clicks: PeriodComparison = Field(..., description="Listing clicks")
+    enquiries: PeriodComparison = Field(..., description="Enquiries submitted")
+    whatsappClicks: PeriodComparison = Field(..., description="WhatsApp clicks")
+    callClicks: PeriodComparison = Field(..., description="Call clicks")
+    emailClicks: PeriodComparison = Field(..., description="Email clicks")
+    
+    # Conversion rates
+    clickToEnquiryRate: float = Field(..., description="Click to enquiry conversion rate (%)")
+    viewToEnquiryRate: float = Field(..., description="View to enquiry conversion rate (%)")
+    whatsappShareRate: float = Field(..., description="WhatsApp share rate (%)")
+    
+    # Period info
+    currentPeriodStart: datetime
+    currentPeriodEnd: datetime
+    previousPeriodStart: datetime
+    previousPeriodEnd: datetime
+
+
+class TopWorkspace(BaseModel):
+    """Top workspace performance metrics."""
+    partnerId: str
+    workspaceBrandName: Optional[str] = None
+    views: int = 0
+    enquiries: int = 0
+    conversionRate: float = 0.0
+
+
+class TopLocality(BaseModel):
+    """Top locality performance metrics."""
+    locality: str
+    city: Optional[str] = None
+    views: int = 0
+    enquiries: int = 0
+    conversionRate: float = 0.0
+
+
+class FunnelStage(BaseModel):
+    """Funnel stage metrics."""
+    stage: str = Field(..., description="Funnel stage name")
+    count: int = Field(..., description="Number of events")
+    conversionRate: float = Field(..., description="Conversion rate from previous stage (%)")
+    dropOff: int = Field(..., description="Drop-off count from previous stage")
+
+
+class ConversionFunnel(BaseModel):
+    """Conversion funnel data."""
+    stages: List[FunnelStage] = Field(default_factory=list)
+    totalViews: int = 0
+    totalClicks: int = 0
+    totalEnquiries: int = 0
+    totalWhatsAppCalls: int = 0
+
+
+class Insight(BaseModel):
+    """Analytics insight."""
+    type: str = Field(..., description="Insight type")
+    message: str = Field(..., description="Insight message")
+    value: Optional[Any] = Field(None, description="Insight value if applicable")
+
+
+class AnalyticsInsights(BaseModel):
+    """Analytics insights."""
+    insights: List[Insight] = Field(default_factory=list)
