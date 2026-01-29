@@ -11,7 +11,7 @@ Verified workspace listings platform for Delhi.
 - Featured verified spaces (6 listings)
 - Trust strips with transparency messaging
 
-### Admin UI (Frontend Only)
+### Admin UI (Frontend Only) 
 - `/admin` - Dashboard with metrics overview
 - `/admin/listings` - Listings table with verification workflow (includes partner submissions)
 - `/admin/listings/[slug]` - Detail page with approval checklist
