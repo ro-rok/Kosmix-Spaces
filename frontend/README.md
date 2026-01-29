@@ -9,7 +9,7 @@ Verified workspace listings platform for Delhi.
 - WhatsApp-first CTA with prefilled messages
 - Locality quick chips for fast browsing
 - Featured verified spaces (6 listings)
-- Trust strips with transparency messaging
+- Trust strips with transparency messaging   
 
 ### Admin UI (Frontend Only) 
 - `/admin` - Dashboard with metrics overview
