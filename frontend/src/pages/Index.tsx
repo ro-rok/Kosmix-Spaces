@@ -98,7 +98,7 @@ const testimonials = [
           "verified coworking",
           "zero brokerage coworking"
         ]}
-        canonical="https://kosmixspaces.com/"
+        canonical="https://kosmixspaces.in/"
       />
       <div className="pb-20 md:pb-0">
         {/* Hero Section */}

@@ -84,7 +84,7 @@ export default function Trust() {
           "verified listings",
           "no hidden fees"
         ]}
-        canonical="https://kosmixspaces.com/trust"
+        canonical="https://kosmixspaces.in/trust"
       />
       <div>
         {/* Hero */}

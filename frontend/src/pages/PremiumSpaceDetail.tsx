@@ -220,7 +220,7 @@ export default function PremiumSpaceDetail() {
     ogTitle: `${listing.displayName} - ${listing.locality}`,
     ogDescription: listing.overview,
     ogImage: allPhotos[0]?.url,
-    canonicalUrl: `https://kosmixspaces.com/spaces${listing.slug}`
+    canonicalUrl: `https://kosmixspaces.in/spaces${listing.slug}`
   };
 
   // Prepare structured data for rich snippets

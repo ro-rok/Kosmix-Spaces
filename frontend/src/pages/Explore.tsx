@@ -309,7 +309,7 @@ export default function Explore() {
         title={seoData.title}
         description={seoData.description}
         keywords={seoData.keywords}
-        canonical="https://kosmixspaces.com/explore"
+        canonical="https://kosmixspaces.in/explore"
       />
       <div className="pb-20 md:pb-0">
         {/* Header */}

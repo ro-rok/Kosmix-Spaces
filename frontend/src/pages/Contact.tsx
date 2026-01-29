@@ -17,7 +17,7 @@ export default function Contact() {
           "coworking assistance",
           "office space contact"
         ]}
-        canonical="https://kosmixspaces.com/contact"
+        canonical="https://kosmixspaces.in/contact"
       />
       <div>
         {/* Hero */}

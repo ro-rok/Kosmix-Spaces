@@ -43,7 +43,7 @@ class Settings(BaseSettings):
     KEEP_ALIVE_HEALTH_CHECK_INTERVAL: int = 60  # 1 minute
     
     # SEO and Sitemap
-    SITE_URL: str = "https://kosmixspaces.com"
+    SITE_URL: str = "https://kosmixspaces.in"
     SITEMAP_CACHE_TTL: int = 3600  # 1 hour in seconds
     
     model_config = SettingsConfigDict(

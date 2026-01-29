@@ -103,7 +103,6 @@ export function ListingBuilder({ listingId, isEdit = false }: ListingBuilderProp
           amenities: derivedAmenities,
           accessHours: existingListing.accessHours || '9 AM - 9 PM',
           weekendAccess: existingListing.weekendAccess || false,
-          heroPhotos: existingListing.heroPhotos || [],
         },
         offerings: mapBackendOfferingsToForm(existingListing),
         location: {
@@ -277,7 +276,6 @@ export function ListingBuilder({ listingId, isEdit = false }: ListingBuilderProp
         metroNote: formData.basicInfo.amenities.includes('Near Metro Station') ? 'Near metro station' : undefined,
         parking: formData.basicInfo.amenities.includes('Parking') ? 'AVAILABLE' : 'NONE',
         powerBackup: formData.basicInfo.amenities.includes('Power Backup'),
-        heroPhotos: formData.basicInfo.heroPhotos || [], // Include hero photos from basic info
         offerings: formData.offerings
       };
 

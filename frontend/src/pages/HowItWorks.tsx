@@ -64,7 +64,7 @@ export default function HowItWorks() {
           "workspace search",
           "verified coworking"
         ]}
-        canonical="https://kosmixspaces.com/how-it-works"
+        canonical="https://kosmixspaces.in/how-it-works"
       />
       <div>
         {/* Hero */}

@@ -4,7 +4,7 @@ Disallow: /admin/
 Disallow: /partner/
 Disallow: /api/
 
-Sitemap: https://kosmixspaces.com/sitemap.xml
+Sitemap: https://kosmixspaces.in/sitemap.xml
 
 # Allow social media bots
 User-agent: Twitterbot

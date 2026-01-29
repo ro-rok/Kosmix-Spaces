@@ -68,7 +68,7 @@ export default function Partners() {
           "partner program",
           "list office space"
         ]}
-        canonical="https://kosmixspaces.com/partners"
+        canonical="https://kosmixspaces.in/partners"
       />
       <div>
         {/* Hero */}
