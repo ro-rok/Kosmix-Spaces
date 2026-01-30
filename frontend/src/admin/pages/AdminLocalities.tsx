@@ -87,7 +87,11 @@ export default function AdminLocalities() {
         pageSize: 100
       });
 
-      setLocalities(response.localities);
+      // Type assertion: API returns status as string, but we know it's one of the valid statuses
+      setLocalities(response.localities.map(loc => ({
+        ...loc,
+        status: loc.status as "PENDING" | "APPROVED" | "REJECTED"
+      })));
       setStats({
         totalCount: response.totalCount,
         approvedCount: response.approvedCount,
@@ -397,7 +401,7 @@ export default function AdminLocalities() {
                 <Checkbox
                   id="popular"
                   checked={markAsPopular}
-                  onCheckedChange={setMarkAsPopular}
+                  onCheckedChange={(checked) => setMarkAsPopular(checked === true)}
                 />
                 <Label htmlFor="popular">Mark as popular locality</Label>
               </div>
