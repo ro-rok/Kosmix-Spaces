@@ -13,7 +13,6 @@ from app.middleware.error_tracking import ErrorTrackingMiddleware, SecurityHeade
 
 # Import routers
 from app.routers import (
-    health, 
     premium_public,
     auth_partner, 
     auth_admin, 
@@ -178,8 +177,6 @@ async def general_exception_handler(request: Request, exc: Exception):
 
 
 # Include routers
-app.include_router(health.router, prefix="/api", tags=["Health"])
-
 # Public routes (premium only)
 app.include_router(premium_public.router, prefix="/api/public", tags=["Public Premium"])
 
