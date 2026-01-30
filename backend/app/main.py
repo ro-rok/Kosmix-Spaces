@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 
 from app.core.config import get_settings
 from app.core.errors import AppError
+from app.core.logging_config import setup_logging
 from app.db.mongodb import connect_to_mongo, close_mongo_connection
 from app.db.indexes import create_indexes
 from app.middleware.error_tracking import ErrorTrackingMiddleware, SecurityHeadersMiddleware
@@ -27,10 +28,14 @@ from app.routers import (
     performance,
     locations,
     keep_alive,
-    sitemap
+    sitemap,
+    health
 )
 
 settings = get_settings()
+
+# Setup logging filters to suppress health check spam
+setup_logging()
 
 
 @asynccontextmanager
@@ -210,6 +215,10 @@ app.include_router(performance.router, prefix="/api/performance", tags=["Perform
 
 # Keep-alive service routes
 app.include_router(keep_alive.router, prefix="/api", tags=["Keep Alive"])
+
+# Health check routes (both /health and /api/health for compatibility)
+app.include_router(health.router, tags=["Health"])
+app.include_router(health.router, prefix="/api", tags=["Health"])
 
 # Sitemap routes (no prefix for /sitemap.xml, but admin routes have prefix)
 app.include_router(sitemap.router, tags=["Sitemap"])

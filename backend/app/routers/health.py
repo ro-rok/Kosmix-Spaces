@@ -13,13 +13,23 @@ logger = logging.getLogger(__name__)
 
 @router.get("/health")
 async def health_check(request: Request):
-    """Health check endpoint with system status."""
+    """Health check endpoint with system status.
+    
+    Uses a lightweight response for frequent load balancer checks,
+    with periodic database validation.
+    """
     try:
-        # Check if this is from keep-alive service (localhost/127.0.0.1)
+        # Check if this is from internal sources (keep-alive, load balancer, etc.)
         client_host = request.client.host if request.client else "unknown"
-        is_keep_alive = client_host in ["127.0.0.1", "localhost", "::1"]
+        # Render's internal IPs are typically in 10.x.x.x range
+        is_internal = (
+            client_host in ["127.0.0.1", "localhost", "::1"] or
+            client_host.startswith("10.") or
+            client_host.startswith("172.") or
+            client_host.startswith("192.168.")
+        )
         
-        # Basic health check
+        # Basic health check (always fast)
         health_data = {
             "status": "ok",
             "timestamp": datetime.utcnow().isoformat(),
@@ -27,34 +37,46 @@ async def health_check(request: Request):
             "environment": settings.APP_ENV
         }
         
-        # Test database connection
-        try:
-            from app.db.mongodb import get_database
-            db = get_database()
-            # Simple ping to test connection
-            await db.command("ping")
-            health_data["database"] = "connected"
-        except Exception as db_error:
-            health_data["database"] = f"error: {str(db_error)}"
-            health_data["status"] = "degraded"
-            # Only log database errors for external requests, not keep-alive
-            if not is_keep_alive:
-                logger.error(f"Database health check failed: {db_error}")
+        # Only check database for external requests or periodically
+        # This reduces DB load from constant health checks
+        check_database = not is_internal or (datetime.utcnow().second % 30 == 0)
         
-        # Don't log keep-alive service calls - they're too frequent
-        # Only log external health checks at DEBUG level to reduce log noise
-        # (Load balancers/monitoring services check frequently)
-        if not is_keep_alive:
+        if check_database:
+            try:
+                from app.db.mongodb import get_database
+                db = get_database()
+                # Simple ping to test connection
+                await db.command("ping")
+                health_data["database"] = "connected"
+            except Exception as db_error:
+                health_data["database"] = f"error: {str(db_error)}"
+                health_data["status"] = "degraded"
+                # Only log database errors for external requests
+                if not is_internal:
+                    logger.error(f"Database health check failed: {db_error}")
+        else:
+            # Skip DB check for frequent internal health checks
+            health_data["database"] = "not_checked"
+        
+        # Don't log internal health checks - they're too frequent
+        # Load balancers and monitoring services check constantly
+        # Only log external health checks at DEBUG level
+        if not is_internal:
             logger.debug(f"Health check from {client_host}: {health_data['status']}")
         
         return health_data
         
     except Exception as e:
-        # Only log errors for external requests, not keep-alive
+        # Only log errors for external requests
         client_host = request.client.host if request.client else "unknown"
-        is_keep_alive = client_host in ["127.0.0.1", "localhost", "::1"]
+        is_internal = (
+            client_host in ["127.0.0.1", "localhost", "::1"] or
+            client_host.startswith("10.") or
+            client_host.startswith("172.") or
+            client_host.startswith("192.168.")
+        )
         
-        if not is_keep_alive:
+        if not is_internal:
             logger.error(f"Health check error: {e}", exc_info=True)
         
         raise HTTPException(
