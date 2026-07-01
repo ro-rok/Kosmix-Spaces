@@ -316,8 +316,15 @@ export function AdminListings() {
                           </Button>
                         </>
                       )}
-                    </div>
-                  </div>
+                      <Button
+                        onClick={() => setDeleteTarget({ id: listing.listingId, name: listing.displayName })}
+                        size="sm"
+                        variant="ghost"
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>                  </div>
                 ))}
               </div>
 
