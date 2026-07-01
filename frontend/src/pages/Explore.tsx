@@ -148,7 +148,7 @@ export default function Explore() {
         if (newValue) {
           trackFilterApplied(key, newValue, { action: 'set' });
         } else if (oldValue) {
-          trackFilterApplied(key, oldValue, { action: 'cleared' });
+          trackFilterApplied(key, String(oldValue), { action: 'cleared' });
         }
       }
     });
@@ -220,7 +220,7 @@ export default function Explore() {
     const budgetText = filters.budgetBand.length > 0 ? ` | Budget ${filters.budgetBand.join(", ")}` : "";
     
     let title = "Explore Coworking Spaces";
-    let description = "Browse verified coworking spaces across Delhi NCR.";
+    let description = "Browse verified coworking spaces across India.";
     
     if (localities) {
       title = `Coworking Spaces in ${localities}${budgetText} | Kosmix Spaces`;
@@ -229,8 +229,8 @@ export default function Explore() {
       title = `Coworking Spaces in ${cities}${budgetText} | Kosmix Spaces`;
       description = `Discover ${total} coworking spaces in ${cities}. Verified listings, no customer fees.`;
     } else {
-      title = `Coworking Spaces in Delhi NCR${budgetText} | Kosmix Spaces`;
-      description = `Browse ${total} verified coworking spaces across Delhi, Gurugram, Noida. Zero brokerage.`;
+      title = `Coworking Spaces in India${budgetText} | Kosmix Spaces`;
+      description = `Browse ${total} verified coworking spaces across India. Zero brokerage.`;
     }
     
     const keywords = [
@@ -390,7 +390,6 @@ export default function Explore() {
               onRemoveFilter={handleRemoveFilter}
               onClearAll={clearAllFilters}
               className="mt-2 animate-slide-up"
-              style={{ animationDelay: '0.2s' }}
             />
           )}
         </div>

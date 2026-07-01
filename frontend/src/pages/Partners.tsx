@@ -16,7 +16,7 @@ const benefits = [
   {
     icon: TrendingUp,
     title: "Increased Visibility",
-    description: "Get discovered by businesses actively searching for workspaces in Delhi.",
+    description: "Get discovered by businesses actively searching for workspaces in India.",
   },
   {
     icon: Shield,
@@ -84,7 +84,7 @@ export default function Partners() {
               Partner with Kosmix Spaces
             </h1>
             <p className="mt-4 text-lg text-muted-foreground">
-              List your workspace and connect with businesses looking for their next office in Delhi.
+              List your workspace and connect with businesses looking for their next office in India.
               Quality leads. No upfront costs.
             </p>
             <div className="mt-8 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
@@ -173,7 +173,7 @@ export default function Partners() {
                 "Professional infrastructure and amenities",
                 "Clear pricing structure (even if final quote is negotiable)",
                 "Responsive to enquiries and site visit requests",
-                "Located in Delhi NCR",
+                "Located in India",
               ].map((item) => (
                 <div key={item} className="flex items-start gap-3">
                   <BadgeCheck className="h-5 w-5 shrink-0 text-primary mt-0.5" />

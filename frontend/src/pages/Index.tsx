@@ -97,14 +97,14 @@ const testimonials = [
   return (
     <>
       <SEO
-        title="Verified Coworking Spaces in Delhi, Gurugram, Noida | Kosmix Spaces"
-        description="Find verified coworking spaces across Delhi NCR. Zero brokerage, site visits arranged. Browse 50+ verified workspaces in prime locations."
+        title="Verified Coworking Spaces Across India | Kosmix Spaces"
+        description="Find verified coworking spaces across India. Zero brokerage, site visits arranged. Browse 50+ verified workspaces in prime locations."
         keywords={[
+          "coworking space india",
           "coworking space delhi",
           "coworking space gurugram",
           "coworking space noida",
-          "office space delhi",
-          "workspace delhi ncr",
+          "office space india",
           "verified coworking",
           "zero brokerage coworking"
         ]}
@@ -129,7 +129,7 @@ const testimonials = [
           <div className="mx-auto max-w-4xl text-center">
             {/* Headline */}
             <h1 className="font-display text-3xl font-bold tracking-tight text-foreground sm:text-4xl md:text-5xl leading-tight">
-              Verified workspaces across Delhi.
+              Verified workspaces across India.
               <br />
               <span className="bg-gradient-to-r from-primary to-primary-glow bg-clip-text text-transparent">
                 Shortlisted, negotiated, visit-ready.
@@ -313,7 +313,7 @@ const testimonials = [
                 Featured Verified Spaces
               </h2>
               <p className="mt-2 text-muted-foreground">
-                Hand-picked workspaces across Delhi
+                Hand-picked workspaces across India
               </p>
             </div>
             <div className="flex items-center gap-2">

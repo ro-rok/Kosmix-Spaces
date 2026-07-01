@@ -80,7 +80,7 @@ export default function HowItWorks() {
             How Kosmix Spaces Works
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-lg text-muted-foreground">
-            Simple steps to find your ideal workspace in Delhi.
+            Simple steps to find your ideal workspace in India.
             <br />
             <strong>No customer fees. Expert guidance. Verified spaces.</strong>
           </p>
