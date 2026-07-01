@@ -573,6 +573,11 @@ export const api = {
         body: JSON.stringify({ availability_status: availabilityStatus }),
       }),
 
+    deleteListing: (listingId: string) =>
+      apiRequest<{ ok: boolean; message: string }>(`/admin/premium-listings/${listingId}`, {
+        method: "DELETE",
+      }),
+
     // Locality management
     getLocalities: (params: {
       query?: string;

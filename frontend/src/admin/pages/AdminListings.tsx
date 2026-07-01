@@ -8,7 +8,8 @@ import {
   Filter,
   Search,
   MoreHorizontal,
-  FileText
+  FileText,
+  Trash2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,7 +34,17 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useAdminPremiumListings, useApprovePremiumListing, useNeedsInfoPremiumListing, useRejectPremiumListing } from "@/hooks/useAuth";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useAdminPremiumListings, useApprovePremiumListing, useNeedsInfoPremiumListing, useRejectPremiumListing, useDeleteListing } from "@/hooks/useAuth";
 import { trackAdminVerificationAction } from "@/lib/analytics";
 import { toast } from "sonner";
 
@@ -54,6 +65,7 @@ export function AdminListings() {
   const [searchQuery, setSearchQuery] = useState("");
   const [page, setPage] = useState(1);
   const pageSize = 20;
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
   // Fetch premium listings from API
   const { 
@@ -69,6 +81,19 @@ export function AdminListings() {
   const approveMutation = useApprovePremiumListing();
   const needsInfoMutation = useNeedsInfoPremiumListing();
   const rejectMutation = useRejectPremiumListing();
+  const deleteMutation = useDeleteListing();
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    try {
+      await deleteMutation.mutateAsync(deleteTarget.id);
+      toast.success(`"${deleteTarget.name}" has been deleted`);
+    } catch (error: any) {
+      toast.error(`Failed to delete listing: ${error.message}`);
+    } finally {
+      setDeleteTarget(null);
+    }
+  };
 
   const handleApprove = async (listingId: string, displayName: string) => {
     try {
@@ -410,6 +435,14 @@ export function AdminListings() {
                                   </DropdownMenuItem>
                                 </>
                               )}
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() => setDeleteTarget({ id: listing.listingId, name: listing.displayName })}
+                                className="text-destructive focus:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                                Delete Listing
+                              </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>
@@ -473,6 +506,28 @@ export function AdminListings() {
           </CardContent>
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Listing</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to permanently delete <span className="font-semibold text-foreground">"{deleteTarget?.name}"</span>? This action cannot be undone and will remove the listing from the platform entirely.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={deleteMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteMutation.isPending ? "Deleting..." : "Delete Listing"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

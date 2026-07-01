@@ -272,6 +272,17 @@ export function useUpdateListingAvailability() {
   });
 }
 
+export function useDeleteListing() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: (listingId: string) => api.admin.deleteListing(listingId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "premium-listings"] });
+    },
+  });
+}
+
 // Partner listing hooks
 export function usePartnerListings(params: {
   page?: number;

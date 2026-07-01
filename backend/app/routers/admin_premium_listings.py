@@ -224,6 +224,33 @@ async def reject_premium_listing(
         raise HTTPException(status_code=500, detail=f"Failed to reject premium listing: {str(e)}")
 
 
+@router.delete("/premium-listings/{listing_id}")
+async def delete_premium_listing(
+    listing_id: str,
+    current_user: dict = Depends(require_admin)
+):
+    """Permanently delete a premium listing (admin only)."""
+    db = get_database()
+    
+    try:
+        listing = None
+        try:
+            listing = await db.premium_listings.find_one({"_id": ObjectId(listing_id)})
+        except:
+            listing = await db.premium_listings.find_one({"slug": listing_id})
+        
+        if not listing:
+            raise HTTPException(status_code=404, detail="Premium listing not found")
+        
+        await db.premium_listings.delete_one({"_id": listing["_id"]})
+        
+        return {"ok": True, "message": "Listing deleted successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to delete listing: {str(e)}")
+
+
 @router.put("/premium-listings/{listing_id}/availability")
 async def update_listing_availability_admin(
     listing_id: str,

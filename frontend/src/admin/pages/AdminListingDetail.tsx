@@ -62,12 +62,12 @@ export function AdminListingDetail() {
   const rejectMutation = useRejectPremiumListing();
   const updateAvailabilityMutation = useUpdateListingAvailability();
 
-  // Set initial availability status when listing loads
-  useState(() => {
+  // Sync availability status when listing loads
+  useEffect(() => {
     if (listing?.availabilityStatus) {
       setAvailabilityStatus(listing.availabilityStatus);
     }
-  });
+  }, [listing?.availabilityStatus]);
 
   const handleAvailabilityChange = async (newStatus: string) => {
     if (!listing) return;
