@@ -10,33 +10,33 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "bg-primary text-primary-foreground shadow-md hover:bg-primary/90 hover:shadow-lg active:scale-[0.98] hover:-translate-y-0.5",
+          "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 hover:shadow-md",
         destructive:
-          "bg-destructive text-destructive-foreground shadow-md hover:bg-destructive/90 hover:shadow-lg active:scale-[0.98]",
+          "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90 hover:shadow-md",
         outline:
-          "border-2 border-input bg-background hover:bg-accent hover:text-accent-foreground hover:border-primary/50 active:scale-[0.98]",
+          "border border-input bg-background hover:bg-accent/60 hover:text-accent-foreground hover:border-primary/40",
         secondary:
-          "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80 hover:shadow-md active:scale-[0.98]",
+          "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80 hover:shadow-md",
         ghost: 
-          "hover:bg-accent hover:text-accent-foreground active:scale-[0.98]",
+          "hover:bg-accent/60 hover:text-accent-foreground",
         link: 
           "text-primary underline-offset-4 hover:underline",
         whatsapp:
-          "bg-whatsapp text-whatsapp-foreground shadow-md hover:bg-whatsapp/90 hover:shadow-lg active:scale-[0.98] hover:-translate-y-0.5",
+          "border border-border bg-background text-foreground shadow-sm hover:border-primary/40 hover:bg-accent/50",
         call:
-          "bg-call text-call-foreground shadow-md hover:bg-call/90 hover:shadow-lg active:scale-[0.98] hover:-translate-y-0.5",
+          "border border-border bg-background text-foreground shadow-sm hover:border-primary/40 hover:bg-accent/50",
         hero:
-          "bg-gradient-hero text-primary-foreground shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] hover:-translate-y-1",
+          "bg-gradient-hero text-white shadow-md hover:shadow-lg",
         "hero-outline":
-          "border-2 border-primary-foreground/30 bg-primary-foreground/10 text-primary-foreground backdrop-blur-sm hover:bg-primary-foreground/20 hover:border-primary-foreground/50 active:scale-[0.98]",
+          "border border-white/40 bg-white/10 text-white backdrop-blur-sm hover:bg-white/20 hover:border-white/60",
         cta:
-          "bg-gradient-cta text-whatsapp-foreground shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] hover:-translate-y-1",
+          "bg-gradient-cta text-white shadow-md hover:shadow-lg",
         premium:
-          "bg-gradient-premium text-primary-foreground shadow-premium hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] hover:-translate-y-1",
+          "bg-gradient-premium text-primary-foreground shadow-premium hover:shadow-lg",
         glass:
-          "glass border-2 border-border/60 hover:border-primary/50 hover:bg-background/90 active:scale-[0.98]",
+          "glass border border-border/60 hover:border-primary/40 hover:bg-background/95",
         success:
-          "bg-success text-success-foreground shadow-md hover:bg-success/90 hover:shadow-lg active:scale-[0.98] hover:-translate-y-0.5",
+          "bg-success text-success-foreground shadow-sm hover:bg-success/90 hover:shadow-md",
       },
       size: {
         default: "h-10 px-4 py-2",

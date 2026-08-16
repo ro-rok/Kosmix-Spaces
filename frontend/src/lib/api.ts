@@ -323,6 +323,19 @@ export const api = {
       }),
   },
 
+  // Public blog endpoints
+  blog: {
+    getBlogs: (params: { page?: number; limit?: number; category?: string; tag?: string; search?: string } = {}) => {
+      const sp = new URLSearchParams();
+      Object.entries(params).forEach(([k, v]) => { if (v !== undefined && v !== "") sp.append(k, String(v)); });
+      return apiRequest<{ blogs: any[]; total: number; page: number; limit: number; totalPages: number }>(
+        `/public/blogs?${sp}`
+      );
+    },
+    getCategories: () => apiRequest<{ name: string; count: number }[]>("/public/blogs/categories"),
+    getPost: (slug: string) => apiRequest<any>(`/public/blogs/${slug}`),
+  },
+
   // Partner endpoints
   partner: {
     // Listings management
@@ -688,6 +701,74 @@ export const api = {
         method: "PATCH",
         body: JSON.stringify(data),
       }),
+
+    // Blog management
+    getBlogs: (params: {
+      page?: number;
+      limit?: number;
+      status_filter?: string;
+      category?: string;
+      tag?: string;
+      search?: string;
+    } = {}) => {
+      const searchParams = new URLSearchParams();
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== "") {
+          searchParams.append(key, String(value));
+        }
+      });
+      return apiRequest<{
+        blogs: any[];
+        total: number;
+        page: number;
+        limit: number;
+        totalPages: number;
+      }>(`/admin/blogs?${searchParams}`);
+    },
+
+    getBlog: (blogId: string) =>
+      apiRequest<any>(`/admin/blogs/${blogId}`),
+
+    createBlog: (data: any) =>
+      apiRequest<any>("/admin/blogs", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+
+    updateBlog: (blogId: string, data: any) =>
+      apiRequest<any>(`/admin/blogs/${blogId}`, {
+        method: "PUT",
+        body: JSON.stringify(data),
+      }),
+
+    deleteBlog: (blogId: string) =>
+      apiRequest<void>(`/admin/blogs/${blogId}`, { method: "DELETE" }),
+
+    publishBlog: (blogId: string, data: { publishNow: boolean; scheduledFor?: string; sendNotifications?: boolean }) =>
+      apiRequest<any>(`/admin/blogs/${blogId}/publish`, {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+
+    updateBlogSeo: (blogId: string, data: any) =>
+      apiRequest<any>(`/admin/blogs/${blogId}/seo`, {
+        method: "PUT",
+        body: JSON.stringify(data),
+      }),
+
+    uploadBlogImage: (formData: FormData) =>
+      apiRequest<{ image: any; tempPublicId: string }>("/admin/blogs/upload-image", {
+        method: "POST",
+        body: formData,
+      }),
+
+    searchWorkspacesForBlog: (params: { query?: string; city?: string } = {}) => {
+      const searchParams = new URLSearchParams();
+      Object.entries(params).forEach(([key, value]) => {
+        if (value) searchParams.append(key, String(value));
+      });
+      return apiRequest<any[]>(`/admin/blogs/workspaces/search?${searchParams}`);
+    },
   },
 
   // Analytics endpoints

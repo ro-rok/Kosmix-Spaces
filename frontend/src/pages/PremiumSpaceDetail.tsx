@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, type ReactNode } from "react";
 import { useParams, Link, Navigate } from "react-router-dom";
 import {
   BadgeCheck,
@@ -39,10 +39,10 @@ import { LocationPrivacyNotice } from "@/components/LocationPrivacyNotice";
 
 // Navigation tabs for scroll-spy
 const navigationTabs = [
-  { id: "overview", label: "OVERVIEW" },
-  { id: "offerings", label: "OFFERINGS & PRICING" },
-  { id: "location", label: "LOCATION" },
-  { id: "amenities", label: "AMENITIES" },
+  { id: "overview", label: "Description" },
+  { id: "offerings", label: "Offerings" },
+  { id: "amenities", label: "Features" },
+  { id: "location", label: "Location" },
 ];
 
 // Trust indicators
@@ -52,10 +52,47 @@ const trustIndicators = [
   { icon: Shield, text: "No customer fees" },
 ];
 
+// Editorial gallery tile used in the photo grid
+function GalleryTile({
+  photo,
+  index,
+  name,
+  className = "",
+  onClick,
+  children,
+}: {
+  photo: { url: string };
+  index: number;
+  name: string;
+  className?: string;
+  onClick: () => void;
+  children?: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "relative block h-full min-h-0 w-full overflow-hidden rounded-xl bg-muted md:rounded-2xl",
+        className
+      )}
+      aria-label="Open photo gallery"
+    >
+      <img
+        src={photo.url}
+        alt={`${name} - Photo ${index + 1}`}
+        className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 hover:scale-[1.03]"
+      />
+      {children}
+    </button>
+  );
+}
+
 export default function PremiumSpaceDetail() {
   const { "*": slugPath } = useParams<{ "*": string }>();
   const slug = slugPath || ""; // Use slug as-is without leading slash
   const [currentImage, setCurrentImage] = useState(0);
+  const [galleryOpen, setGalleryOpen] = useState(false);
   const [visitDialogOpen, setVisitDialogOpen] = useState(false);
   const [enquiryDialogOpen, setEnquiryDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
@@ -128,9 +165,9 @@ export default function PremiumSpaceDetail() {
     ...Object.values(listing.offerings || {}).flatMap((offering: any) => offering.photos || [])
   ] : [];
 
-  // Auto-scroll functionality for carousel
+  // Auto-scroll functionality for the photo dialog carousel
   useEffect(() => {
-    if (allPhotos.length <= 1 || isCarouselPaused) return;
+    if (!galleryOpen || allPhotos.length <= 1 || isCarouselPaused) return;
 
     const startAutoScroll = () => {
       autoScrollRef.current = setInterval(() => {
@@ -148,7 +185,7 @@ export default function PremiumSpaceDetail() {
     startAutoScroll();
 
     return () => stopAutoScroll();
-  }, [allPhotos.length, isCarouselPaused]);
+  }, [galleryOpen, allPhotos.length, isCarouselPaused]);
 
   // Handle loading and error states - AFTER all hooks
   if (isLoading) {
@@ -225,6 +262,16 @@ export default function PremiumSpaceDetail() {
 
   // Get enabled offerings from the listing data
   const enabledOfferings = Object.values(listing.offerings || {}).filter((offering: any) => offering.enabled);
+
+  // Tag pills for the title block
+  const tagPills = Array.from(
+    new Set([
+      ...(listing.dealTags || []),
+      ...enabledOfferings.map((offering: any) => offering.title).filter(Boolean),
+      ...(listing.nearMetro ? ["Near Metro"] : []),
+      ...(listing.parking ? ["Parking Available"] : []),
+    ])
+  ).slice(0, 6);
 
   // Prepare SEO metadata
   const seoMetadata = listing.seoMetadata || {
@@ -328,61 +375,133 @@ export default function PremiumSpaceDetail() {
         <div className="grid gap-8 lg:grid-cols-[1fr_400px]">
           {/* Main Content - 68% */}
           <div className="space-y-8">
-            {/* Hero Gallery */}
-            <div className="relative aspect-[16/10] overflow-hidden rounded-xl bg-muted">
-              {allPhotos.length > 0 ? (
-                <img
-                  src={allPhotos[safeCurrentImage]?.url}
-                  alt={`${listing.displayName} - Photo ${safeCurrentImage + 1}`}
-                  className="h-full w-full object-cover transition-transform duration-300"
+            {/* Photo Gallery — editorial grid */}
+            {allPhotos.length === 0 ? (
+              <div className="flex aspect-[16/9] items-center justify-center rounded-2xl bg-muted">
+                <p className="text-muted-foreground">No photos available</p>
+              </div>
+            ) : allPhotos.length === 1 ? (
+              <div className="relative aspect-[16/9] overflow-hidden rounded-xl bg-muted md:rounded-2xl">
+                <GalleryTile
+                  photo={allPhotos[0]}
+                  index={0}
+                  name={listing.displayName}
+                  onClick={() => setGalleryOpen(true)}
+                >
+                  {(listing.verificationStatus === "APPROVED_VERIFIED") && (
+                    <div className="absolute left-4 top-4">
+                      <Badge className="!bg-success !text-success-foreground shadow-lg !hover:bg-success">
+                        <BadgeCheck className="h-4 w-4 mr-1" />
+                        Verified
+                      </Badge>
+                    </div>
+                  )}
+                </GalleryTile>
+              </div>
+            ) : allPhotos.length === 2 ? (
+              <div className="grid h-[300px] grid-cols-2 gap-2.5 overflow-hidden md:h-[420px]">
+                <GalleryTile
+                  photo={allPhotos[0]}
+                  index={0}
+                  name={listing.displayName}
+                  onClick={() => { setCurrentImage(0); setGalleryOpen(true); }}
+                >
+                  {(listing.verificationStatus === "APPROVED_VERIFIED") && (
+                    <div className="absolute left-4 top-4">
+                      <Badge className="!bg-success !text-success-foreground shadow-lg !hover:bg-success">
+                        <BadgeCheck className="h-4 w-4 mr-1" />
+                        Verified
+                      </Badge>
+                    </div>
+                  )}
+                </GalleryTile>
+                <GalleryTile
+                  photo={allPhotos[1]}
+                  index={1}
+                  name={listing.displayName}
+                  onClick={() => { setCurrentImage(1); setGalleryOpen(true); }}
                 />
-              ) : (
-                <div className="flex items-center justify-center h-full bg-muted">
-                  <p className="text-muted-foreground">No photos available</p>
+              </div>
+            ) : allPhotos.length === 3 ? (
+              <div className="grid h-[320px] grid-cols-2 gap-2.5 overflow-hidden md:h-[440px]">
+                <GalleryTile
+                  photo={allPhotos[0]}
+                  index={0}
+                  name={listing.displayName}
+                  onClick={() => { setCurrentImage(0); setGalleryOpen(true); }}
+                >
+                  {(listing.verificationStatus === "APPROVED_VERIFIED") && (
+                    <div className="absolute left-4 top-4">
+                      <Badge className="!bg-success !text-success-foreground shadow-lg !hover:bg-success">
+                        <BadgeCheck className="h-4 w-4 mr-1" />
+                        Verified
+                      </Badge>
+                    </div>
+                  )}
+                </GalleryTile>
+                <div className="grid h-full min-h-0 grid-rows-2 gap-2.5">
+                  <GalleryTile
+                    photo={allPhotos[1]}
+                    index={1}
+                    name={listing.displayName}
+                    onClick={() => { setCurrentImage(1); setGalleryOpen(true); }}
+                  />
+                  <GalleryTile
+                    photo={allPhotos[2]}
+                    index={2}
+                    name={listing.displayName}
+                    onClick={() => { setCurrentImage(2); setGalleryOpen(true); }}
+                  />
                 </div>
-              )}
-
-              {allPhotos.length > 1 && (
-                <>
-                  <button
-                    onClick={prevImage}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 flex h-12 w-12 items-center justify-center rounded-full bg-background/90 text-foreground backdrop-blur-sm transition-all hover:bg-background hover:scale-105 shadow-lg"
+              </div>
+            ) : (
+              <div className="grid h-[320px] grid-cols-2 gap-2.5 overflow-hidden md:h-[440px]">
+                {/* Primary — large left tile */}
+                <GalleryTile
+                  photo={allPhotos[0]}
+                  index={0}
+                  name={listing.displayName}
+                  onClick={() => { setCurrentImage(0); setGalleryOpen(true); }}
+                >
+                  {(listing.verificationStatus === "APPROVED_VERIFIED") && (
+                    <div className="absolute left-4 top-4">
+                      <Badge className="!bg-success !text-success-foreground shadow-lg !hover:bg-success">
+                        <BadgeCheck className="h-4 w-4 mr-1" />
+                        Verified
+                      </Badge>
+                    </div>
+                  )}
+                </GalleryTile>
+                {/* Right column — top full-width, bottom two tiles */}
+                <div className="grid h-full min-h-0 grid-cols-2 grid-rows-2 gap-2.5">
+                  <GalleryTile
+                    photo={allPhotos[1]}
+                    index={1}
+                    name={listing.displayName}
+                    className="col-span-2"
+                    onClick={() => { setCurrentImage(1); setGalleryOpen(true); }}
+                  />
+                  <GalleryTile
+                    photo={allPhotos[2]}
+                    index={2}
+                    name={listing.displayName}
+                    onClick={() => { setCurrentImage(2); setGalleryOpen(true); }}
+                  />
+                  <GalleryTile
+                    photo={allPhotos[3]}
+                    index={3}
+                    name={listing.displayName}
+                    onClick={() => { setCurrentImage(3); setGalleryOpen(true); }}
                   >
-                    <ChevronLeft className="h-6 w-6" />
-                  </button>
-                  <button
-                    onClick={nextImage}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 flex h-12 w-12 items-center justify-center rounded-full bg-background/90 text-foreground backdrop-blur-sm transition-all hover:bg-background hover:scale-105 shadow-lg"
-                  >
-                    <ChevronRight className="h-6 w-6" />
-                  </button>
-                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
-                    {allPhotos.map((_, idx) => (
-                      <button
-                        key={idx}
-                        onClick={() => setCurrentImage(idx)}
-                        className={cn(
-                          "h-3 w-3 rounded-full transition-all duration-200",
-                          idx === safeCurrentImage 
-                            ? "bg-primary scale-110" 
-                            : "bg-background/60 hover:bg-background/80"
-                        )}
-                      />
-                    ))}
-                  </div>
-                </>
-              )}
-
-              {/* Verification Badge */}
-              {(listing.verificationStatus === "APPROVED_VERIFIED") && (
-                <div className="absolute left-4 top-4">
-                  <Badge className="!bg-success !text-success-foreground shadow-lg !hover:bg-success">
-                    <BadgeCheck className="h-4 w-4 mr-1" />
-                    Verified
-                  </Badge>
+                    {allPhotos.length > 4 && (
+                      <span className="absolute inset-0 flex items-center justify-center bg-background/55 text-sm font-semibold text-foreground backdrop-blur-[2px]">
+                        +{allPhotos.length - 4} photos
+                      </span>
+                    )}
+                  </GalleryTile>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
 
             {/* Title & Location */}
             <div className="space-y-4">
@@ -395,6 +514,20 @@ export default function PremiumSpaceDetail() {
                 </p>
               </div>
 
+              {/* Tag Pills */}
+              {tagPills.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {tagPills.map((pill) => (
+                    <span
+                      key={pill}
+                      className="rounded-full bg-muted/70 px-3.5 py-1.5 text-xs font-medium text-muted-foreground"
+                    >
+                      {pill}
+                    </span>
+                  ))}
+                </div>
+              )}
+
               {/* Trust Indicators Row */}
               <div className="flex flex-wrap gap-6">
                 {trustIndicators.map((indicator, index) => (
@@ -406,15 +539,33 @@ export default function PremiumSpaceDetail() {
               </div>
             </div>
 
+            {/* Hotel Features — horizontal strip */}
+            {listing.amenities.length > 0 && (
+              <div className="space-y-3 border-y border-border/60 py-5">
+                <h2 className="text-sm font-semibold text-foreground">Hotel Features</h2>
+                <div className="flex flex-wrap gap-x-7 gap-y-3">
+                  {listing.amenities.slice(0, 6).map((amenity) => {
+                    const IconComponent = getAmenityIcon(amenity);
+                    return (
+                      <div key={amenity} className="flex items-center gap-2">
+                        <IconComponent className="h-4 w-4 text-primary" />
+                        <span className="text-[13px] font-medium text-foreground/80">{amenity}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* Navigation Tabs with Scroll-spy */}
-            <div className="sticky top-20 z-40 bg-background/95 backdrop-blur-sm border-b border-border -mx-4 px-4 md:mx-0 md:px-0">
+            <div className="sticky top-20 z-40 border-b border-border/70 bg-background/95 backdrop-blur-sm -mx-4 px-4 md:mx-0 md:px-0">
               <div className="flex gap-8 overflow-x-auto scrollbar-hide">
                 {navigationTabs.map((tab) => (
                   <button
                     key={tab.id}
                     onClick={() => scrollToSection(tab.id)}
                     className={cn(
-                      "py-4 text-sm font-medium whitespace-nowrap border-b-2 transition-colors",
+                      "py-4 text-[13px] font-medium whitespace-nowrap border-b-2 transition-colors",
                       activeTab === tab.id
                         ? "border-primary text-primary"
                         : "border-transparent text-muted-foreground hover:text-foreground"
@@ -432,9 +583,16 @@ export default function PremiumSpaceDetail() {
               ref={(el) => (sectionRefs.current.overview = el)}
               className="space-y-6"
             >
-              <div>
-                <h2 className="font-display text-2xl font-semibold text-foreground mb-4">Overview</h2>
-                <p className="text-muted-foreground leading-relaxed text-lg">{listing.overview}</p>
+              <h2 className="font-display text-2xl font-semibold text-foreground">About the Workspace</h2>
+
+              <div className="grid gap-6 lg:grid-cols-[1.7fr_1fr] lg:items-start">
+                <p className="max-w-prose text-muted-foreground leading-relaxed text-lg">{listing.overview}</p>
+                <GoogleMap
+                  locality={listing.locality}
+                  city={listing.city}
+                  approximateCoordinates={listing.approximateCoordinates}
+                  className="aspect-[4/3] rounded-xl"
+                />
               </div>
 
               {/* Key Specs */}
@@ -702,7 +860,7 @@ export default function PremiumSpaceDetail() {
           {/* Sticky Enquiry Card - Desktop (32%) */}
           <div className="hidden lg:block">
             <div className="sticky top-24 space-y-6">
-              <Card className="border-border shadow-lg">
+              <Card className="border-border shadow-md">
                 <CardContent className="p-6">
                   <div className="space-y-4">
                     <div>
@@ -883,6 +1041,55 @@ export default function PremiumSpaceDetail() {
             listingName={listing.displayName}
             locality={listing.locality}
           />
+        </DialogContent>
+      </Dialog>
+
+      {/* Photo Gallery Dialog */}
+      <Dialog open={galleryOpen} onOpenChange={setGalleryOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="font-display">Photos</DialogTitle>
+          </DialogHeader>
+          {allPhotos.length > 0 && (
+            <div className="relative aspect-[16/10] overflow-hidden rounded-xl bg-muted">
+              <img
+                src={allPhotos[safeCurrentImage]?.url}
+                alt={`${listing.displayName} - Photo ${safeCurrentImage + 1}`}
+                className="h-full w-full object-cover"
+              />
+              {allPhotos.length > 1 && (
+                <>
+                  <button
+                    onClick={prevImage}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-foreground shadow-md transition-colors hover:bg-white"
+                    aria-label="Previous photo"
+                  >
+                    <ChevronLeft className="h-5 w-5" />
+                  </button>
+                  <button
+                    onClick={nextImage}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-foreground shadow-md transition-colors hover:bg-white"
+                    aria-label="Next photo"
+                  >
+                    <ChevronRight className="h-5 w-5" />
+                  </button>
+                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+                    {allPhotos.map((_, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => setCurrentImage(idx)}
+                        className={cn(
+                          "h-2.5 w-2.5 rounded-full transition-all",
+                          idx === safeCurrentImage ? "bg-primary" : "bg-white/70 hover:bg-white"
+                        )}
+                        aria-label={`Go to photo ${idx + 1}`}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </DialogContent>
       </Dialog>
       </div>

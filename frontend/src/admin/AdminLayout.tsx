@@ -11,7 +11,8 @@ import {
   LogOut,
   UserCheck,
   BarChart3,
-  MapPin
+  MapPin,
+  FileText
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
@@ -26,6 +27,7 @@ const navItems = [
   { icon: MapPin, label: "Localities", href: "/admin/localities" },
   { icon: Users, label: "Leads", href: "/admin/leads" },
   { icon: Calendar, label: "Visits", href: "/admin/visits" },
+  { icon: FileText, label: "Blogs", href: "/admin/blogs" },
 ];
 
 export function AdminLayout() {

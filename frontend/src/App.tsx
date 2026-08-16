@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
+import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { AnimationProvider } from "@/contexts/AnimationContext";
 import { AnimationAccessibilityProvider } from "@/components/AnimationAccessibilityProvider";
@@ -35,6 +36,8 @@ import Partners from "./pages/Partners";
 import Contact from "./pages/Contact";
 import NotFound from "./pages/NotFound";
 import ApiTest from "./pages/ApiTest";
+import Blog from "./pages/Blog";
+import BlogPost from "./pages/BlogPost";
 
 // Admin pages - lazy loaded to reduce initial bundle size
 const AdminLayout = lazy(() => import("@/admin/AdminLayout").then(m => ({ default: m.AdminLayout })));
@@ -47,6 +50,8 @@ const AdminPartners = lazy(() => import("@/admin/pages/AdminPartners").then(m =>
 const AdminLocalities = lazy(() => import("@/admin/pages/AdminLocalities"));
 const AdminAnalytics = lazy(() => import("@/admin/pages/AdminAnalytics").then(m => ({ default: m.AdminAnalytics })));
 const AdminLogin = lazy(() => import("@/admin/pages/AdminLogin").then(m => ({ default: m.AdminLogin })));
+const AdminBlogs = lazy(() => import("@/admin/pages/AdminBlogs").then(m => ({ default: m.AdminBlogs })));
+const AdminBlogEditor = lazy(() => import("@/admin/pages/AdminBlogEditor").then(m => ({ default: m.AdminBlogEditor })));
 
 // Partner pages - lazy loaded to reduce initial bundle size
 const PartnerLayout = lazy(() => import("@/partner/PartnerLayout").then(m => ({ default: m.PartnerLayout })));
@@ -115,6 +120,8 @@ const AnimatedRoutes = () => {
           <Route path="/partners" element={<Partners />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/api-test" element={<ApiTest />} />
+          <Route path="/blog" element={<Blog />} />
+          <Route path="/blog/*" element={<BlogPost />} />
         </Route>
 
         {/* Admin Routes - Lazy loaded */}
@@ -199,6 +206,30 @@ const AnimatedRoutes = () => {
                 <AdminVisits />
               </Suspense>
             } 
+          />
+          <Route
+            path="blogs"
+            element={
+              <Suspense fallback={<InlineLoading text="Loading blogs..." />}>
+                <AdminBlogs />
+              </Suspense>
+            }
+          />
+          <Route
+            path="blogs/new"
+            element={
+              <Suspense fallback={<InlineLoading text="Loading blog editor..." />}>
+                <AdminBlogEditor />
+              </Suspense>
+            }
+          />
+          <Route
+            path="blogs/:blogId/edit"
+            element={
+              <Suspense fallback={<InlineLoading text="Loading blog editor..." />}>
+                <AdminBlogEditor />
+              </Suspense>
+            }
           />
         </Route>
 
@@ -293,6 +324,7 @@ const App = () => {
 
   return (
     <HelmetProvider>
+      <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} storageKey="kosmix-theme">
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <AnimationProvider initialPreset="standard">
@@ -341,6 +373,7 @@ const App = () => {
           </AnimationProvider>
         </AuthProvider>
       </QueryClientProvider>
+      </ThemeProvider>
     </HelmetProvider>
   );
 };

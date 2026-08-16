@@ -29,9 +29,9 @@ from app.routers import (
     locations,
     keep_alive,
     sitemap,
-    health
+    health,
+    blogs
 )
-
 settings = get_settings()
 
 # Setup logging filters to suppress health check spam
@@ -185,6 +185,9 @@ async def general_exception_handler(request: Request, exc: Exception):
 # Public routes (premium only)
 app.include_router(premium_public.router, prefix="/api/public", tags=["Public Premium"])
 
+# Public blog routes
+app.include_router(blogs.public_router, prefix="/api/public", tags=["Blog Public"])
+
 # Location management routes
 app.include_router(locations.router, tags=["Locations"])
 
@@ -201,6 +204,7 @@ app.include_router(admin_partners.router, prefix="/api/admin", tags=["Admin Part
 app.include_router(admin_locations.router, prefix="/api/admin", tags=["Admin Locations"])
 app.include_router(leads.router, prefix="/api/admin", tags=["Admin Leads"])
 app.include_router(visits.router, prefix="/api/admin", tags=["Admin Visits"])
+app.include_router(blogs.router, prefix="/api/admin", tags=["Blog Management"])
 
 # Analytics routes
 app.include_router(analytics.router, prefix="/api/analytics", tags=["Analytics"])

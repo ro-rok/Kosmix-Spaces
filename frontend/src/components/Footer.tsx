@@ -7,9 +7,9 @@ import { handleEmailClick } from "@/lib/email";
 
 export function Footer() {
   return (
-    <footer className="border-t border-border bg-muted/30">
+    <footer className="border-t border-border bg-secondary">
       {/* Transparency Strip */}
-      <div className="bg-primary/5 py-4">
+      <div className="bg-primary-light/50 py-4">
         <div className="container text-center">
           <p className="text-sm text-muted-foreground">
             {transparencyLines.partnerFee}
@@ -17,7 +17,7 @@ export function Footer() {
         </div>
       </div>
 
-      <div className="container py-12">
+      <div className="container py-10">
         <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-4">
           {/* Brand */}
           <div className="space-y-4">
@@ -43,6 +43,11 @@ export function Footer() {
               <li>
                 <Link to="/explore" className="text-sm text-muted-foreground hover:text-primary">
                   Explore Spaces
+                </Link>
+              </li>
+              <li>
+                <Link to="/blog" className="text-sm text-muted-foreground hover:text-primary">
+                  Blog
                 </Link>
               </li>
               <li>

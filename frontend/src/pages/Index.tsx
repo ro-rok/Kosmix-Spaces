@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowRight, MapPin, MessageCircle, BadgeCheck, Building2, Clock, Shield, ChevronDown } from "lucide-react";
+import { ArrowRight, MapPin, MessageCircle, BadgeCheck, Building2, Clock, Shield } from "lucide-react";
+import { CinematicHero } from "@/components/CinematicHero";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ListingCard } from "@/components/ListingCard";
@@ -114,26 +115,27 @@ const testimonials = [
       <StructuredData data={websiteSchema} />
       <StructuredData data={breadcrumbSchema} />
       <div className="pb-20 md:pb-0">
-        {/* Hero Section */}
-      <section className="relative min-h-[95vh] flex items-center pt-20 lg:pt-0">
-        {/* Background Image with Overlay */}
+      <CinematicHero />
+
+        {/* Original search hero — shown after the cinematic entrance */}
+      <section className="relative flex min-h-screen items-center overflow-hidden pt-16 supports-[height:100svh]:min-h-[100svh]">
         <div className="absolute inset-0 z-0">
-          <img
-            src="/hero-workspace.jpg"
-            alt="Modern workspace"
-            className="w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-background via-background/95 to-background/60" />
+          <div className="ambient-move absolute inset-0">
+            <img
+              src="/hero-workspace.jpg"
+              alt="Modern workspace"
+              className="h-full w-full object-cover opacity-[0.72] saturate-[0.9]"
+            />
+          </div>
+          <div className="absolute inset-0 bg-[linear-gradient(90deg,hsl(var(--background)/0.94)_0%,hsl(var(--background)/0.78)_35%,hsl(var(--background)/0.52)_70%,hsl(var(--background)/0.65)_100%)]" />
+          <div className="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-background to-transparent" />
         </div>
         <div className="container relative z-10">
           <div className="mx-auto max-w-4xl text-center">
-            {/* Headline */}
-            <h1 className="font-display text-3xl font-bold tracking-tight text-foreground sm:text-4xl md:text-5xl leading-tight">
+            <h1 className="font-display text-3xl font-bold tracking-tight text-foreground sm:text-4xl md:text-[2.75rem] leading-tight text-balance">
               Verified workspaces across India.
               <br />
-              <span className="bg-gradient-to-r from-primary to-primary-glow bg-clip-text text-transparent">
-                Shortlisted, negotiated, visit-ready.
-              </span>
+              <span className="text-primary">Shortlisted, negotiated, visit-ready.</span>
             </h1>
             
             {/* Subhead */}
@@ -143,7 +145,7 @@ const testimonials = [
 
             {/* Search Form */}
             <div className="mt-8 mx-auto max-w-3xl">
-              <div className="rounded-xl border border-border bg-card p-4 shadow-lg md:p-6">
+              <div className="rounded-[18px] border border-border/60 bg-card p-4 shadow-md md:p-6">
                 <div className="grid gap-4 md:grid-cols-4">
                   {/* City */}
                   <div>
@@ -271,6 +273,7 @@ const testimonials = [
                   Response within 3 hours
                 </p>
               </div>
+
             </div>
           </div>
         </div>
@@ -281,7 +284,7 @@ const testimonials = [
       </section>
 
       {/* Locality Quick Chips */}
-      <section className="py-8 bg-muted/30">
+      <section className="py-8 bg-secondary/70">
         <div className="container">
           <h2 className="text-center font-display text-lg font-semibold text-foreground mb-4">
             View spaces in popular areas
@@ -335,7 +338,7 @@ const testimonials = [
               duration: 0.7,
               ease: "power2.out",
             }}
-            className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3"
+            className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4"
           >
             {featuredListings.map((listing) => (
               <ListingCard 
@@ -357,7 +360,7 @@ const testimonials = [
       </section>
 
       {/* How It Works - Compact */}
-      <section className="bg-muted/30 py-12 md:py-16">
+      <section className="bg-secondary/70 py-12 md:py-16">
         <div className="container">
           <div className="text-center mb-10">
             <h2 className="font-display text-2xl font-bold text-foreground md:text-3xl">
@@ -401,7 +404,7 @@ const testimonials = [
                   icon: Building2
                 },
               ].map((item) => (
-                <div key={item.step} className="relative rounded-xl border border-border bg-card p-6 text-center">
+                <div key={item.step} className="relative rounded-2xl border border-border/70 bg-card p-6 text-center">
                   <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground">
                     <item.icon className="h-6 w-6" />
                   </div>
@@ -421,7 +424,7 @@ const testimonials = [
       </section>
 
       {/* Testimonials */}
-      <section className="py-12 md:py-16 bg-muted/30">
+      <section className="py-12 md:py-16 bg-secondary/70">
         <div className="container">
           <div className="text-center mb-12">
             <h2 className="font-display text-2xl font-bold text-foreground md:text-3xl">
@@ -447,7 +450,7 @@ const testimonials = [
             {testimonials.map((testimonial, index) => (
               <div
                 key={index}
-                className="rounded-xl border border-border bg-card p-6 shadow-sm hover:shadow-md transition-shadow"
+                className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm hover:shadow-md transition-shadow"
               >
                 <div className="flex flex-col h-full">
                   <div className="flex-1">

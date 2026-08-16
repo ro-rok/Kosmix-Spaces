@@ -25,8 +25,16 @@ const trustPoints = [
 
 export function TrustStrip() {
   return (
-    <div className="border-y border-border bg-muted/30 py-8">
+    <div className="border-y border-border bg-secondary/70 py-12">
       <div className="container">
+        <div className="mb-10 text-center">
+          <h2 className="font-display text-2xl font-bold text-foreground md:text-3xl">
+            Curated spaces. Verified for you.
+          </h2>
+          <p className="mx-auto mt-2 max-w-xl text-muted-foreground">
+            Shortlisted, negotiated and visit-ready — so you can focus on the work.
+          </p>
+        </div>
         <div className="grid grid-cols-2 gap-6 md:grid-cols-4">
           {trustPoints.map((point) => (
             <div key={point.title} className="flex flex-col items-center text-center">

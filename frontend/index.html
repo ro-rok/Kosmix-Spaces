@@ -16,6 +16,16 @@
     <link rel="icon" type="image/png" sizes="512x512" href="/android-chrome-512x512.png" />
     <link rel="manifest" href="/site.webmanifest" />
 
+    <script>
+      (function () {
+        try {
+          if (localStorage.getItem("kosmix-theme") !== "light") {
+            document.documentElement.classList.add("dark");
+          }
+        } catch (e) {}
+      })();
+    </script>
+
     <meta property="og:title" content="Kosmix Spaces" />
     <meta property="og:description" content="Verified workspace listings platform for India" />
     <meta property="og:type" content="website" />

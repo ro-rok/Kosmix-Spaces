@@ -2,7 +2,7 @@ import { MessageCircle, Phone, Mail, MapPin, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EnquiryForm } from "@/components/EnquiryForm";
 import { buildWhatsAppLink, buildCallLink } from "@/lib/whatsapp";
-import { handleEmailClick } from "@/lib/email";
+import { handleEmailClick, buildEmailLink } from "@/lib/email";
 import { contactConfig, transparencyLines } from "@/config/contact";
 import { SEO, StructuredData } from "@/components/SEO";
 import { generateBreadcrumbSchema } from "@/lib/seo-helpers";
